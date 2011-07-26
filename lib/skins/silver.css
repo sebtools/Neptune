@@ -1,0 +1,74 @@
+@import url(../calendar/calendar-system.css);
+body {behavior:url(hover.htc)}
+
+/* Universal styles */
+.sebHelp {font-size:9px;}
+.sebError {
+	color:#800000;
+	font-weight:bold;
+}
+.sebMessage {
+	color:#008000;
+	font-weight:bold;
+}
+
+/* sebMenu styles */
+.sebMenu-skin-silver #sebMenuLabel {font-size:11px;font-weight:normal;}
+.sebMenu-skin-silver #sebTab td {background-color:#827167;color:white;font-family:Verdana,Arial,Helvetica;font-size:12px;height:22px;}
+.sebMenu-skin-silver #sebTab td.tab {padding-left:4px;padding-right:4px;}
+.sebMenu-skin-silver #sebTab td.clear {background-color:white;color:black;}
+.sebMenu-skin-silver #sebTab a {color:white;text-decoration:none;}
+.sebMenu-skin-silver #sebTab a.CurrTab {font-weight:bold;}
+.sebMenu-skin-silver #sebTab a:hover {text-decoration:underline;}
+.sebMenu-skin-silver #sebTabMenu a {color:#990099;font-family:Verdana,Arial,Helvetica;font-size:x-small;font-weight:bold;text-decoration:none;}
+.sebMenu-skin-silver #sebTabMenu a:hover {color:#6666FF;}
+.sebMenu-skin-silver #sebTabMenu li {list-style-type:circle;}
+.sebMenu-skin-silver #sebMenuBody {width:700px;}
+
+/* sebTable styles */
+.sebTable-skin-silver .sebTableCount {float:right;font-size:10px;}
+.sebTable-skin-silver table {clear:right;}
+.sebTable-skin-silver td {padding-left:5px;}
+.sebTable-skin-silver td, .sebTable-skin-silver th {padding-right:16px;}
+.sebTable-skin-silver tr.odd td {background-color:#DDDDDD;}
+.sebTable-skin-silver #sebTable {width:99%;}
+.sebTable-skin-silver table {background-color:white;border:1px solid #827167;width:100%;}
+.sebTable-skin-silver th {height:20px;padding:4px;text-align:left;}
+.sebTable-skin-silver th a, .sebTable-pager-prev a, .sebTable-pager-next a, .sebTable-skin-silver table input.delete {
+	background-color:#DDDDDD;
+	border-top:2px solid #EFEFEF;
+	border-right:2px solid #717171;
+	border-bottom:2px solid #717171;
+	border-left:2px solid #EFEFEF;
+	display:block;
+	font-size:12px;
+	font-weight:bold;
+	padding:1px;
+	text-decoration:none;
+}
+.sebTable-skin-silver table input.delete {
+	padding:0;
+}
+.sebTable-skin-silver .sebTable-pager-prev a, .sebTable-skin-silver .sebTable-pager-next a {font-weight:bold;text-align:center;}
+.sebTable-skin-silver th a {
+	background-image:url(../asc.gif);
+	background-position:right;
+	background-repeat:no-repeat;
+	padding-right:20px;
+}
+.sebTable-skin-silver th a.asc {background-image:url(../asc-red.gif);}
+.sebTable-skin-silver th a.desc {background-image:url(../desc-red.gif);}
+.sebTable-skin-silver th a:hover {color:white;}
+.sebTable-skin-silver th a:active {border-style:inset;}
+.sebTable-skin-silver .sebTable-pager table {border-bottom:0;padding-bottom:3px;}
+.sebTable-skin-silver .sebTable-pager-prev, .sebTable-skin-silver .sebTable-pager-next {text-align:center;width:80px;}
+.sebTable-skin-silver .sebTable-pager-pages {text-align:center;}
+.sebTable-skin-silver .currLetter, .sebTable-skin-silver .sebTable-currPage {background-color:#EEEEEE;border:1px solid #DDDDDD;}
+
+/* sebForm styles */
+.sebForm-skin-silver {background-color:#DDDDDD;border:1px solid #999999;}
+.sebForm-skin-silver label {font-weight:bold;}
+.sebForm-skin-silver fieldset.checkbox, .sebForm-skin-silver fieldset.radio, .sebForm-skin-silver fieldset.yesno {border:0;padding:0;margin:0;}
+.sebForm-skin-silver .sebform-error {color:red;padding:3px;}
+
+.sebForm-skin-silver .sebFormat-semantic label.sebform {display:block;}

@@ -1,0 +1,60 @@
+@import url(../calendar/calendar-system.css);
+body {behavior:url(hover.htc)}
+
+/* Universal styles */
+.sebHelp {font-size:9px;}
+.sebMessage {
+	color:#008000;
+	font-weight:bold;
+}
+.sebMenu-skin-plain, .sebMenu-skin-plain td, .sebMenu-skin-plain a,
+.sebTable-skin-plain, .sebTable-skin-plain td, .sebTable-skin-plain a,
+.sebForm-skin-plain, .sebForm-skin-plain td, .sebMenu-skin-plain a
+{
+	font-family:Verdana,Arial,sans-serif;
+	font-size:11px;
+}
+
+/* sebMenu styles */
+.sebMenu-skin-tim #sebTab td {background-color:#728C94;color:white;font-family:Verdana,Arial,Helvetica;font-size:12px;height:22px;}
+.sebMenu-skin-tim #sebTab td.tab {padding-left:4px;padding-right:4px;}
+.sebMenu-skin-tim #sebTab td.clear {background-color:white;color:black;}
+.sebMenu-skin-tim #sebTab a {color:white;text-decoration:none;}
+.sebMenu-skin-tim #sebTab a.CurrTab {font-weight:bold;}
+.sebMenu-skin-tim #sebTab a:hover {text-decoration:underline;}
+.sebMenu-skin-tim #sebTabMenu {padding: 5px;}
+.sebMenu-skin-tim #sebTabMenu a {color:#990099;font-family:Verdana,Arial,Helvetica;font-size:x-small;font-weight:bold;text-decoration:none;}
+.sebMenu-skin-tim #sebTabMenu a:hover {color:#6666FF;}
+.sebMenu-skin-tim #sebTabMenu li {list-style-type:disc; color:#728C94;}
+.sebMenu-skin-tim #sebTabMenu ul {margin:0 0 0 0;padding:0 0 0 15px;}
+
+/* sebTable styles */
+.sebTable-skin-tim .sebTableCount {float:right;font-size:10px;}
+.sebTable-skin-tim .sebTable table {clear:right;}
+.sebTable-skin-tim .sebTable td, .sebTable th {padding-right:16px;}
+.sebTable-skin-tim .sebTable tr.odd td {background-color:#DDDDDD;}
+.sebTable-skin-tim .sebTable {width:99%;}
+.sebTable-skin-tim .sebTable table {background-color:white;border:1px solid #827167;width:100%;}
+.sebTable-skin-tim .sebTable th {height:20px;padding:4px;text-align:left;}
+.sebTable-skin-tim th a, .sebTable-pager-prev a, .sebTable-pager-next a, .sebTable-skin-tim table input.delete {
+	background-color:#DDDDDD;
+	border-top:2px solid #EFEFEF;
+	border-right:2px solid #717171;
+	border-bottom:2px solid #717171;
+	border-left:2px solid #EFEFEF;
+	display:block;
+	font-size:12px;
+	font-weight:bold;
+	padding:1px;
+	text-decoration:none;
+}
+.sebTable-skin-tim .sebTable table input.delete {
+	padding:0;
+}
+
+/* sebForm styles */
+.sebForm-skin-tim #sebForm fieldset.checkbox, .sebForm-skin-tim #sebForm fieldset.radio, .sebForm-skin-tim #sebForm fieldset.yesno {
+		border:0;
+		padding:0;
+		margin:0;
+	}

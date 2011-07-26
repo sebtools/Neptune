@@ -1,0 +1,1 @@
+<cfcomponent extends="_framework.BaseProgram"></cfcomponent>

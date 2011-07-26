@@ -1,0 +1,159 @@
+@import url(../calendar/calendar-system.css);
+body {behavior:url(hover.htc)}
+
+/* Universal styles */
+.sebHelp {font-size:9px;}
+.sebMessage {
+	color:#008000;
+	font-weight:bold;
+}
+.sebMenu-skin-panels, .sebTable-skin-panels, .sebForm-skin-panels  {font:75%/150% Verdana, Geneva, Arial, Helvetica, sans-serif;}
+.sebMenu-skin-panels, .sebMenu-skin-panels td, .sebMenu-skin-panels a,
+.sebTable-skin-panels, .sebTable-skin-panels td, .sebTable-skin-panels a,
+.sebForm-skin-panels, .sebForm-skin-panels td, .sebMenu-skin-panels a
+{
+	font-family:Verdana,Arial,sans-serif;
+	font-size:11px;
+}
+
+/* sebMenu styles */
+.sebMenu-skin-panels #sebMenu-topbar {background-color:#C0C8CE;border-top:1px solid #E1E5E9;border-bottom:1px solid #9EAAB4;}
+.sebMenu-skin-panels #sebTab {color:white;font-weight:bold;}
+.sebMenu-skin-panels #sebTab a.CurrTab {font-weight:bold;}
+.sebMenu-skin-panels #sebTab a {color:white;display:block;height:16px;padding:4px 20px;text-decoration:none;}
+.sebMenu-skin-panels #sebTab a:hover {background-color:#E5DFC9;text-decoration:none;}
+.sebMenu-skin-panels #sebTabMenu {font-family:Verdana, Geneva, Arial, Helvetica, sans-serif;font-size:11px;}
+.sebMenu-skin-panels #sebTabMenu ul {margin:0 0 0 0;padding:0 0 0 15px;}
+.sebMenu-skin-panels #sebTabMenu li {list-style-type:none;margin-bottom:4px;}
+.sebMenu-skin-panels #sebTabMenu a {color:#666666;}
+.sebMenu-skin-panels #sebTabMenu a:hover {background-color:#F3F3F3;color:#333333;}
+
+.sebMenu-skin-panels .sebMenu-type-side ul, .sebMenu-skin-panels .sebMenu-type-side li {
+	list-style-type:none;
+	margin:0 0 0 0;
+	padding:0 0 0 0;
+}
+.sebMenu-skin-panels .sebMenu-type-side #sebTab {
+	background-color:#FEFEFE;
+}
+.sebMenu-skin-panels .sebMenu-type-side #sebTab a {
+	background-color:#FEFEFE;
+	border-bottom:1px solid #333333;
+	color:#444444;
+	font-weight:bold;
+	height:auto;
+	min-height:16px;
+}
+.sebMenu-skin-panels .sebMenu-type-side #sebTab a:hover, .sebMenu-skin-panels .sebMenu-type-side #sebTab a.active {
+	background-color:#EEEEEE;
+	background-color:#DEDFDE;
+	color:#9B3B5A;
+	color:black;
+}
+.sebMenu-skin-panels .sebMenu-type-side #sebTab li ul li a {
+	background-color:#FEFEFE;
+	padding-left:40px;
+}
+.sebMenu-skin-panels .sebMenu-type-side #sebTab li ul li a:hover, .sebMenu-skin-panels .sebMenu-type-side #sebTab li ul li a.active {
+	background-color:#FEFEFE;
+	color:black;
+	padding-left:40px;
+}
+.sebMenu-skin-panels .sebMenu-type-side #sebMenuBody {padding:20px;} 
+.sebMenu-skin-panels .sebMenu-type-side table#sebMenuTable {
+	border:1px solid black;
+	border-right:2px solid #333333;
+	border-bottom:2px solid #333333;
+	width:100%;
+}
+.sebMenu-skin-panels .sebMenu-type-side td#sebTab, .sebMenu-skin-panels .sebMenu-type-side td#sebMenuBody {
+	vertical-align:top;
+}
+.sebMenu-skin-panels .sebMenu-type-side #sebTab {width:140px;border-right:1px solid #333333;}
+/*
+.sebMenu-skin-panels .sebMenu-type-side #sebTab ul, .sebMenu-skin-panels .sebMenu-type-side #sebTab ul {
+	list-style-type:none;
+	margin:0 0 0 0;
+	padding:0 0 0 0;
+}
+.sebMenu-skin-panels .sebMenu-type-side #sebTab ul li {
+	border:1px solid #666666;
+	margin:10px;
+}
+.sebMenu-skin-panels .sebMenu-type-side #sebTab ul li a {
+	background-color:#C0C8CE;
+	color:red;
+	display:block;
+	padding:4px;
+	text-align:center;
+}
+.sebMenu-skin-panels .sebMenu-type-side #sebTab ul li a.active, .sebMenu-skin-panels .sebMenu-type-side #sebTab ul li a:hover {
+	background-color:black;
+}
+.sebMenu-skin-panels .sebMenu-type-side #sebTab ul li ul li {
+	border:none;
+	list-style-type:circle;
+	margin-left:15px;
+}
+.sebMenu-skin-panels .sebMenu-type-side #sebTab ul li ul li a {
+	background-color:white;
+	color:blue;
+	margin:4px 0 0 0;
+	padding:0 0 0 0;
+	text-align:left;
+}
+*/
+
+
+/* sebTable styles */
+.sebTable-skin-panels .sebTableCount {float:right;font-size:10px;}
+.sebTable-skin-panels table {clear:right;}
+.sebTable-skin-panels td {padding-left:5px;}
+.sebTable-skin-panels td, .sebTable-skin-silver th {padding-right:16px;}
+.sebTable-skin-panels tr.odd td {background-color:#DDDDDD;}
+.sebTable-skin-panels {width:99%;}
+.sebTable-skin-panels table {background-color:white;border:1px solid #827167;width:100%;}
+.sebTable-skin-panels th {height:20px;padding:4px;text-align:left;}
+.sebTable-skin-panels th a, .sebTable-skin-panels .sebTable-pager-prev a, .sebTable-skin-panels .sebTable-pager-next a, .sebTable-skin-panels table input.delete {
+	background-color:#DDDDDD;
+	border-top:2px solid #EFEFEF;
+	border-right:2px solid #717171;
+	border-bottom:2px solid #717171;
+	border-left:2px solid #EFEFEF;
+	display:block;
+	font-size:12px;
+	font-weight:bold;
+	padding:1px;
+	text-decoration:none;
+}
+.sebTable-skin-panels table input.delete {
+	padding:0;
+}
+.sebTable-skin-panels .sebTable-pager-prev a, .sebTable-skin-panels .sebTable-pager-next a {font-weight:bold;text-align:center;}
+.sebTable-skin-panels th a {
+	background-image:url(../asc.gif);
+	background-position:right;
+	background-repeat:no-repeat;
+	padding-right:20px;
+}
+.sebTable-skin-panels th a.asc {background-image:url(../asc-red.gif);}
+.sebTable-skin-panels th a.desc {background-image:url(../desc-red.gif);}
+.sebTable-skin-panels th a:hover {color:white;}
+.sebTable-skin-panels th a:active {border-style:inset;}
+.sebTable-skin-panels .sebTable-pager table {border-bottom:0;padding-bottom:3px;}
+.sebTable-skin-panels .sebTable-pager-prev, .sebTable-skin-panels .sebTable-pager-next {text-align:center;width:80px;}
+.sebTable-skin-panels .sebTable-pager-pages {text-align:center;}
+.sebTable-skin-panels .currLetter, .sebTable-skin-panels .sebTable-currPage {background-color:#EEEEEE;border:1px solid #DDDDDD;}
+
+/* sebForm styles */
+.sebForm-skin-panels fieldset.checkbox, #sebForm fieldset.radio, #sebForm fieldset.yesno {border:0;padding:0;margin:0;}
+.sebForm-skin-panels table {background-color:#EEEEEE;border:1px solid #CCCCCC;margin-bottom:20px;}
+.sebForm-skin-panels td {background-color:#EEEEEE;border-color:white #DDDDDD #DDDDDD white;border-style:solid;border-width:1px;font-size:10px;padding:5px;text-align:left;}
+.sebForm-skin-panels td.label {background-color:#E7E7E7;border-style:solid;border-color:white #D6D6D6 #D6D6D6 white;border-width:1px;color:#808080;font-size:80%;font-weight:bold;padding:5px;}
+
+
+
+
+
+
+

@@ -1,0 +1,151 @@
+/**
+ * Style sheet for CalendarPickerControl
+ * Blue-gray theme
+ */
+
+div.calendarbutton{
+	position: absolute;
+	width: 15px;
+	height: 16px;
+	background: transparent url("calendar_icon.png") no-repeat center;
+}
+
+#CalendarPickerControl{
+	background-color: transparent;
+	width: 250px;
+	height: 200px;
+}
+
+#CalendarPickerControl table.calframe{
+	width: 100%;
+	border: 1px solid black;
+	background-color: #CCCCCC;
+	text-align: center;
+}
+
+#CalendarPickerControl td.monthname{
+	width: 100%;
+	font: normal 13px Verdana;
+	color: white;
+	font-weight: bold;
+	background-color: darkblue;
+}
+
+#CalendarPickerControl table.navigation{
+	width: 100%;
+	text-align: center;
+}
+
+#CalendarPickerControl td.navbutton{
+	font: normal 11px Verdana;
+	color: buttontext;
+	font-weight: bold;
+	background-color: #CCCCCC;
+	border-width: 1px;
+	border-style: solid;
+	border-color: #F0F0F0 #A0A0A0 #A0A0A0 #F0F0F0;
+	cursor: pointer;
+}
+
+#CalendarPickerControl td.navbutton:hover{
+	text-decoration: underline;
+	border-color: #808080 #F0F0F0 #F0F0F0  #808080;
+	background-color: #A0A0A0;
+}
+
+#CalendarPickerControl span.yearbutton{
+	cursor: pointer;
+}
+
+#CalendarPickerControl span.yearbutton:hover{
+	text-decoration: underline;
+}
+
+#CalendarPickerControl td.dayname{
+	font: normal 11px Verdana;
+	color: white;
+	font-weight: bold;
+	background-color: darkblue;
+}
+
+#CalendarPickerControl td.today{
+	font: normal 11px Verdana;
+	background-color: #CCCCCC;
+	color: red;
+	text-decoration: none;
+	cursor: pointer;
+	border-width: 1px;
+	border-style: solid;
+	border-color: #F0F0F0 #A0A0A0 #A0A0A0 #F0F0F0;
+}
+
+#CalendarPickerControl td.today:hover{
+	text-decoration: underline;
+	border-color: #808080 #F0F0F0 #F0F0F0  #808080;
+	background-color: #A0A0A0;
+}
+
+#CalendarPickerControl td.current{
+	font: normal 11px Verdana;
+	font-weight: bold;
+	background-color: darkblue;
+	color: highlighttext;
+	text-decoration: none;
+	cursor: pointer;
+	border-width: 1px;
+	border-style: solid;
+	border-color: #A0A0A0 #F0F0F0 #F0F0F0 #A0A0A0;
+}
+
+#CalendarPickerControl td.current:hover{
+	text-decoration: underline;
+}
+
+#CalendarPickerControl td.day{
+	font: normal 11px Verdana;
+	background-color: #CCCCCC;
+	color: buttontext;
+	text-decoration: none;
+	cursor: pointer;
+	border-width: 1px;
+	border-style: solid;
+	border-color: #F0F0F0 #A0A0A0 #A0A0A0 #F0F0F0;
+}
+
+#CalendarPickerControl td.day:hover{
+	text-decoration: underline;
+	border-color: #808080 #F0F0F0 #F0F0F0  #808080;
+	background-color: #A0A0A0;
+}
+
+#CalendarPickerControl td.weekend{
+	font: normal 11px Verdana;
+	color: buttontext;
+	text-decoration: none;
+	background-color: #A0A0A0;
+	font-style: italic;
+	cursor: pointer;
+	border-width: 1px;
+	border-style: solid;
+	border-color: #F0F0F0 #808080 #808080 #F0F0F0;
+}
+
+#CalendarPickerControl td.weekend:hover{
+	background-color: #808080;
+	text-decoration: underline;
+	border-color: #606060 #F0F0F0 #F0F0F0 #606060;
+}
+
+#CalendarPickerControl td.dayothermonth{
+	font:normal 11px Verdana;
+	background-color: #EEEEEE;
+	color: inactivecaptiontext;
+	border: 1px solid #EEEEEE;
+}
+
+#CalendarPickerControl td.weeknumber{
+	font:normal 9px Verdana;
+	background-color: #CCCCCC;
+	color: inactivecaptiontext;
+	border-width: 0px;
+}

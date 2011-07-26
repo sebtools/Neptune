@@ -1,0 +1,12 @@
+@import url(../calendar/calendar-win2k-cold-2.css);
+#sebForm form.sebForm {border:0;margin:0;padding:5px;}
+#sebForm br {clear:left;}
+#sebForm fieldset {border:0;display:block;}
+#sebForm form table tr td.label {text-align:left;white-space:nowrap;}
+#sebForm input, #sebForm textarea, #sebForm select {background-color:#F7F7F7;font-family:Arial,sans-serif;}
+#sebForm label.sebForm {background-color:white;color:#334d55;float:right;font:bold 1em Arial,sans-serif;padding-right:15px;text-align:right;}
+#sebForm fieldset input {background-color:#FFFFFF;}
+#sebForm .sebform-error {background-color:#cccccc;border:1px solid black;padding:5px;width:600px;}
+#sebTable th {border-bottom:1px solid black;text-align:left;}
+#sebTable tr.even:hover, #sebTable tr.odd:hover {background-color:#F0F6F6;}
+#sebTable tr.odd {background-color:#F9FCFC;}

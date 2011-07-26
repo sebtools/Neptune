@@ -1,0 +1,71 @@
+/* Universal styles */
+.sebHelp {font-size:9px;}
+.sebMessage {
+	color:#80FF66;
+	font-weight:bold;
+}
+.sebMenu-skin-deepblue, .sebMenu-skin-deepblue td, .sebMenu-skin-deepblue a,
+.sebTable-skin-deepblue, .sebTable-skin-deepblue td, .sebTable-skin-deepblue a,
+.sebForm-skin-deepblue, .sebForm-skin-deepblue td, .sebMenu-skin-deepblue a
+{
+	color:white;
+	font-family:Verdana,Arial,sans-serif;
+	font-size:11px;
+}
+
+/* sebmenu styles */
+.sebMenu-skin-deepblue #sebMenu td.tab, td#sebTabMenuTop {
+	padding:0 0 0 0;
+}
+.sebMenu-skin-deepblue #sebMenu td.tab a {
+	background-color:#666666;
+	display:block;
+	margin-right:2px;
+	padding:4px 6px;
+	text-decoration:none;
+}
+.sebMenu-skin-deepblue #sebMenu td.tab a.CurrTab {
+	background-color:#006699;
+}
+.sebMenu-skin-deepblue #sebMenuBody {
+	background-color:#006699;
+}
+.sebMenu-skin-deepblue #sebMenuMain {border:0;}
+.sebMenu-skin-deepblue td#sebTabMenuTop, .sebMenu-skin-deepblue td#sebTabMenu {
+	background-color:#666666;
+	border-right:1px solid white;
+}
+.sebMenu-skin-deepblue #sebMenuBody {width:618px;}
+/*.sebMenu-skin-deepblue td#sebTabMenu {width:134px;}*/
+
+
+/* sebTable styles */
+.sebTable-skin-deepblue #sebTable {width:99%;}
+.sebTable-skin-deepblue #sebTable table {
+	border-top:2px solid white;
+	border-right:2px solid white;
+	border-bottom:1px solid white;
+	border-left:2px solid white;
+	width:100%;
+}
+.sebTable-skin-deepblue #sebTable tr.even td {
+	background-color:#66CCFF;
+	background-color:#CCCCCC;
+}
+.sebTable-skin-deepblue #sebTable td {
+	background-color:white;
+	color:black;
+}
+.sebTable-skin-deepblue #sebTable td a {
+	color:#006699;
+}
+
+/* sebForm styles */
+.sebForm-skin-deepblue #sebForm {
+	background-color:#006699;
+	border-top:1px solid #999999;
+	border-right:1px solid #333333;
+	border-bottom:1px solid #333333;
+	border-left:1px solid #999999;
+	padding:6px;
+}

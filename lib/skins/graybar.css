@@ -1,0 +1,32 @@
+@import url(../calendar/calendar-win2k-1.css);
+
+/* Universal styles */
+.sebHelp {font-size:9px;margin-bottom:20px;}
+.sebMessage {
+	color:#008000;
+	font-weight:bold;
+}
+
+/* sebmenu styles */
+.sebMenu-skin-graybar #sebMenu-topbar {background-color:#999999;}
+.sebMenu-skin-graybar #sebTab td {color:white;font-family:Verdana,Arial,Helvetica;font-size:small;height:22px;padding:2px 10px;}
+.sebMenu-skin-graybar #sebTab td.tab {padding-left:4px;padding-right:4px;}
+.sebMenu-skin-graybar #sebTab a {color:white;text-decoration:none;}
+.sebMenu-skin-graybar #sebTab a.CurrTab {font-weight:bold;}
+.sebMenu-skin-graybar #sebTab a:hover {text-decoration:underline;}
+
+/* sebTable styles */
+.sebTable-skin-graybar #sebTable {width:99%;}
+.sebTable-skin-graybar #sebTable table {
+	width:100%;
+}
+.sebTable-skin-graybar th {background-color: #999999;text-align:left;text-indent:5px;filter: progid:DXImageTransform.Microsoft.Gradient(startColorStr='#999999', endColorStr='#ffffff', gradientType='0');}
+.sebTable-skin-graybar tr.even:hover, #sebTable tr.odd:hover {background-color: #AFFFAF;background-color: #FFAFAF;}
+.sebTable-skin-graybar .even {background-color: #CCCCCC;}
+.sebTable-skin-graybar .odd {background-color: #EEEEEE;}
+
+/* sebForm styles */
+.sebForm-skin-graybar fieldset {border:0;display:block;}
+.sebForm-skin-graybar form.sebform {background-color:#EEEEEE;border: 1px solid black;margin:1px;padding:1px;width:100%;}
+.sebForm-skin-graybar label.sebform {background-color:#DDDDDD;display:block;font-weight:bold;margin:0;vertical-align:top;filter:progid:DXImageTransform.Microsoft.Glow(color='red', Strength='5');}
+.sebForm-skin-graybar .sebform-error {background-color:#FFFFEE;border: 1px solid red;padding:5px;width:600px;}

@@ -1,0 +1,101 @@
+/** Style sheet for content */
+
+
+#theme1, #theme2{
+	background-color: #F0F0F0;
+}
+
+#theme1 h1{
+	font:normal 18pt Verdana;
+	font-weight: bold;
+	color: darkblue;
+}
+
+#theme2 h1{
+	font:normal 18pt Verdana;
+	font-weight: bold;
+	color: darkred;
+}
+
+#theme1 h2{
+	font:normal 14pt Verdana;
+	font-weight: bold;
+	color: darkblue;
+	padding-top:1em;
+}
+
+#theme2 h2{
+	font:normal 14pt Verdana;
+	font-weight: bold;
+	color: darkred;
+	padding-top:1em;
+}
+
+#theme1 h3{
+	font:normal 11pt Verdana;
+	font-style: italic;
+	color: darkblue;
+	padding-top:1em;
+}
+
+#theme2 h3{
+	font:normal 11pt Verdana;
+	font-style: italic;
+	color: darkred;
+	padding-top:1em;
+}
+
+
+#theme2 p, #theme1 p{
+	font:normal 10pt Sans-Serif;
+	color: #5A5A5A;
+}
+
+#theme1 a:link{
+	font:normal 10pt Sans-Serif;
+	color: darkblue;
+	text-decoration: underline;
+}
+
+#theme2 a:link{
+	font:normal 10pt Sans-Serif;
+	color: darkred;
+	text-decoration: underline;
+}
+
+#theme2 li, #theme1 li{
+	font:normal 10pt Sans-Serif;
+	color: #5A5A5A;
+	padding-bottom: 0.5em;
+}
+
+#theme2 code, #theme1 code{
+	font: normal 11pt Courier;
+	color: black;
+}
+
+#theme2 input.flatedit, #theme1 input.flatedit{
+	font: normal 12px Verdana;
+	border-width: 1px;
+	border-style: solid;
+	border-color: black;
+	background-color: #DEDEDE;
+	padding: 2px;
+}
+
+#theme1 th, #theme2 th{
+	font: normal 12px Verdana;
+	font-weight: bold;
+	border-width: 1px;
+	border-style: solid;
+	border-color: #5A5A5A;
+}
+
+#theme1 td, #theme2 td{
+	font: normal 12px Verdana;
+	margin-right:1em;
+	margin-left:1em;
+	border-width: 1px;
+	border-style: solid;
+	border-color: #C6C6C6;
+}

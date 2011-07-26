@@ -1,0 +1,39 @@
+@import url(../calendar/calendar-system.css);
+body {behavior:url(hover.htc)}
+
+/* Universal styles */
+.sebHelp {font-size:9px;}
+.sebMessage {
+	color:#008000;
+	font-weight:bold;
+}
+.sebMenu-skin-plain, .sebMenu-skin-plain td, .sebMenu-skin-plain a,
+.sebTable-skin-plain, .sebTable-skin-plain td, .sebTable-skin-plain a,
+.sebForm-skin-plain, .sebForm-skin-plain td, .sebMenu-skin-plain a
+{
+	font-family:Verdana,Arial,sans-serif;
+	font-size:11px;
+}
+
+/* sebMenu styles */
+.sebMenu-skin-plain #sebTab td {background-color:black;color:white;font-family:Verdana,Arial,Helvetica;font-size:small;height:22px;}
+.sebMenu-skin-plain #sebTab td.tab {padding-left:4px;padding-right:4px;}
+.sebMenu-skin-plain #sebTab td.clear {background-color:white;color:black;padding-left:0;}
+.sebMenu-skin-plain #sebTab a {color:white;text-decoration:none;}
+.sebMenu-skin-plain #sebTab a.CurrTab {font-weight:bold;}
+.sebMenu-skin-plain #sebTab a:hover {text-decoration:underline;}
+.sebMenu-skin-plain #sebTabMenu a {color:white;font-family:Verdana,Arial,Helvetica;font-size:x-small;font-weight:bold;text-decoration:none;}
+.sebMenu-skin-plain #sebTabMenu a:hover {text-decoration:underline;}
+.sebMenu-skin-plain #sebTabMenu li {list-style-type:circle;}
+.sebMenu-skin-plain #sebTabMenu a {color:#003399;}
+.sebMenu-skin-plain #sebTabMenu a:hover {color:#0066CC;}
+.sebMenu-skin-plain #sebMenuLabel {font-size:10px;}
+
+/* sebTable styles */
+.sebTable-skin-plain #sebTable th {text-align:left;border-bottom:1px solid black;}
+.sebTable-skin-plain tr.odd td {background-color:#EEEEEE;}
+
+/* sebForm styles */
+.sebForm-skin-plain #sebForm fieldset.checkbox, .sebForm-skin-silver #sebForm fieldset.radio, .sebForm-skin-silver #sebForm fieldset.yesno {border:0;padding:0;margin:0;}
+
+.sebForm-skin-plain .sebFormat-semantic label.sebform {display:block;}
