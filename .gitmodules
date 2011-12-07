@@ -1,0 +1,6 @@
+[submodule "CustomTags/mxunit"]
+	path = CustomTags/mxunit
+	url = git://github.com/mxunit/mxunit.git
+[submodule "CustomTags/CFSelenium"]
+	path = CustomTags/CFSelenium
+	url = git://github.com/bobsilverberg/CFSelenium.git
