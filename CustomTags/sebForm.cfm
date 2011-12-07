@@ -31,8 +31,8 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 	TagInfo.sValidations["Email"] = "^[^ @]+@[^ @]+$";
 	TagInfo.sValidations["GUID"] = "^(\{{0,1}([0-9a-fA-F]){8}-([0-9a-fA-F]){4}-([0-9a-fA-F]){4}-([0-9a-fA-F]){4}-([0-9a-fA-F]){12}\}{0,1})$";
 	TagInfo.sValidations["zipcode"] = "^[0-9]{5}(-[0-9]{4})?$";
-	TagInfo.sValidations["integer"] = "^[0-9]{0,10}$";
-	TagInfo.sValidations["decimal"] = "^[0-9]{0,10}(\.[0-9]*)?$";
+	TagInfo.sValidations["integer"] = "^[0-9]{0,9}$";
+	TagInfo.sValidations["decimal"] = "^[0-9]{0,9}(\.[0-9]*)?$";
 	TagInfo.sValidations["url"] = "https?://([-\w\.]+)+(:\d+)?(/([\w/_\.]*(\?\S+)?)?)?";
 	
 	
