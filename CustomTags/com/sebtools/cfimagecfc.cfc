@@ -12,11 +12,12 @@
 	
 	<cfset cfVersionMajor = ListFirst(cfVersion)>
 	
-	<cfif cfVersionMajor GTE 8>
+	<!--- <cfif cfVersionMajor GTE 8>
 		<cfset comp = CreateObject("component","com.sebtools.cfimage").init()>
 	<cfelse>
 		<cfset comp = CreateObject("component","com.sebtools.ImageCFC").init()>
-	</cfif>
+	</cfif> --->
+	<cfset comp = CreateObject("component","com.sebtools.ImageCFC").init()>
 	
 	<cfreturn comp>
 </cffunction>

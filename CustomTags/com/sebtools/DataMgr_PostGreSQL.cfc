@@ -1,5 +1,5 @@
-<!--- 2.5 Beta 3 Dev 2 (Build 168) --->
-<!--- Last Updated: 2011-03-30 --->
+<!--- 2.5 Beta 3 Dev 3 (Build 169) --->
+<!--- Last Updated: 2011-10-11 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for PostGreSQL" hint="I manage data interactions with the PostGreSQL database.">
 
@@ -225,8 +225,9 @@
 	
 	<cfswitch expression="#arguments.type#">
 		<cfcase value="bigint"><cfset result = "CF_SQL_BIGINT"></cfcase>
-		<cfcase value="binary,image,sql_variant,sysname,varbinary"><cfset result = ""></cfcase>
+		<cfcase value="sql_variant,sysname"><cfset result = ""></cfcase>
 		<cfcase value="bit,boolean"><cfset result = "CF_SQL_BIT"></cfcase>
+		<cfcase value="binary,bytea,image,varbinary"><cfset result = "CF_SQL_BLOB"></cfcase>
 		<cfcase value="char"><cfset result = "CF_SQL_CHAR"></cfcase>
 		<cfcase value="date"><cfset result = "CF_SQL_DATE"></cfcase>
 		<cfcase value="decimal"><cfset result = "CF_SQL_DECIMAL"></cfcase>
@@ -261,6 +262,7 @@
 	<cfswitch expression="#arguments.CF_Datatype#">
 		<cfcase value="CF_SQL_BIGINT"><cfset result = "bigint"></cfcase>
 		<cfcase value="CF_SQL_BIT"><cfset result = "boolean"></cfcase>
+		<cfcase value="CF_SQL_BLOB"><cfset result = "bytea"></cfcase>
 		<cfcase value="CF_SQL_CHAR"><cfset result = "char"></cfcase>
 		<cfcase value="CF_SQL_DATE"><cfset result = "date"></cfcase>
 		<cfcase value="CF_SQL_DECIMAL"><cfset result = "decimal"></cfcase>

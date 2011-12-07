@@ -1,10 +1,10 @@
 <!---
-1.0 RC8 (Build 120)
-Last Updated: 2011-01-16
+1.0 RC9 (Build 121)
+Last Updated: 2011-10-11
 Created by Steve Bryant 2004-06-01
-Information: sebtools.com
+Information: http://www.bryantwebconsulting.com/docs/sebtags/?version=1.0
 Documentation:
-http://www.bryantwebconsulting.com/cftags/cf_sebSubField.htm
+http://www.bryantwebconsulting.com/docs/sebtags/sebfield-mult-value-fields.cfm?version=1.0
 ---><cfsilent>
 <cfset TagName = "cf_sebSubField">
 <cfset ParentTag = "cf_sebField">

@@ -1,5 +1,5 @@
-<!--- 1.0 Beta 1.5 (Build 21) --->
-<!--- Last Updated: 2011-01-16 --->
+<!--- 1.0 Beta 2 (Build 25) --->
+<!--- Last Updated: 2011-11-23 --->
 <!--- Information: sebtools.com --->
 <cfcomponent output="false">
 
@@ -20,7 +20,7 @@
 	<cfset variables.isPageControllerLoaded = false>
 	<cfset variables.RootPath = variables.Framework.Config.getSetting("RootPath")>
 	
-	<cfset instance = variables>
+	<cfset variables.instance = variables>
 	
 	<cfreturn this>
 </cffunction>

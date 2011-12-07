@@ -1,5 +1,5 @@
-<!--- 1.0 Beta 1.5 (Build 21) --->
-<!--- Last Updated: 2011-01-16 --->
+<!--- 1.0 Beta 2 (Build 25) --->
+<!--- Last Updated: 2011-11-23 --->
 <!--- Information: sebtools.com --->
 <!--- Created by Steve Bryant 2007-06-27 --->
 <cfcomponent output="false">
@@ -62,6 +62,11 @@
 	
 	<!--- Make programs.cfm --->
 	<cfset makeProgramsFile()>
+	
+	<!--- Make udfs.cfm --->
+	<cfif NOT FileExists("#variables.instance.ConfigFolderPath#udf.cfm")>
+		<cffile action="write" file="#variables.instance.ConfigFolderPath#udf.cfm" output="">
+	</cfif>
 	
 	<!--- Make /_config/PageController.cfc --->
 	<cfset makeConfigPageControllerFile()>
@@ -142,17 +147,33 @@
 	<cfreturn doLoad>
 </cffunction>
 
-<cffunction name="loadConfigSettings" access="private" returntype="void" output="no">
+<cffunction name="getSpecialService" access="public" returntype="any" output="no">
+	<cfargument name="type" type="string" required="no">
+	
+	<cfif hasSpecialService(arguments.type)>
+		<cfreturn This.Loader.getSpecialService(arguments.type)>
+	</cfif>
+</cffunction>
+
+<cffunction name="hasSpecialService" access="public" returntype="boolean" output="no">
+	<cfargument name="type" type="string" required="no">
+	
+	<cfreturn This.Loader.hasSpecialService(arguments.type)>
+</cffunction>
+
+<cffunction name="loadConfigSettings" access="private" returntype="string" output="no">
 	
 	<cfset var configvars = this.Config.getSettings()>
 	<cfset var configkey = "">
+	<cfset var result = "">
 	
-	<cfinvoke component="#this.Loader#" method="setArgs">
+	<cfinvoke returnvariable="result" component="#this.Loader#" method="setArgs">
 		<cfloop collection="#configvars#" item="configkey">
 			<cfinvokeargument name="#configkey#" value="#configvars[configkey]#">
 		</cfloop>
 	</cfinvoke>
 	
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="loadPage" access="public" returntype="void" output="no" hint="I load the necessary information for a page to run (run on every request).">
@@ -162,6 +183,8 @@
 	<cfset var isLocalProgramRegistered = false>
 	<cfset var isRegistrationPerformed = false>
 	<cfset var doLoad = false>
+	<cfset var oPageController = 0>
+	<cfset var ChangedSettings = "">
 
 	<!--- Initialization --->
 	<cfset this.Config.runConfigFiles("#variables.instance.ConfigFolder#config.cfm")>
@@ -173,8 +196,7 @@
 			doLoad
 		OR	( Len(arguments.refresh) AND arguments.refresh NEQ false )
 	>
-		<cfset variables.instance["PathServices"] = StructNew()> 
-		<cfset loadConfigSettings()>
+		<cfset ChangedSettings = loadConfigSettings()>
 		<cfset isAnyProgramRegistered = registerAllPrograms(false)>
 	</cfif>
 	<cfset isLocalProgramRegistered = registerProgram(GetDirectoryFromPath(GetBaseTemplatePath()))>
@@ -187,7 +209,10 @@
 	<cfset runConfigFiles()>
 	<cfset runConfigProgramLinks()>
 	<!---<cfif isRegistrationPerformed>--->
-		<cfset loadConfigSettings()>
+		<cfset ChangedSettings = ListAppend(
+			ChangedSettings,
+			loadConfigSettings()
+		)>
 	<!---</cfif>--->
 	<cfset this.Config.loadSettings()>
 	
@@ -195,6 +220,7 @@
 	<!---<cftry>--->
 		<cfinvoke component="#this.Loader#" method="load">
 			<cfinvokeargument name="refresh" value="#arguments.refresh#">
+			<cfinvokeargument name="ChangedSettings" value="#ChangedSettings#">
 		</cfinvoke>
 		<!---<cfcatch>
 			<cfset registerAllPrograms(true)>
@@ -203,6 +229,18 @@
 			</cfinvoke>
 		</cfcatch>	
 	</cftry>--->
+	<cfif doLoad OR arguments.refresh NEQ false OR Len(ChangedSettings)>
+		
+		<cfset variables.instance["PathServices"] = StructNew()> 
+		
+		<cfif This.Loader.hasSpecialService("Security")>
+			<cfset variables.oSecurity = This.Loader.getSpecialService("Security")>
+			<cfif StructKeyExists(Variables,"Security_Permissions")>
+				<cfset Security_AddPermissions(Variables.Security_Permissions)>
+				<cfset StructDelete(Variables,"Security_Permissions")>
+			</cfif>
+		</cfif>
+	</cfif>
 	
 </cffunction>
 
@@ -235,6 +273,11 @@ function getPageController(path) {
 	var oService = 0;
 	var CompPath = path;
 	var RootPath = variables.instance.RootPath;
+	var check = true;
+	
+	if ( ArrayLen(arguments) GTE 2 AND arguments[2] IS false ) {
+		check = false;
+	}
 	
 	//Copy path to ControllerFilePath
 	ControllerFilePath = arguments.path;
@@ -273,7 +316,10 @@ function getPageController(path) {
 		CompPath = "_config.PageController";
 	}
 	
-	oPageController = CreateObject("component",CompPath).init(path=getBrowserPath(path),Framework=This);
+	oPageController = CreateObject("component",CompPath);
+	if ( StructKeyExists(oPageController,"init") ) {
+		oPageController = oPageController.init(path=getBrowserPath(path),Framework=This,check=check);
+	}
 	/*
 	if ( FileExists(ControllerFilePath) ) {
 		oPageController = CreateObject("component",CompPath);
@@ -357,7 +403,121 @@ function getPageController(path) {
 </cffunction>
 
 <cffunction name="getProgramLinksArray" access="public" returntype="array" output="no">
-	<cfreturn This.Config.getSetting("Framework_aProgramLinks")>
+	<cfargument name="Program" type="string" required="false">
+	
+	<cfset var aResults = Duplicate(This.Config.getSetting("Framework_aProgramLinks"))>
+	<cfset var ff = 0>
+	<cfset var ii = 0>
+	<cfset var PageURL = "">
+	<cfset var selected = 0>
+	
+	<cfloop index="ff" from="#ArrayLen(aResults)#" to="1" step="-1">
+		<cfif hasPermissions(aResults[ff].permissions) AND hasPageAccess(aResults[ff].Link)>
+			<cfloop index="ii" from="#ArrayLen(aResults[ff].items)#" to="1" step="-1">
+				<cfset PageURL = aResults[ff].items[ii].Link>
+				<cfif NOT PageURL CONTAINS "/">
+					<cfset PageURL = "#aResults[ff].items[ii].folder##PageURL#">
+				</cfif>
+				<cfif NOT hasPageAccess(PageURL)>
+					<cfset ArrayDeleteAt(aResults[ff].items,ii)>
+				</cfif>
+			</cfloop>
+		<cfelse>
+			<cfset ArrayDeleteAt(aResults,ff)>
+		</cfif>
+	</cfloop>
+	
+	<cfif StructKeyExists(arguments,"program") AND Len(arguments.program)>
+		<cfloop index="ff" from="#ArrayLen(aResults)#" to="1" step="-1">
+			<cfif aResults[ff].name EQ arguments.program>
+				<cfreturn aResults[ff].items>
+			</cfif>
+		</cfloop>
+	</cfif>
+	
+	<cfreturn aResults>
+</cffunction>
+
+<cffunction name="createLink" access="public" returntype="string" output="no">
+	<cfargument name="path" type="string" required="yes">
+	<cfargument name="text" type="string" required="yes">
+	<cfargument name="ScriptName" type="string" required="no">
+	
+	<cfset var result = "">
+	
+	<cfif hasPageAccess(argumentCollection=arguments)>
+		<cfset result = '<a href="#arguments.path#">#arguments.text#</a>'>
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="createListLink" access="public" returntype="string" output="no">
+	<cfargument name="path" type="string" required="yes">
+	<cfargument name="text" type="string" required="yes">
+	<cfargument name="ScriptName" type="string" required="no">
+	
+	<cfset var result = createLink(argumentCollection=arguments)>
+	
+	<cfif Len(result)>
+		<cfset result = '<li>#result#</li>'>
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="hasPageAccess" access="public" returntype="boolean" output="no">
+	<cfargument name="path" type="string" required="yes">
+	<cfargument name="ScriptName" type="string" required="no">
+	
+	<cfset var oPageController = 0>
+	<cfset var sURL = Duplicate(URL)>
+	<cfset var result = true>
+	
+	<cfscript>
+	if ( StructKeyExists(arguments,"ScriptName") AND NOT arguments.path CONTAINS "/" ) {
+		arguments.path = ListAppend(
+			ListDeleteAt(
+				arguments.ScriptName,
+				ListLen(arguments.ScriptName,"/"),
+				"/"
+			),
+			arguments.path,
+			"/"
+		);
+	}
+	</cfscript>
+	
+	<cfif Right(Arguments.path,1) EQ "/">
+		<cfset Arguments.path = "#Arguments.path#index.cfm">
+	</cfif>
+	
+	<!---<cfset URL = QueryString2Struct(ListRest(arguments.path,"?"))>--->
+	<cfset oPageController = getPageController(ListFirst(Arguments.path,"?"),false)>
+	
+	<cfif StructKeyExists(oPageController,"hasAccess")>
+		<cfset result = oPageController.hasAccess()>
+	</cfif>
+	
+	<!---<cfset URL = sURL>--->
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="hasPermissions" access="public" returntype="boolean" output="no">
+	<cfargument name="permissions" type="string" required="yes">
+	
+	<cfset var result = true>
+	<cfset var oSecurity = 0>
+	
+	<cfif Len(arguments.permissions) AND hasSpecialService("Security")>
+		<cfset oSecurity = getSpecialService("Security")>
+		<cfif StructKeyExists(oSecurity,"checkUserAllowed")>
+			<cfset result = oSecurity.checkUserAllowed(arguments.permissions)>
+		</cfif>
+	</cfif>
+	
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="getProgramLinksArrayInternal" access="private" returntype="array" output="no">
@@ -382,6 +542,11 @@ function getPageController(path) {
 			</cfloop>
 			<cfset aAdminMenu[ArrayLen(aAdminMenu)]["Link"] = xProgram.site.program[ii].XmlAttributes["path"]>
 			<cfset aAdminMenu[ArrayLen(aAdminMenu)]["Label"] = xProgram.site.program[ii].XmlAttributes["name"]>
+			<cfset aAdminMenu[ArrayLen(aAdminMenu)]["permissions"] = "">
+			<cfif StructKeyExists(xProgram.site.program[ii].XmlAttributes,"permissions")>
+				<cfset aAdminMenu[ArrayLen(aAdminMenu)]["permissions"] = xProgram.site.program[ii].XmlAttributes["permissions"]>
+				<cfset Security_AddPermissions(aAdminMenu[ArrayLen(aAdminMenu)]["permissions"])>
+			</cfif>
 			<cfset aAdminMenu[ArrayLen(aAdminMenu)]["pages"] = "">
 			<cfif StructKeyExists(xProgram.site.program[ii].XmlAttributes,"pages")>
 				<cfset aAdminMenu[ArrayLen(aAdminMenu)]["pages"] = xProgram.site.program[ii].XmlAttributes["pages"]>
@@ -437,6 +602,28 @@ function getPageController(path) {
 	</cfif>
 	
 	<cfreturn aProgramComponents>
+</cffunction>
+
+<cffunction name="getProgramFromPath" access="public" returntype="any" output="no">
+	<cfargument name="path" type="string" required="yes">
+	
+	<cfset var sResult = StructNew()>
+	<cfset var xMenu = getProgramLinksXml()>
+	<cfset var axPrograms = XmlSearch(xMenu,"//program[string-length(@path)>0]")>
+	<cfset var key = "">
+	<cfset var ii = 0>
+	
+	<cfloop index="ii" from="1" to="#ArrayLen(axPrograms)#">
+		<cfif arguments.path CONTAINS axPrograms[ii].XmlAttributes["path"]>
+			<!---<cfdump var="#arguments.path#">
+			<cfdump var="#axPrograms[ii].XmlAttributes.path#">
+			<cfabort>--->
+			<cfset sResult = axPrograms[ii].XmlAttributes>
+			<cfset StructAppend(sResult,axPrograms[ii].XmlAttributes)>
+		</cfif>
+	</cfloop>
+	
+	<cfreturn sResult>
 </cffunction>
 
 <cffunction name="getProgramMainServiceName" access="public" returntype="string" output="no">
@@ -531,18 +718,22 @@ function getPageController(path) {
 	<cfset var ii = 0>
 	<cfset var key = 0>
 	<cfset var oComponent = 0>
+	<cfset var checkLabel = 0>
 	
-	<cfloop index="ii" from="1" to="#ArrayLen(aComponents)#" step="1">
-		<cfset oComponent = This.Loader[aComponents[ii].name]>
-		<cfif isComponentForLabel(oComponent,arguments.Label)>
-			<cfreturn oComponent>
-		<cfelse>
-			<cfloop item="key" collection="#oComponent#">
-				<cfif isComponentForLabel(oComponent[key],arguments.Label)>
-					<cfreturn oComponent[key]>
-				</cfif>
-			</cfloop>
-		</cfif>
+	
+	<cfloop index="checkLabel" from="0" to="1" step="1">
+		<cfloop index="ii" from="1" to="#ArrayLen(aComponents)#" step="1">
+			<cfset oComponent = This.Loader[aComponents[ii].name]>
+			<cfif isComponentForLabel(oComponent,arguments.Label,checkLabel)>
+				<cfreturn oComponent>
+			<cfelse>
+				<cfloop item="key" collection="#oComponent#">
+					<cfif isComponentForLabel(oComponent[key],arguments.Label,checkLabel)>
+						<cfreturn oComponent[key]>
+					</cfif>
+				</cfloop>
+			</cfif>
+		</cfloop>
 	</cfloop>
 	
 	<cfreturn false>
@@ -551,6 +742,7 @@ function getPageController(path) {
 <cffunction name="isComponentForLabel" access="public" returntype="boolean" output="no">
 	<cfargument name="Component" type="any" required="true">
 	<cfargument name="labelSingular" type="string" default="true">
+	<cfargument name="checkLabel" type="boolean" default="false">
 	
 	<cfset var result = false>
 	<cfset var sMetaStruct = 0>
@@ -573,7 +765,7 @@ function getPageController(path) {
 			<cfset result = true>
 		<cfelseif StructKeyExists(sMetaStruct,"method_Singular") AND sMetaStruct["method_Singular"] EQ makeCompName(arguments.labelSingular)>
 			<cfset result = true>
-		<cfelseif StructKeyExists(sMetaStruct,"label_Singular") AND makeCompName(sMetaStruct["label_Singular"]) EQ makeCompName(arguments.labelSingular)>
+		<cfelseif arguments.checkLabel AND StructKeyExists(sMetaStruct,"label_Singular") AND makeCompName(sMetaStruct["label_Singular"]) EQ makeCompName(arguments.labelSingular)>
 			<cfset result = true>
 		</cfif>
 	</cfif>
@@ -598,6 +790,26 @@ function getPageController(path) {
 	
 </cffunction>
 
+<cffunction name="getProgramLinksXml" access="public" returntype="any" output="no">
+	
+	<cfset var MenuFilePath = "#variables.instance.ConfigFolderPath#programlinks.cfm">
+	<cfset var MenuCode = "">
+	<cfset var xMenu = 0>
+	
+	<cfsavecontent variable="MenuCode"><cfoutput><?xml version="1.0"?><site>
+	</site></cfoutput></cfsavecontent>
+	
+	<!--- Make sure config file exists --->
+	<cfif NOT FileExists(MenuFilePath)>
+		<cffile action="write" file="#MenuFilePath#" output="#MenuCode#">
+	</cfif>
+	
+	<cffile action="read" file="#MenuFilePath#" variable="MenuCode">
+	<cfset xMenu = XmlParse(MenuCode)>
+	
+	<cfreturn xMenu>
+</cffunction>
+
 <cffunction name="registerLinks" access="public" returntype="void" output="no">
 	<cfargument name="name" type="string" required="false">
 	
@@ -610,9 +822,10 @@ function getPageController(path) {
 	<cfset var ProgramLinks = "">
 	<cfset var xProgramLinks = 0>
 	<cfset var aProgramLinks = ArrayNew(1)>
+	<cfset var sProgram = 0>
 	<cfset var cr = "
 ">
-	
+
 	<cfsavecontent variable="MenuCode"><cfoutput><?xml version="1.0"?><site>
 	</site></cfoutput></cfsavecontent>
 	
@@ -626,6 +839,7 @@ function getPageController(path) {
 	
 	<!--- Only load site-specific links if a program name is given and links should be created for program (has index.cfm or links method) --->
 	<cfif StructKeyExists(arguments,"name") AND ( FileExists("#variables.instance['programs'][name].path_file#index.cfm") OR StructKeyExists(variables.instance["programs"][arguments.name]["program"],"links") )>
+	
 		<cfif StructKeyExists(xMenu.site,"program")>
 			<cfloop index="ii" from="1" to="#ArrayLen(xMenu.site.program)#" step="1">
 				<cfif StructKeyExists(xMenu.site.program[ii].XmlAttributes,"name") AND xMenu.site.program[ii].XmlAttributes["name"] EQ arguments.name>
@@ -636,19 +850,30 @@ function getPageController(path) {
 		
 		<cfif NOT exists>
 			<cfif StructKeyExists(variables.instance["programs"][arguments.name]["program"],"links")>
-				<cfset ProgramLinks = variables.instance["programs"][arguments.name]["program"].links()>
+				<cfset ProgramLinks = getMethodOutputValue(variables.instance["programs"][arguments.name]["program"],"links")>
 				<cfset xProgramLinks = XmlParse(ProgramLinks)>
 				<cfset aProgramLinks = XmlSearch(xProgramLinks,"//link")>
 			</cfif>
 			
 			<cfif ArrayLen(aProgramLinks)>
-				<cfset ProgramMenuCode = '<program name="#XmlFormat(name)#" path="#variables.instance.programs[name].path_browser#">'>
+				<cfset ProgramMenuCode = '<program name="#XmlFormat(name)#" path="#variables.instance.programs[name].path_browser#"'>
+				<cfif StructKeyExists(xProgramLinks,"program") AND StructKeyExists(xProgramLinks.program.XmlAttributes,"permissions")>
+					<cfset ProgramMenuCode = '#ProgramMenuCode# permissions="#XmlFormat(xProgramLinks.program.XmlAttributes.permissions)#"'>
+				<cfelseif StructKeyExists(xProgramLinks,"links") AND StructKeyExists(xProgramLinks.links.XmlAttributes,"permissions")>
+					<cfset ProgramMenuCode = '#ProgramMenuCode# permissions="#XmlFormat(xProgramLinks.links.XmlAttributes.permissions)#"'>
+				</cfif>
+				<cfset ProgramMenuCode = '#ProgramMenuCode#>'>
 				<cfloop index="ii" from="1" to="#ArrayLen(aProgramLinks)#" step="1">
 					<cfset ProgramMenuCode = '#ProgramMenuCode#<link label="#aProgramLinks[ii].XmlAttributes.label#" url="#aProgramLinks[ii].XmlAttributes.url#" />'>
 				</cfloop>
 				<cfset ProgramMenuCode = '#ProgramMenuCode##cr#</program>'>
 			<cfelse>
-				<cfset ProgramMenuCode = '<program name="#XmlFormat(name)#" path="#variables.instance.programs[name].path_browser#" />'>
+				<cfset sProgram = getMetaData(variables.instance["programs"][arguments.name]["program"])>
+				<cfset ProgramMenuCode = '<program name="#XmlFormat(name)#" path="#variables.instance.programs[name].path_browser#"'>
+				<cfif StructKeyExists(sProgram,"security_permissions")>
+					<cfset ProgramMenuCode = '#ProgramMenuCode# permissions="#XmlFormat(sProgram.security_permissions)#"'>
+				</cfif>
+				<cfset ProgramMenuCode = '#ProgramMenuCode# />'>
 			</cfif>
 			<cfset MenuCode = ReplaceNoCase(MenuCode, "</site>", "#ProgramMenuCode##cr#</site>")>
 			
@@ -709,8 +934,8 @@ function getPageController(path) {
 		</cfif>
 	</cfif>
 	
-	<cfset runConfigFiles()>
-	<cfset loadConfigSettings()>
+	<!---<cfset runConfigFiles()>
+	<cfset loadConfigSettings()>--->
 	
 </cffunction>
 
@@ -816,6 +1041,10 @@ function getPageController(path) {
 			</cfif>
 			
 			<cfset registerConfig("#path_file#Program.cfc",name,variables.instance["programs"][name])>
+			<cfif StructKeyExists(oProgram,"Config")>
+				<cfset oProgram.config(Config=This.Config,Framework=This)>
+				<cfset loadConfigSettings()>
+			</cfif>
 			<cfif Len(Trim(ComponentsXML))>
 				<cfset registerComponents(ComponentsXML,arguments.overwrite)>
 			</cfif>
@@ -949,6 +1178,7 @@ function getPageController(path) {
 			<cfset This.Config.setSetting("ProgramMenu",xMenu)><!--- Just for backwards compatibility with old custom code --->
 			<cfset This.Config.setSetting("Framework_xProgramMenu",xMenu)>
 			<cfset This.Config.setSetting("Framework_aProgramLinks",getProgramLinksArrayInternal())>
+			<cfset This.Config.setSetting("Framework_DateProgramLinksSet",now())>
 		</cfif>
 		
 		<cfset This.Config.setSetting("Framework_ProgramLinks_Updated",qLinksFile.DateLastModified)>
@@ -1033,6 +1263,8 @@ function getPageController(path) {
 	<cfset var FilePath = "#variables.instance.ConfigFolderPath#programs.cfm">
 	<cfset var FileCode = '<?xml version="1.0"?><site></site>'>
 	<cfset var name = "">
+	<cfset var MenuCode = "">
+	<cfset var ii = 0>
 	
 	<cffile action="read" file="#MenuFilePath#" variable="MenuCode">
 	<cfset xMenu = XmlParse(MenuCode)>
@@ -1074,10 +1306,7 @@ function getPageController(path) {
 	<cfelse>
 		<cfset variables.instance.xPrograms = XmlNew(false)>
 	</cfif>
-	<!---<cfset aresult = XmlSearch(variables.instance.xPrograms,"//program[@name='admins']")>
-	<cfdump var="#aresult#">--->
-	<!---<cfdump var="#variables.instance.xPrograms#">
-	<cfabort>--->
+	
 </cffunction>
 
 <cffunction name="getMethodOutputValue" access="private" returntype="string" output="no" hint="DEPRECATED">
@@ -1110,6 +1339,8 @@ function getPageController(path) {
 	<cfset var sInitMethod = 0>
 	<cfset var CompXML = "">
 	<cfset var result = "">
+	<cfset var oComp = 0>
+	<cfset var ii = 0>
 	
 	<cfif StructKeyExists(arguments,"ProgramName") AND Len(Trim(arguments.ProgramName))>
 		<cfset filter = "#makeCompName(arguments.ProgramName)#.cfc">
@@ -1147,6 +1378,48 @@ function getPageController(path) {
 	</cfif>
 	
 	<cfreturn result>
+</cffunction>
+
+<cffunction name="QueryString2Struct" access="private" returntype="struct" output="no">
+	<cfargument name="QueryString" type="string" required="true">
+	 
+	<cfset var sResult = StructNew()>
+	<cfset var pair = StructNew()>
+	
+	<cfloop list="#arguments.QueryString#" index="pair" delimiters="&">
+		<cfif NOT StructKeyExists(sResult,ListFirst(pair,"="))>
+			<cfset sResult[ListFirst(pair,"=")] = "">
+		</cfif>
+		<cfset sResult[ListFirst(pair,"=")] = ListAppend(sResult[ListFirst(pair,"=")],ListRest(pair,"="))>
+	</cfloop>
+	
+	<cfreturn sResult>
+</cffunction>
+
+<cffunction name="Security_AddPermissions" access="private" returntype="any" output="false">
+	<cfargument name="Permissions" type="string" required="yes">
+	
+	<cfset var oSecurity = 0>
+	<cfset var isAdded = false>
+	
+	<cfif Len(Arguments.Permissions)>
+		<cfif hasSpecialService("Security")>
+				<cfset oSecurity = getSpecialService('Security')>
+				
+				<cfif StructKeyExists(oSecurity,"addPermissions")>
+					<cfinvoke component="#oSecurity#" method="addPermissions" permissions="#Arguments.Permissions#">
+					</cfinvoke>
+					<cfset isAdded = true>
+				</cfif>
+		</cfif>
+		<cfif NOT isAdded>
+			<cfif NOT StructKeyExists(Variables,"Security_Permissions")>
+				<cfset Variables.Security_Permissions = "">
+			</cfif>
+			<cfset Variables.Security_Permissions = ListAppend(Variables.Security_Permissions,Arguments.Permissions)> 
+		</cfif>
+	</cfif>
+	
 </cffunction>
 
 <cffunction name="includePage" access="private" returntype="void" output="true"><cfargument name="page" type="string" required="true"><cfif StructKeyExists(variables.instance,"Proxy")><cfset variables.instance.Proxy.includePage(arguments.page)><cfelse><cfinclude template="#arguments.page#"></cfif></cffunction>
@@ -1285,7 +1558,11 @@ function makeCompName(str) {
 	
 	<cfloop query="contents">
 		<cfif contents.type EQ "file">
-			<cffile action="copy" source="#arguments.source##dirDelim##name#" destination="#arguments.destination##dirDelim##name#" nameconflict="#arguments.nameConflict#">
+			<cfif arguments.nameconflict EQ "overwrite" OR NOT FileExists("#arguments.destination##dirDelim##name#")>
+				<cffile action="copy" source="#arguments.source##dirDelim##name#" destination="#arguments.destination##dirDelim##name#" nameconflict="#arguments.nameConflict#">
+			<cfelseif arguments.nameconflict EQ "Error">
+				<cfthrow message="#arguments.destination##dirDelim##name# already exists">
+			</cfif>
 		<cfelseif contents.type EQ "dir" AND name NEQ ".svn">
 			<cfset directoryCopy(arguments.source & dirDelim & name, arguments.destination & dirDelim &  name, arguments.nameConflict) />
 		</cfif>
@@ -1322,16 +1599,16 @@ Fixed a bug where the filter wouldn't show dirs.
 	<cfset var isExcluded = false>
 	<cfset var exdir = false>
 	
-	<cfif Right(directory,1) NEQ delim>
-		<cfset directory = "#directory##delim#">
+	<cfif Right(arguments.directory,1) NEQ delim>
+		<cfset arguments.directory = "#arguments.directory##delim#">
 	</cfif>
 	
-    <cfif NOT isDefined("dirInfo")>
-        <cfset dirInfo = QueryNew("attributes,datelastmodified,mode,name,size,type,directory")>
+    <cfif NOT StructKeyExists(arguments,"dirInfo")>
+        <cfset arguments.dirInfo = QueryNew("attributes,datelastmodified,mode,name,size,type,directory")>
     </cfif>
-	<cfdirectory name="thisDir" directory="#directory#" sort="#sort#">
-	<cfloop query="thisDir">
-		<cfset ScriptName = "/" & ReplaceNoCase(ReplaceNoCase("#directory##name#",variables.instance.RootPath,""),"\","/","ALL")>
+	<cfdirectory name="arguments.thisDir" directory="#arguments.directory#" sort="#sort#">
+	<cfloop query="arguments.thisDir">
+		<cfset ScriptName = "/" & ReplaceNoCase(ReplaceNoCase("#arguments.directory##name#",variables.instance.RootPath,""),"\","/","ALL")>
 		<cfset isExcluded = false>
 		<!---<cfdump var="#ScriptName#">--->
 		<cfif Len(arguments.exclude) AND type IS "dir">
@@ -1351,23 +1628,23 @@ Fixed a bug where the filter wouldn't show dirs.
 			AND	NOT isExcluded
 		>
 			<cfif Len(filter) EQ 0 OR name CONTAINS filter>
-	            <cfset QueryAddRow(dirInfo)>
-	            <cfset QuerySetCell(dirInfo,"attributes",attributes)>
-	            <cfset QuerySetCell(dirInfo,"datelastmodified",datelastmodified)>
-	            <cfset QuerySetCell(dirInfo,"mode",mode)>
-	            <cfset QuerySetCell(dirInfo,"name",name)>
-	            <cfset QuerySetCell(dirInfo,"size",size)>
-	            <cfset QuerySetCell(dirInfo,"type",type)>
-	            <cfset QuerySetCell(dirInfo,"directory",directory)>
+	            <cfset QueryAddRow(arguments.dirInfo)>
+	            <cfset QuerySetCell(arguments.dirInfo,"attributes",attributes)>
+	            <cfset QuerySetCell(arguments.dirInfo,"datelastmodified",datelastmodified)>
+	            <cfset QuerySetCell(arguments.dirInfo,"mode",mode)>
+	            <cfset QuerySetCell(arguments.dirInfo,"name",name)>
+	            <cfset QuerySetCell(arguments.dirInfo,"size",size)>
+	            <cfset QuerySetCell(arguments.dirInfo,"type",type)>
+	            <cfset QuerySetCell(arguments.dirInfo,"directory",directory)>
 			</cfif>
 	        <cfif recurse AND type IS "dir">
 	            <!--- go deep! --->
-	            <cfset getDirectoryList(directory=directory & name,filter=filter,sort=sort,recurse=true,dirInfo=dirInfo,exclude=exclude)>
+	            <cfset getDirectoryList(directory=directory & name,filter=filter,sort=sort,recurse=true,dirInfo=arguments.dirInfo,exclude=exclude)>
 	        </cfif>
 		</cfif>
     </cfloop>
 	
-    <cfreturn dirInfo>
+    <cfreturn arguments.dirInfo>
 </cffunction>
 <cffunction name="runFiles" output="true">
 	<cfargument name="path" required="true" type="string">

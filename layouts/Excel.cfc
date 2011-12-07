@@ -1,6 +1,6 @@
 <cfcomponent displayname="MS Excel" extends="layout">
 <cffunction name="head" access="public" output="yes"><cfargument name="title" type="string" required="yes">
-<cfheader name="Content-Disposition" value="attachment;filename=#ReplaceNoCase(variables.me.FileName, ".cfm", ".xls")#">
+<cfheader name="Content-Disposition" value="attachment;filename=#ReplaceNoCase(variables.FileName, ".cfm", ".xls")#">
 <cfcontent type="application/msexcel" reset="Yes">
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">

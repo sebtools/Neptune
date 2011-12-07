@@ -1,6 +1,6 @@
 <!---
-1.0 RC8 (Build 120)
-Last Updated: 2011-01-16
+1.0 RC9 (Build 121)
+Last Updated: 2011-10-11
 --->
 <cfscript>
 sebtools = StructNew();

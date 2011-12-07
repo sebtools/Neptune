@@ -1,5 +1,5 @@
-<!--- 2.5 Beta 3 Dev 2 (Build 168) --->
-<!--- Last Updated: 2011-03-30 --->
+<!--- 2.5 Beta 3 Dev 3 (Build 169) --->
+<!--- Last Updated: 2011-10-11 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for MS Access" hint="I manage data interactions with the MS Access database.">
 
@@ -278,7 +278,7 @@
 	<cfset var result = "">
 	
 	<cfswitch expression="#arguments.type#">
-		<cfcase value="binary,image"><cfthrow message="DataMgr object cannot handle this data type." type="DataMgr" detail="DataMgr cannot handle data type '#arguments.type#'" errorcode="InvalidDataType"></cfcase>
+		<cfcase value="binary,image,longbinary"><cfset result = "CF_SQL_BLOB"></cfcase>
 		<cfcase value="bit"><cfset result = "CF_SQL_BIT"></cfcase>
 		<cfcase value="char,varchar"><cfset result = "CF_SQL_VARCHAR"></cfcase>
 		<cfcase value="counter"><cfset result = "CF_SQL_INTEGER"></cfcase>
@@ -308,6 +308,7 @@
 	<cfswitch expression="#arguments.CF_Datatype#">
 		<cfcase value="CF_SQL_BIGINT"><cfset result = "integer"></cfcase>
 		<cfcase value="CF_SQL_BIT"><cfset result = "bit"></cfcase>
+		<cfcase value="CF_SQL_BLOB"><cfset result = "longbinary"></cfcase>
 		<cfcase value="CF_SQL_CHAR"><cfset result = "char"></cfcase>
 		<cfcase value="CF_SQL_DATE"><cfset result = "datetime"></cfcase>
 		<cfcase value="CF_SQL_DECIMAL"><cfset result = "decimal"></cfcase>

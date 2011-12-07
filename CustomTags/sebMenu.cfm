@@ -1,11 +1,11 @@
 <!---
-1.0 RC8 (Build 120)
-Last Updated: 2011-01-16
+1.0 RC9 (Build 121)
+Last Updated: 2011-10-11
 Created by Steve Bryant 2004-06-01
-Tim Jackson provided the original tags as well as the inpiration and brilliant implementation of consistency for admin sections.
-Information: sebtools.com
+Information: http://www.bryantwebconsulting.com/docs/sebtags/?version=1.0
 Documentation:
-http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
+http://www.bryantwebconsulting.com/docs/sebtags/sebmenu-basics.cfm?version=1.0
+Tim Jackson provided the original tags as well as the inpiration and brilliant implementation of consistency for admin sections.
 ---><cfsilent><cfif isDefined("ThisTag.ExecutionMode") AND ThisTag.ExecutionMode EQ "Start">
 <cfscript>
 TagName = "cf_sebMenu";
@@ -322,7 +322,7 @@ if ( CurrTab ) {
 	<hr size="1" /><cfelse>
 	<br/></cfif>
 	<ul>
-		<li><a href="#attributes.adminpath#">Admin Home</a></li>
+		<cfif ArrayLen(ThisTag.tabs) NEQ 1><li><a href="#attributes.adminpath#">Admin Home</a></li></cfif>
 		<li><a href="/" target="_blank">View Site</a></li><cfif Len(attributes.LogoutLink)>
 		<li><a href="#attributes.LogoutLink#" id="sebMenuLogoutLink">Logout</a></li></cfif>
 	</ul>

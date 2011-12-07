@@ -1,7 +1,8 @@
 <!---
-1.0 RC8 (Build 120)
-Last Updated: 2011-01-16
+1.0 RC9 (Build 121)
+Last Updated: 2011-10-11
 --->
+<cffunction name="da"><cfdump var="#arguments#"><cfabort></cffunction>
 <cfscript>
 cr = "
 ";
@@ -13,6 +14,68 @@ if ( StructKeyExists(caller,'root') ) {
 }
 if ( StructKeyExists(root,"coop") AND isObject(root.coop) AND StructKeyExists(root.coop,"mergeattributes") ) {
 	attributes = root.coop.mergeattributes(attributes,root);
+}
+function doShow(qTableData,value,rownum) {
+	var result = true;
+	var fieldname = "";
+	var negate = false;
+	var showval = "";
+	var ii = 0;
+	
+	for ( ii=1; ii LTE ListLen(arguments.value); ii=ii+1 ) {
+		showval = ListGetAt(arguments.value,ii);
+		if ( result ) {
+			if ( isBoolean(showval) ) {
+				result = showval;
+			} else {
+				if ( Left(showval,1) eq "!" ) {
+					fieldname = Right(showval,Len(showval)-1);
+					negate = true;
+				} else {
+					fieldname = showval;
+				}
+				if ( ListFindNoCase(qTableData.ColumnList,fieldname) ) {
+					if ( isBoolean(qTableData[fieldname][rownum]) ) {
+						result = qTableData[fieldname][rownum];
+					} else {
+						result = Len(qTableData[fieldname][rownum]);
+					}
+				}
+				if ( negate ) {
+					result = NOT result;
+				}
+			}
+		} else {
+			return result;
+		}
+	}
+	return result;
+}
+function doShowBak(qTableData,showval,rownum) {
+	var result = true;
+	var fieldname = "";
+	var negate = false;
+	if ( isBoolean(showval) ) {
+		result = showval;
+	} else {
+		if ( Left(showval,1) eq "!" ) {
+			fieldname = Right(showval,Len(showval)-1);
+			negate = true;
+		} else {
+			fieldname = showval;
+		}
+		if ( ListFindNoCase(qTableData.ColumnList,fieldname) ) {
+			if ( isBoolean(qTableData[fieldname][rownum]) ) {
+				result = qTableData[fieldname][rownum];
+			} else {
+				result = Len(qTableData[fieldname][rownum]);
+			}
+		}
+		if ( negate ) {
+			result = NOT result;
+		}
+	}
+	return result;
 }
 function fixAbsoluteLinks(string) {
 	var result = arguments.string;
@@ -240,6 +303,20 @@ function QueryStringDeleteVar(variable) {
 	<cfreturn result>
 </cffunction>
 
+<cffunction name="masky" access="public" returntype="string" output="false">
+	<cfargument name="value" type="string" required="yes">
+	
+	<cfif StructKeyExists(attributes,"fMask") AND isCustomFunction(attributes.fMask)>
+		<cftry>
+			<cfset arguments.value = attributes.fMask(arguments.value)>
+		<cfcatch>
+		</cfcatch>
+		</cftry>
+	</cfif>
+	
+	<cfreturn arguments.value>
+</cffunction>
+
 <cffunction name="fixFileName" access="private" returntype="string" output="false">
 	<cfargument name="name" type="string" required="yes">
 	<cfargument name="dir" type="string" required="yes">
@@ -257,6 +334,22 @@ function QueryStringDeleteVar(variable) {
 	
 	<cfreturn result>
 </cffunction>
+
+<cffunction name="populateMarkers" returntype="string" output="no">
+	<cfargument name="string" type="string" required="true">
+	<cfargument name="query" type="query" required="true">
+	<cfargument name="rownum" type="numeric" default="1">
+	
+	<cfset var col = "">
+	
+	<cfloop index="col" list="#arguments.query.ColumnList#">
+		<cfif FindNoCase("[#col#]", arguments.string)>
+			<cfset arguments.string = ReplaceNoCase(arguments.string, "[#col#]", arguments.query[col][rownum], "ALL")>
+		</cfif>
+	</cfloop>
+	
+	<cfreturn arguments.string>
+</cffunction>
 <!---
  @author David Hammond (dave@modernsignal.com) 
  @version 1, November 26, 2010 
@@ -271,30 +364,29 @@ function QueryStringDeleteVar(variable) {
 	<cfargument name="Accept" type="string" required="no" hint="A list of acceptable mime-types.">
 	<cfargument name="Mode" type="string" default="644" hint="The mode value for the uploaded file.">
 	
+	<cfset var CFFILE = StructNew()>
+	<cfset var sOrigFile = 0>
 	<cfset var tempPath = "">
 	<cfset var serverPath = "">
-	<cfset var file = "">
-	<cfset var fileName = "">
-	<cfset var baseFileName = "">
-	<cfset var i = 0>
 	<cfset var skip = false>
 	<cfset var dirdelim = CreateObject("java", "java.io.File").separator>
+	<cfset var result = "">
 	
-	<!--- Make sure the destination directory exists. --->
+	<!--- Make sure the destination exists. --->
 	<cfif NOT DirectoryExists(destination)>
 		<cfthrow type="InvalidDestination" message="Destination directory ""#HtmlEditFormat(destination)#"" does not exist.">
 	</cfif>
 	
-	<!--- Make sure the destination directory exists. --->
+	<!--- Set default extensions --->
 	<cfif NOT ( StructKeyExists(arguments,"Extensions") AND Len(Trim(arguments.Extensions)) )>
 		<cfset arguments.Extensions = "ai,asx,avi,bmp,csv,dat,doc,docx,eps,fla,flv,gif,html,ico,jpeg,jpg,m4a,mov,mp3,mp4,mpa,mpg,mpp,pdf,png,pps,ppsx,ppt,pptx,ps,psd,qt,ra,ram,rar,rm,rtf,svg,swf,tif,txt,vcf,vsd,wav,wks,wma,wps,xls,xlsx,xml">
 	</cfif>
 
 	<!--- Upload to temp directory. --->
 	<cfif StructKeyExists(arguments,"Accept")>
-		<cffile action="upload" filefield="#Arguments.FileField#" destination="#Arguments.TempDirectory#" nameconflict="MakeUnique" accept="#arguments.Accept#" mode="#arguments.mode#">
+		<cffile action="UPLOAD" filefield="#Arguments.FileField#" destination="#Arguments.TempDirectory#" nameconflict="MakeUnique" mode="#arguments.mode#" result="CFFILE" accept="#arguments.Accept#">
 	<cfelse>
-		<cffile action="upload" filefield="#Arguments.FileField#" destination="#Arguments.TempDirectory#" nameconflict="MakeUnique" mode="#arguments.mode#">
+		<cffile action="UPLOAD" filefield="#Arguments.FileField#" destination="#Arguments.TempDirectory#" nameconflict="MakeUnique" mode="#arguments.mode#" result="CFFILE">
 	</cfif>
 	
 	<cfset tempPath = ListAppend(cffile.ServerDirectory, cffile.ServerFile, dirdelim)>
@@ -309,24 +401,24 @@ function QueryStringDeleteVar(variable) {
 		<cfthrow type="InvalidExtension" message="#Arguments.InvalidExtensionMessage#">
 	</cfif>
 	
-	<!--- Replace bad characters in file name --->
-	<cfset fileName = REReplaceNoCase(cffile.clientFileName,"[^\w_-]","","ALL")>
-	<cfset file = fileName & "." & cffile.ClientFileExt>
-	<cfset serverPath = ListAppend(destination, file, dirdelim)>
+	<cfset sOrigFile = Duplicate(CFFILE)>
 	
+	<cfset serverPath = ListAppend(destination, "#CFFILE.clientFileName#.#CFFILE.clientFileExt#", dirdelim)>
 	<cfif FileExists(serverPath)>
 		<!--- Handle name conflict --->
 		<cfswitch expression="#Arguments.NameConflict#">
 			<cfcase value="MakeUnique">
-				<!--- Remove number if it exists --->
-				<cfset baseFileName = REReplace(fileName,"_[\d]+$","")>
-				<!--- Find an unused filename --->
-				<cfloop condition="FileExists(serverPath)">
-					<cfset i = i + 1>
-					<cfset fileName = baseFileName & "_" & i>
-					<cfset file = fileName & "." & cffile.ClientFileExt>
-				</cfloop>
-				<cfset cffile.FileWasRenamed = false>
+				<cfset serverPath = createUniqueFileName(serverPath)>
+				
+				<cfset CFFILE.FileWasRenamed = true>
+				<cfset CFFILE.ServerDirectory = getDirectoryFromPath(serverPath)>
+				<cfset CFFILE.ServerFile = getFileFromPath(serverPath)>
+				<cfset CFFILE.ServerFileExt = ListLast(CFFILE.ServerFile,".")>
+				<cfset CFFILE.ServerFileName = ListDeleteAt(CFFILE.ServerFile,ListLen(CFFILE.ServerFile,"."),".")>
+				
+				<cfset sOrigFile.ServerFileName = cffile.ServerFileName>
+				<cfset sOrigFile.ServerFile = cffile.ServerFile>
+				<cfset destination = cffile.ServerDirectory>
 			</cfcase>
 			<cfcase value="Error">
 				<cffile action="Delete" file="#tempPath#">
@@ -335,22 +427,37 @@ function QueryStringDeleteVar(variable) {
 			<cfcase value="Skip">
 				<cfset skip = true>
 				<cffile action="Delete" file="#tempPath#">
-				<cfset cffile.FileWasSaved = false>
+				<cfset CFFILE.FileWasSaved = false>
 			</cfcase>
 			<cfcase value="Overwrite">
 				<cffile action="Delete" file="#serverPath#">
-				<cfset cffile.FileWasOverwritten = true>
+				<cfset CFFILE.FileWasOverwritten = true>
 			</cfcase>
 		</cfswitch>
 	</cfif>
 	
 	<cfif NOT skip>
+		<!---<cfset serverPath = fixFileName(getFileFromPath(serverPath),getDirectoryFromPath(serverPath))>--->
 		<!--- Rename and move file to destination directory --->
-		<cffile action="rename" source="#tempPath#" destination="#serverPath#">
-		<cfset cffile.ServerFileName = file>
-		<cfset cffile.ServerFile = file>
+		<cffile action="rename" source="#tempPath#" destination="#serverPath#" result="CFFILE">
+		<cfset cffile.ServerFileName = sOrigFile.ServerFileName>
+		<cfset cffile.ServerFile = sOrigFile.ServerFile>
 		<cfset cffile.ServerDirectory = destination>
 	</cfif>
-				
-	<cfreturn cffile>
+	
+	<cfif StructKeyExists(arguments,"return") AND isSimpleValue(arguments.return)>
+		<cfif arguments.return EQ "name">
+			<cfset arguments.return = "ServerFile">
+		</cfif>
+		<cfif StructKeyExists(CFFILE,arguments.return)>
+			<cfset result = CFFILE[arguments.return]>
+			<cfif isSimpleValue(result) AND isSimpleValue(variables.dirdelim)>
+				<cfset result = ListLast(result,variables.dirdelim)>
+			</cfif>
+		</cfif>
+	<cfelse>
+		<cfset result = CFFILE>
+	</cfif>
+	
+	<cfreturn result>
 </cffunction>

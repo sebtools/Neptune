@@ -1,5 +1,5 @@
-<!--- 1.1.1 Build 9 --->
-<!--- Last Updated: 2010-05-30 --->
+<!--- 1.4 Build 10 --->
+<!--- Last Updated: 2011-04-11 --->
 <!--- Created by Steve Bryant 2007-01-31 --->
 <cfcomponent displayname="Scheduler">
 
@@ -12,8 +12,10 @@
 	<cfset variables.DataMgr.loadXml(getDbXml(),true,true)>
 	
 	<cfset variables.tasks = StructNew()>
+	<cfset variables.sComponents = StructNew()>
+	<cfset variables.sRunningTasks = StructNew()>
 	
-	<cfreturn this>
+	<cfreturn This>
 </cffunction>
 
 <cffunction name="createCFTask" access="public" returntype="void" output="no">
@@ -27,7 +29,7 @@
 
 <cffunction name="getActionRecords" access="public" returntype="query" output="no">
 	
-	<cfreturn variables.DataMgr.getRecords("schActions")>
+	<cfreturn variables.DataMgr.getRecords("schActions",arguments)>
 </cffunction>
 
 <cffunction name="getTaskRecords" access="public" returntype="query" output="no">
@@ -37,7 +39,50 @@
 
 <cffunction name="getTasks" access="public" returntype="struct" output="no">
 	
+	<cfset loadAbandonedTasks()>
+	
 	<cfreturn variables.tasks>
+</cffunction>
+
+<cffunction name="getTasksTruncated" access="public" returntype="struct" output="no">
+	
+	<cfset var sResult = StructNew()>
+	<cfset var key = "">
+	<cfset var key2 = "">
+	
+	<cfset loadAbandonedTasks()>
+	
+	<cfloop collection="#variables.tasks#" item="key">
+		<cfset sResult[key] = StructNew()>
+		<cfloop collection="#variables.tasks[key]#" item="key2">
+			<cfif isSimpleValue(variables.tasks[key][key2])>
+				<cfset sResult[key][key2] = variables.tasks[key][key2]> 
+			</cfif>
+		</cfloop>
+	</cfloop>
+	
+	<cfreturn sResult>
+</cffunction>
+
+<cffunction name="loadAbandonedTasks" access="public" returntype="void" output="false">
+	
+	<cfset var qTasks = getTaskRecords(interval="once")>
+	
+	<cfloop query="qTasks">
+		<cfif
+				NOT StructKeyExists(variables.tasks,Name)
+			AND	StructKeyExists(variables.sComponents,ComponentPath)
+			AND	dateCreated GTE DateAdd("d",-1,now())
+		>
+			<cfset variables.tasks[Name] = StructNew()>
+			<cfset variables.tasks[Name]["ComponentPath"] = ComponentPath>
+			<cfset variables.tasks[Name]["Component"] = variables.sComponents[ComponentPath]>
+			<cfset variables.tasks[Name]["MethodName"] = MethodName>
+			<cfset variables.tasks[Name]["interval"] = "once">
+			<cfset variables.tasks[Name]["Hours"] = Hours>
+		</cfif>
+	</cfloop>
+	
 </cffunction>
 
 <cffunction name="removeTask" access="public" returntype="void" output="no">
@@ -61,6 +106,7 @@
 	<cfargument name="interval" type="string" required="yes">
 	<cfargument name="args" type="struct" required="no">
 	<cfargument name="hours" type="string" required="no" hint="The hours in which the task can be run.">
+	<cfargument name="weekdays" type="string" required="no" hint="The week days on which the task can be run.">
 	
 	<cfset var qTask = getTaskNameRecord(arguments.Name)>
 	
@@ -72,6 +118,10 @@
 		>
 			<cfthrow message="A task using this name already exists for another component method." type="Scheduler" errorcode="NameExists">
 		</cfif>
+	</cfif>
+	
+	<cfif isObject(arguments.Component) AND NOT StructKeyExists(variables.sComponents,arguments.ComponentPath)>
+		<cfset variables.sComponents[arguments.ComponentPath] = arguments.Component>
 	</cfif>
 	
 	<cfif StructKeyExists(arguments,"hours")>
@@ -88,23 +138,47 @@
 	
 </cffunction>
 
-<cffunction name="runTask" access="public" returntype="void" output="no">
+<cffunction name="rerun" access="public" returntype="any" output="no">
+	<cfargument name="Name" type="string" required="yes">
+	
+	<cfset var qTask = getTaskNameRecord(arguments.Name)>
+	<cfset var sTaskUpdate = StructNew()>
+	
+	<cfset sTaskUpdate["TaskID"] = qTask.TaskID>
+	<cfset sTaskUpdate["rerun"] = 1>
+	<cfset variables.DataMgr.updateRecord("schTasks",sTaskUpdate)>
+	
+</cffunction>
+
+<cffunction name="runTask" access="public" returntype="any" output="no">
 	<cfargument name="Name" type="string" required="yes">
 	<cfargument name="remove" type="boolean" default="false">
 	
 	<cfset var sTask = StructNew()>
 	<cfset var qTask = getTaskNameRecord(arguments.Name)>
+	<cfset var sTaskUpdate = StructNew()>
 	<cfset var sAction = StructNew()>
 	<cfset var key = "">
 	
 	<cfset var TimeMarkBegin = 0>
 	<cfset var TimeMarkEnd = 0>
 	
+	<cfif StructKeyExists(variables.sRunningTasks,arguments.name)>
+		<cfreturn false>
+	</cfif>
+	
+	<cfset variables.sRunningTasks[arguments.Name] = now()>
+	
+	<cfset sTaskUpdate["TaskID"] = qTask.TaskID>
+	<cfset sTaskUpdate["rerun"] = 0>
+	<cfset variables.DataMgr.updateRecord("schTasks",sTaskUpdate)>
+
+	<cfset sAction["TaskID"] = qTask.TaskID>
+	<cfset sAction["ActionID"] = variables.DataMgr.insertRecord("schActions",sAction,"insert")>
+	
 	<cfloop collection="#variables.tasks[arguments.Name]#" item="key">
 		<cfset sTask[key] = variables.tasks[arguments.Name][key]>
 	</cfloop>
-	
-	<cfset sAction["TaskID"] = qTask.TaskID>
 	
 	<cfif arguments.remove>
 		<cfset removeTask(arguments.Name)>
@@ -120,21 +194,26 @@
 		<cfset TimeMarkEnd = getTickCount()>
 		<cfset sAction.Success = true>
 	<cfcatch>
+		<cfset StructDelete(variables.sRunningTasks,arguments.Name)>
 		<cfset sAction.Success = false>
 		<cfset TimeMarkEnd = getTickCount()>
 		<cfset sAction.Seconds = GetSecondsDiff(TimeMarkBegin,TimeMarkEnd)>
 		<cfset sAction.ErrorMessage = CFCATCH.Message>
 		<cfset sAction.ErrorDetail = CFCATCH.Detail>
+		<cfset sAction.DateRunEnd = now()>
 		<cfset sAction = variables.DataMgr.truncate("schActions",sAction)>
-		<cfset variables.DataMgr.insertRecord("schActions",sAction,"insert")>
+		<cfset variables.DataMgr.updateRecord("schActions",sAction)>
 		<cfrethrow>
 	</cfcatch>
 	</cftry>
 	
 	<cfset sAction.Seconds = GetSecondsDiff(TimeMarkBegin,TimeMarkEnd)>
 	
+	<cfset sAction.DateRunEnd = now()>
 	<cfset sAction = variables.DataMgr.truncate("schActions",sAction)>
-	<cfset variables.DataMgr.insertRecord("schActions",sAction,"insert")>
+	<cfset variables.DataMgr.updateRecord("schActions",sAction)>
+	
+	<cfset StructDelete(variables.sRunningTasks,arguments.Name)>
 	
 </cffunction>
 
@@ -144,13 +223,20 @@
 	<cfset var ii = 0>
 	
 	<cfloop index="ii" from="1" to="#ArrayLen(aTasks)#" step="1">
-		<cfif aTasks[ii].interval EQ "once">
-			<cfset runTask(aTasks[ii].name,true)>
-		<cfelse>
-			<cfset runTask(aTasks[ii].name)>
+		<cfif StructKeyExists(aTasks[ii],"name") AND NOT StructKeyExists(variables.sRunningTasks,aTasks[ii].name)>
+			<cfif aTasks[ii].interval EQ "once">
+				<cfset runTask(aTasks[ii].name,true)>
+			<cfelse>
+				<cfset runTask(aTasks[ii].name)>
+			</cfif>
 		</cfif>
 	</cfloop>
 	
+</cffunction>
+
+<cffunction name="getComponentDefs" access="public" returntype="struct" output="false">
+	
+	<cfreturn variables.sComponents>
 </cffunction>
 
 <cffunction name="getCurrentTasks" access="public" returntype="array" output="false">
@@ -163,11 +249,15 @@
 	<cfset var sIntervals = getIntervals()>
 	<cfset var adjustedtime = DateAdd("n",10,arguments.runtime)><!--- Tasks run every 15 minutes at most and we need a margin of error for date checks. --->
 	
+	<cfset loadAbandonedTasks()>
+	
 	<!--- Look at each task --->
 	<cfloop collection="#variables.tasks#" item="task">
 		<cfset qTask = getTaskNameRecord(task)>
 		<!--- If hours are specified, make sure current time is in that list of hours --->
-		<cfif
+		<cfif qTask.rerun IS true>
+			<cfset ArrayAppend(aResults,variables.tasks[task])>
+		<cfelseif
 				1 EQ 1
 			AND	(
 						NOT ( StructKeyExists(variables.tasks[task],"hours") AND Len(variables.tasks[task].hours) )
@@ -219,6 +309,14 @@
 	</cfloop>
 	
 	<cfreturn aResults>
+</cffunction>
+
+<cffunction name="notifyComponent" access="public" returntype="void" output="false">
+	<cfargument name="ComponentPath" type="string" required="yes" hint="The path to your component (example com.sebtools.NoticeMgr).">
+	<cfargument name="Component" type="any" required="yes">
+	
+	<cfset sComponents[arguments.ComponentPath] = arguments.Component>
+	
 </cffunction>
 
 <cffunction name="getIntervals" access="private" returntype="struct" output="no">
@@ -305,14 +403,26 @@
 			<field ColumnName="ComponentPath" CF_DataType="CF_SQL_VARCHAR" Length="50" />
 			<field ColumnName="MethodName" CF_DataType="CF_SQL_VARCHAR" Length="50" />
 			<field ColumnName="interval" CF_DataType="CF_SQL_VARCHAR" Length="100" />
+			<field ColumnName="weekdays" CF_DataType="CF_SQL_VARCHAR" Length="60" />
 			<field ColumnName="hours" CF_DataType="CF_SQL_VARCHAR" Length="60" />
 			<field ColumnName="dateCreated" CF_DataType="CF_SQL_DATE" Special="CreationDate" />
 			<field ColumnName="dateDeleted" CF_DataType="CF_SQL_DATE" Special="DeletionMark" />
+			<field ColumnName="rerun" CF_DataType="CF_SQL_BIT" Default="0" />
+			<field ColumnName="AvgSeconds">
+				<relation
+					type="avg"
+					table="schActions"
+					field="Seconds"
+					join-field="TaskID"
+				/>
+			</field>
 		</table>
 		<table name="schActions">
 			<field ColumnName="ActionID" CF_DataType="CF_SQL_BIGINT" PrimaryKey="true" Increment="true" />
 			<field ColumnName="TaskID" CF_DataType="CF_SQL_INTEGER" />
 			<field ColumnName="DateRun" CF_DataType="CF_SQL_DATE" Special="CreationDate" />
+			<field ColumnName="DateRunStart" CF_DataType="CF_SQL_DATE" Special="CreationDate" />
+			<field ColumnName="DateRunEnd" CF_DataType="CF_SQL_DATE" Special="Date" />
 			<field ColumnName="ErrorMessage" CF_DataType="CF_SQL_VARCHAR" Length="250" />
 			<field ColumnName="ErrorDetail" CF_DataType="CF_SQL_VARCHAR" Length="250" />
 			<field ColumnName="Success" CF_DataType="CF_SQL_BIT" />

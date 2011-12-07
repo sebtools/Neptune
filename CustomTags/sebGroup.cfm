@@ -1,8 +1,10 @@
 <!---
-1.0 RC8 (Build 120)
-Last Updated: 2011-01-16
+1.0 RC9 (Build 121)
+Last Updated: 2011-10-11
 Created by Steve Bryant 2004-06-01
-Information: sebtools.com
+Information: http://www.bryantwebconsulting.com/docs/sebtags/?version=1.0
+Documentation:
+http://www.bryantwebconsulting.com/docs/sebtags/sebgroup-overview.cfm?version=1.0
 ---><cfsilent>
 <cfset TagName = "cf_sebGroup">
 <cfset ValidTypes = "accordion,fieldset,ColumnsTable,Column">
@@ -13,13 +15,14 @@ Information: sebtools.com
 <cfparam name="attributes.class" type="string" default="sebGroup">
 <cfparam name="attributes.help" type="string" default="">
 <cfset htmlatts = "id,style">
+<cfscript>
+ParentData = getBaseTagData("cf_sebForm");
+ParentAtts = ParentData.attributes;
+sForm = ParentData.sForm;
+</cfscript>
+<cfparam name="attributes.minimize" type="boolean" default="#ParentAtts.minimize#">
 
 <cfif ThisTag.ExecutionMode EQ "End" OR (ThisTag.ExecutionMode eq "Start" AND NOT ThisTag.HasEndTag)>
-	<cfscript>
-	ParentData = getBaseTagData("cf_sebForm");
-	ParentAtts = ParentData.attributes;
-	sForm = ParentData.sForm;
-	</cfscript>
 	<cfif StructKeyExists(ThisTag,"aFields")>
 		<cfset attributes.aFields = ThisTag.aFields>
 		<cfset attributes.fields = "">
@@ -126,6 +129,10 @@ Information: sebtools.com
 	<cfset attributes.isFKField = false>
 </cfif>
 
+<cfif attributes.isFKField>
+	<cfset ParentAtts.sebformjs = true>
+</cfif>
+
 <cfif attributes.isFKField AND NOT ( StructKeyExists(attributes,"id") AND Len(Trim(attributes.id)) )>
 	<cfset attributes.id = "group-#attributes.fkfield#">
 </cfif>
@@ -144,6 +151,62 @@ Information: sebtools.com
 </cfif>
 </cfsilent>
 <cfoutput>
+<cfif ThisTag.ExecutionMode eq "End" AND Len(Trim(ThisTag.GeneratedContent))>
+<cfif StructKeyExists(ParentAtts,"format") AND ParentAtts.format eq "table">
+	<tr><td colspan="2">
+</cfif>
+<cfswitch expression="#attributes.type#">
+<cfcase value="accordion">
+<div class="accordion-header"#atts#><cfif Len(attributes.link)><a href="#attributes.link#">#attributes.label#</a><cfelse>#attributes.label#</cfif></div><div class="accordion-body">
+</cfcase>
+<cfcase value="ColumnsTable">
+<div class="#attributes.class#"#atts#><table class="sebFormColumns"><tr>
+</cfcase>
+<cfcase value="Column">
+<td class="#attributes.class#"#atts#>
+</cfcase>
+<cfcase value="fieldset">
+<fieldset class="#attributes.class#"#atts#><legend>#attributes.label#</legend>
+</cfcase>
+<cfcase value="label">
+<div class="#attributes.class#"#atts#><div>#attributes.label#</div>
+</cfcase>
+<cfcase value="hr">
+<hr/>
+</cfcase>
+</cfswitch>
+<cfif StructKeyExists(ParentAtts,"format") AND ParentAtts.format eq "table">
+	<table>
+</cfif>
+#ThisTag.GeneratedContent#
+<cfif StructKeyExists(ParentAtts,"format") AND ParentAtts.format eq "table">
+	</table>
+</cfif>
+<cfswitch expression="#attributes.type#">
+<cfcase value="accordion">
+</div>
+</cfcase>
+<cfcase value="ColumnsTable">
+</tr></table></div>
+</cfcase>
+<cfcase value="Column">
+</td>
+</cfcase>
+<cfcase value="fieldset">
+</fieldset>
+</cfcase>
+<cfcase value="label">
+</div>
+</cfcase>
+<cfcase value="hr">
+</cfcase>
+</cfswitch>
+<cfset ThisTag.GeneratedContent = "">
+<cfif Len(Trim(attributes.help))><div class="sebHelp">#attributes.help#</div></cfif>
+<cfif StructKeyExists(ParentAtts,"format") AND ParentAtts.format eq "table">
+	</td></tr>
+</cfif>
+</cfif><!---<cfexit>
 <cfif StructKeyExists(ParentAtts,"format") AND ParentAtts.format eq "table">
 	<cfif ThisTag.ExecutionMode eq "End"></table></cfif>
 	<cfif ThisTag.ExecutionMode eq "Start"><tr><td colspan="2"></cfif>
@@ -167,10 +230,10 @@ Information: sebtools.com
 <cfcase value="hr">
 <cfif ThisTag.ExecutionMode eq "Start"><hr/></cfif>
 </cfcase>
-</cfswitch>
-<cfif ThisTag.ExecutionMode eq "End" AND Len(Trim(attributes.help))><div class="sebHelp">#attributes.help#</div></cfif>
-<cfif StructKeyExists(ParentAtts,"format") AND ParentAtts.format eq "table">
+</cfswitch>--->
+<!---<cfif ThisTag.ExecutionMode eq "End" AND Len(Trim(attributes.help))><div class="sebHelp">#attributes.help#</div></cfif>--->
+<!---<cfif StructKeyExists(ParentAtts,"format") AND ParentAtts.format eq "table">
 	<cfif ThisTag.ExecutionMode eq "Start"><table></cfif>
 	<cfif ThisTag.ExecutionMode eq "End"></td></tr></cfif>
-</cfif>
+</cfif>--->
 </cfoutput>

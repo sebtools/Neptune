@@ -1,4 +1,5 @@
-﻿<cfcomponent extends="_config.PageController" output="no">
+﻿<!--- Serves uploaded files: http://www.bryantwebconsulting.com/docs/neptune/file-uploads.cfm --->
+<cfcomponent extends="_config.PageController" output="no">
 
 <cfset loadExternalVars("Config",".Framework")>
 

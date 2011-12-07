@@ -1,5 +1,5 @@
-<!--- 1.5 (Build 14) --->
-<!--- Last Updated: 2011-03-30 --->
+<!--- 1.5.5 (Build 16) --->
+<!--- Last Updated: 2011-11-23 --->
 <!--- Information: sebtools.com --->
 <cfcomponent displayname="File Manager">
 <!--- %%Handle folders w/o write permission --->
@@ -9,7 +9,7 @@
 	
 	<cfset variables.UploadPath = arguments.UploadPath>
 	<cfset variables.UploadURL = arguments.UploadURL>
-	<cfset variables.dirdelim = CreateObject("java", "java.io.File").separator>
+	<cfset getDirDelim()>
 	<cfset variables.TempDir = GetTempDirectory()>
 	
 	<cfset makedir(variables.UploadPath)>
@@ -28,6 +28,37 @@
 
 <cffunction name="getDefaultExtensions" acess="public" returntype="string" output="no">
 	<cfreturn variables.DefaultExtensions>
+</cffunction>
+
+<cffunction name="getDirDelim" acess="public" returntype="string" output="no">
+	
+	<cfset var result = "/">
+	
+	<cfif NOT StructKeyExists(variables,"dirdelim")>
+		<cftry>
+			<cfset variables.dirdelim = CreateObject("java", "java.io.File").separator>
+		<cfcatch>
+			<cftry>
+				<cfif Server.OS.name CONTAINS "Windows">
+					<cfset variables.dirdelim = "\">
+				<cfelse>
+					<cfset variables.dirdelim = "/">
+				</cfif>
+			<cfcatch>
+				<cfif getCurrentTemplatePath() CONTAINS "/">
+					<cfset variables.dirdelim = "/">
+				<cfelse>
+					<cfset variables.dirdelim = "\">
+				</cfif>
+			</cfcatch>
+			</cftry>
+		</cfcatch>
+		</cftry>
+	</cfif>
+	
+	<cfset result = variables.dirdelim>
+	
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="LimitFileNameLength" acess="public" returntype="string" output="no">
@@ -127,60 +158,70 @@
  @author Raymond Camden (ray@camdenfamily.com) 
  @version 2, April 8, 2004 
 --->
-<cffunction name="getDirectoryList" output="false" returnType="query" hint="Mimics the cfdirectory list.">
-	<cfargument name="directory" type="string" required="true">
-	<cfargument name="filter" type="string" required="false" default="">
-	<cfargument name="sort" type="string" required="false" default="">
-	<cfargument name="recurse" type="boolean" required="false" default="false">
-	<!--- temp vars --->
-	<cfargument name="dirInfo" type="query" required="false">
-	<cfargument name="thisDir" type="query" required="false">
+<cffunction name="getDirectoryList" output="false" returnType="query">
+    <cfargument name="directory" type="string" required="true">
+    <cfargument name="filter" type="string" required="false" default="">
+    <cfargument name="sort" type="string" required="false" default="">
+    <cfargument name="recurse" type="boolean" required="false" default="false">
+    <!--- temp vars --->
+    <cfargument name="dirInfo" type="query" required="false">
+    <cfargument name="thisDir" type="query" required="false">
+	<!--- more vars --->
+	<cfargument name="exclude" type="string" default="">
 	
-	<cfset var path = "">
-    <cfset var temp = "">
+	<cfset var delim = getDirDelim()>
+	<cfset var ScriptName = 0>
+	<cfset var isExcluded = false>
+	<cfset var exdir = false>
 	<cfset var qDirs = 0>
+	<cfset var cols = "attributes,datelastmodified,mode,name,size,type,directory">
 	
-	<cfif not recurse>
-		<cfdirectory name="temp" directory="#directory#" filter="#filter#" sort="#sort#">
-		<cfreturn temp>
-	<cfelse>
-		<!--- We loop through until done recursing drive --->
-		<cfif not isDefined("dirInfo")>
-			<cfset dirInfo = queryNew("attributes,datelastmodified,mode,name,size,type,directory")>
-		</cfif>
-		<cfset thisDir = getDirectoryList(directory,filter,sort,false)>
-		<cfif server.os.name contains "Windows">
-			<cfset path = "\">
-		<cfelse>
-			<cfset path = "/">
-		</cfif>
-		<cfif Right(arguments.directory,1) NEQ path>
-			<cfset arguments.directory = "#arguments.directory##path#">
-		</cfif>
-		<cfif Len(filter)>
-			<cfdirectory name="qDirs" directory="#directory#" sort="#sort#">
-			<cfloop query="qDirs">
-				<cfif type is "dir">
-					<cfset getDirectoryList(directory & name,filter,sort,true,dirInfo)>
+	<cfif Right(arguments.directory,1) NEQ delim>
+		<cfset arguments.directory = "#arguments.directory##delim#">
+	</cfif>
+	
+    <cfif NOT StructKeyExists(arguments,"dirInfo")>
+        <cfset arguments.dirInfo = QueryNew(cols)>
+    </cfif>
+	<cfdirectory name="arguments.thisDir" directory="#arguments.directory#" sort="#sort#" filter="#arguments.filter#">
+	<cfif arguments.recurse>
+		<cfdirectory name="qDirs" directory="#arguments.directory#" sort="#sort#">
+		<cfloop query="qDirs">
+			<cfif type IS "dir">
+				<cfif StructKeyExists(variables,"instance") AND StructKeyExists(variables.instance,"RootPath")>
+					<cfset ScriptName = "/" & ReplaceNoCase(ReplaceNoCase("#arguments.directory##name#",variables.instance.RootPath,""),"\","/","ALL")>
 				</cfif>
-			</cfloop>
-		</cfif>
-		<cfloop query="thisDir">
-			<cfset queryAddRow(dirInfo)>
-			<cfset querySetCell(dirInfo,"attributes",attributes)>
-			<cfset querySetCell(dirInfo,"datelastmodified",datelastmodified)>
-			<cfset querySetCell(dirInfo,"mode",mode)>
-			<cfset querySetCell(dirInfo,"name",name)>
-			<cfset querySetCell(dirInfo,"size",size)>
-			<cfset querySetCell(dirInfo,"type",type)>
-			<cfset querySetCell(dirInfo,"directory",directory)>
-			<cfif type is "dir">
-				<!--- go deep! --->
-				<cfset getDirectoryList(directory & name,filter,sort,true,dirInfo)>
+				<cfset isExcluded = false>
+				<cfif Len(arguments.exclude)>
+					<cfloop list="#arguments.exclude#" index="exdir">
+						<cfif
+								( Len(ScriptName) AND ListLen(exdir,"/") EQ 1 AND exdir EQ ListFindNoCase("#ScriptName#/",exdir,"/") )
+							OR	( Len(ScriptName) AND Len(exdir) AND Left(ScriptName,Len(exdir)) EQ exdir )
+							OR	( Len(ScriptName) AND Len(exdir) AND Left(exdir,Len(ScriptName)) EQ ScriptName )
+							OR	( exdir EQ name )
+						>
+							<cfset isExcluded = true>
+						</cfif>
+					</cfloop>
+				</cfif>
+				<cfif NOT isExcluded>
+					<cfset getDirectoryList(directory=directory & name,filter=filter,sort=sort,recurse=true,dirInfo=arguments.dirInfo,exclude=exclude)>
+				</cfif>
 			</cfif>
 		</cfloop>
-		<cfreturn dirInfo>
 	</cfif>
+	<cfloop query="arguments.thisDir">
+		<cfset QueryAddRow(arguments.dirInfo)>
+		<cfset QuerySetCell(arguments.dirInfo,"attributes",attributes)>
+		<cfset QuerySetCell(arguments.dirInfo,"datelastmodified",datelastmodified)>
+		<cfset QuerySetCell(arguments.dirInfo,"mode",mode)>
+		<cfset QuerySetCell(arguments.dirInfo,"name",name)>
+		<cfset QuerySetCell(arguments.dirInfo,"size",size)>
+		<cfset QuerySetCell(arguments.dirInfo,"type",type)>
+		<cfset QuerySetCell(arguments.dirInfo,"directory",directory)>
+	</cfloop>
+	
+    <cfreturn arguments.dirInfo>
 </cffunction>
 
 <cffunction name="FileNameFromString" access="public" returntype="string" output="no">
@@ -365,68 +406,84 @@
 	
 	<cfset var destination = getDirectory(argumentCollection=arguments)>
 	<cfset var CFFILE = StructNew()>
+	<cfset var sOrigFile = 0>
 	<cfset var tempPath = "">
 	<cfset var serverPath = "">
 	<cfset var skip = false>
+	<cfset var dirdelim = getDirDelim()>
 	<cfset var result = "">
-	<cfset var dirdelim = CreateObject("java", "java.io.File").separator>
 	
-	<!--- Make sure the folder exists --->
+	<!--- Make sure the destination exists. --->
 	<cfif StructKeyExists(arguments,"Folder")>
 		<cfset makeFolder(arguments.Folder)>
 	</cfif>
 	
+	<!--- Set default extensions --->
 	<cfif NOT StructKeyExists(arguments,"extensions")>
 		<cfset arguments.extensions = variables.DefaultExtensions>
 	</cfif>
 	
+	<!--- Upload to temp directory. --->
 	<cfif StructKeyExists(arguments,"accept")>
 		<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#Arguments.TempDirectory#" nameconflict="MakeUnique" result="CFFILE" accept="#arguments.accept#">
 	<cfelse>
 		<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#Arguments.TempDirectory#" nameconflict="MakeUnique" result="CFFILE">
 	</cfif>
-	<cfset tempPath = ListAppend(cffile.ServerDirectory, cffile.ServerFile, dirdelim)>
 	
-	<!--- Check for valid extensions --->
+	<cfset tempPath = ListAppend(CFFILE.ServerDirectory, CFFILE.ServerFile, dirdelim)>
+	
+	<!--- Check file extension --->
 	<cfif
-			StructKeyExists(arguments,"extensions")
-		AND	Len(arguments.extensions)
+			Len(arguments.extensions)
 		AND	NOT ListFindNoCase(arguments.extensions,CFFILE.ClientFileExt)
 	>
+		<!--- Bad file extension.  Delete file. --->
 		<cffile action="DELETE" file="#tempPath#">
-		<cfset CFFILE = StructNew()>
-	<cfelse>
-		<cfset serverPath = ListAppend(destination, "#cffile.clientFileName#.#cffile.clientFileExt#", dirdelim)>
-		<cfif FileExists(serverPath)>
-			<!--- Handle name conflict --->
-			<cfswitch expression="#Arguments.NameConflict#">
-				<cfcase value="MakeUnique">
-					<cfset serverPath = createUniqueFileName(serverPath)>
-					<cfset CFFILE.FileWasRenamed = false>
-				</cfcase>
-				<cfcase value="Error">
-					<cffile action="Delete" file="#tempPath#">
-					<cfthrow type="FileExists" message="The file #serverPath# already exists.">
-				</cfcase>
-				<cfcase value="Skip">
-					<cfset skip = true>
-					<cffile action="Delete" file="#tempPath#">
-					<cfset CFFILE.FileWasSaved = false>
-				</cfcase>
-				<cfcase value="Overwrite">
-					<cffile action="Delete" file="#serverPath#">
-					<cfset CFFILE.FileWasOverwritten = true>
-				</cfcase>
-			</cfswitch>
-		</cfif>
-		
-		<cfif NOT skip>
-			<!--- Rename and move file to destination directory --->
-			<cffile action="rename" source="#tempPath#" destination="#serverPath#" result="CFFILE">
-			<cfset cffile.ServerFileName = file>
-			<cfset cffile.ServerFile = file>
-			<cfset cffile.ServerDirectory = destination>
-		</cfif>
+		<cfreturn StructNew()>
+	</cfif>
+	
+	<cfset sOrigFile = Duplicate(CFFILE)>
+	
+	<cfset serverPath = ListAppend(destination, "#CFFILE.clientFileName#.#CFFILE.clientFileExt#", dirdelim)>
+	<cfif FileExists(serverPath)>
+		<!--- Handle name conflict --->
+		<cfswitch expression="#Arguments.NameConflict#">
+			<cfcase value="MakeUnique">
+				<cfset serverPath = createUniqueFileName(serverPath)>
+				
+				<cfset CFFILE.FileWasRenamed = true>
+				<cfset CFFILE.ServerDirectory = getDirectoryFromPath(serverPath)>
+				<cfset CFFILE.ServerFile = getFileFromPath(serverPath)>
+				<cfset CFFILE.ServerFileExt = ListLast(CFFILE.ServerFile,".")>
+				<cfset CFFILE.ServerFileName = ListDeleteAt(CFFILE.ServerFile,ListLen(CFFILE.ServerFile,"."),".")>
+				
+				<cfset sOrigFile.ServerFileName = cffile.ServerFileName>
+				<cfset sOrigFile.ServerFile = cffile.ServerFile>
+				<cfset destination = cffile.ServerDirectory>
+			</cfcase>
+			<cfcase value="Error">
+				<cffile action="Delete" file="#tempPath#">
+				<cfthrow type="FileExists" message="The file #serverPath# already exists.">
+			</cfcase>
+			<cfcase value="Skip">
+				<cfset skip = true>
+				<cffile action="Delete" file="#tempPath#">
+				<cfset CFFILE.FileWasSaved = false>
+			</cfcase>
+			<cfcase value="Overwrite">
+				<cffile action="Delete" file="#serverPath#">
+				<cfset CFFILE.FileWasOverwritten = true>
+			</cfcase>
+		</cfswitch>
+	</cfif>
+	
+	<cfif NOT skip>
+		<!---<cfset serverPath = fixFileName(getFileFromPath(serverPath),getDirectoryFromPath(serverPath))>--->
+		<!--- Rename and move file to destination directory --->
+		<cffile action="rename" source="#tempPath#" destination="#serverPath#" result="CFFILE">
+		<cfset cffile.ServerFileName = sOrigFile.ServerFileName>
+		<cfset cffile.ServerFile = sOrigFile.ServerFile>
+		<cfset cffile.ServerDirectory = destination>
 	</cfif>
 	
 	<cfif StructKeyExists(arguments,"return") AND isSimpleValue(arguments.return)>
@@ -540,4 +597,28 @@ Copies a directory.
  * @version 1, December 11, 2001 
  */
 </cfscript>
+
+<cffunction name="fixFileName" access="private" returntype="string" output="false">
+	<cfargument name="name" type="string" required="yes">
+	<cfargument name="dir" type="string" required="yes">
+	<cfargument name="maxlength" type="numeric" default="0">
+	
+	<cfset var dirdelim = getDirDelim()>
+	<cfset var result = ReReplaceNoCase(arguments.name,"[^a-zA-Z0-9_\-\.]","_","ALL")><!--- Remove special characters from file name --->
+	<cfset var path = "">
+	
+	<cfset result = LimitFileNameLength(arguments.maxlength,result)>
+	
+	<cfset path = "#dir##dirdelim##result#">
+	
+	<!--- If corrected file name doesn't match original, rename it --->
+	<cfif arguments.name NEQ result AND FileExists("#arguments.dir##dirdelim##arguments.name#")>
+		<cfset path = createUniqueFileName(path,arguments.maxlength)>
+		<cfset result = ListLast(path,dirdelim)>
+		<cffile action="rename" source="#arguments.dir##dirdelim##arguments.name#" destination="#result#">
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
 </cfcomponent>

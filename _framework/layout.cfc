@@ -1,5 +1,5 @@
-<!--- 1.0 Beta 1.5 (Build 21) --->
-<!--- Last Updated: 2011-01-16 --->
+<!--- 1.0 Beta 2 (Build 24) --->
+<!--- Last Updated: 2011-10-10 --->
 <!--- Information: sebtools.com --->
 <cfcomponent>
 

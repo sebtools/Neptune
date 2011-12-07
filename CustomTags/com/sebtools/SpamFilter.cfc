@@ -8,6 +8,7 @@
 <cffunction name="init" access="public" returntype="any" output="no" hint="I instantiate and return this component.">
 	<cfargument name="DataMgr" type="any" required="yes">
 	<cfargument name="getNewDefs" type="boolean" default="0">
+	<cfargument name="Scheduler" type="any" required="false">
 	
 	<cfscript>
 	var qWords = 0;
@@ -17,11 +18,16 @@
 	
 	variables.datasource = variables.DataMgr.getDatasource();
 	variables.DataMgr.loadXML(getDbXml(),true,true);
+	if ( StructKeyExists(arguments,"Scheduler") ) {
+		variables.Scheduler = arguments.Scheduler;
+		loadScheduledTask();
+	} 
 	</cfscript>
 	
 	<cfif variables.getNewDefs>
 		<cfset loadUniversalData()>
 	</cfif>
+	
 	
 	<cfset qWords = variables.DataMgr.getRecords("spamWords")>
 	
@@ -33,6 +39,20 @@
 	<cfset upgrade()>
 	
 	<cfreturn this>
+</cffunction>
+
+<cffunction name="loadScheduledTask" access="public" returntype="void" output="no">
+	<cfif StructKeyExists(variables,"Scheduler")>
+		<cfinvoke component="#variables.Scheduler#" method="setTask">
+			<cfinvokeargument name="Name" value="SpamFilter">
+			<cfinvokeargument name="ComponentPath" value="#sMe.name#">
+			<cfinvokeargument name="Component" value="#This#">
+			<cfinvokeargument name="MethodName" value="loadUniversalData">
+			<cfinvokeargument name="interval" value="weekly">
+			<cfinvokeargument name="weekdays" value="Monday">
+			<cfinvokeargument name="Hours" value="1,2,3">
+		</cfinvoke>
+	</cfif>
 </cffunction>
 
 <cffunction name="filter" access="public" returntype="struct" output="no" hint="I run the filter on the given structure and return it.">
@@ -81,7 +101,7 @@
 	<cfset var duplist = "">
 	
 	<cfloop collection="#arguments.data#" item="field">
-		<cfif Len(field) AND Len(arguments.data[field]) AND field NEQ "Email">
+		<cfif isSimpleValue(arguments.data[field]) AND Len(field) AND Len(arguments.data[field]) AND field NEQ "Email">
 			<cfloop query="qWords">
 				<!--- Get the number of times the word appears --->
 				<cfset finds = numWordMatches(arguments.data[field],trim(Word))>
@@ -95,7 +115,13 @@
 			<!--- Points for duplicate field values --->
 			<cfset duplist = ListAppend(duplist,field)>
 			<cfloop collection="#arguments.data#" item="field2">
-				<cfif (field2 NEQ field) AND (arguments.data[field2] EQ arguments.data[field]) AND NOT ListFindNoCase(duplist,field2)>
+				<cfif
+						(field2 NEQ field)
+					AND	isSimpleValue(arguments.data[field])
+					AND	isSimpleValue(arguments.data[field2])
+					AND	(arguments.data[field2] EQ arguments.data[field])
+					AND	NOT ListFindNoCase(duplist,field2)
+				>
 					<cfset pointval = pointval + 1>
 					<cfset duplist = ListAppend(duplist,field2)>
 				</cfif>
@@ -119,7 +145,7 @@
 	<cfset var duplist = "">
 	
 	<cfloop collection="#arguments.data#" item="field">
-		<cfif Len(field) AND Len(arguments.data[field]) AND field NEQ "Email">
+		<cfif isSimpleValue(arguments.data[field]) AND Len(field) AND Len(arguments.data[field]) AND field NEQ "Email">
 			<cfloop query="qWords">
 				<!--- Get the number of times the word appears --->
 				<cfset finds = numWordMatches(arguments.data[field],trim(Word))>
@@ -139,7 +165,13 @@
 			<!--- Points for duplicate field values --->
 			<cfset duplist = ListAppend(duplist,field)>
 			<cfloop collection="#arguments.data#" item="field2">
-				<cfif (field2 neq field) AND (arguments.data[field2] eq arguments.data[field]) AND NOT ListFindNoCase(duplist,field2)>
+				<cfif
+						(field2 neq field)
+					AND	isSimpleValue(arguments.data[field])
+					AND	isSimpleValue(arguments.data[field2])
+					AND	(arguments.data[field2] eq arguments.data[field])
+					AND	NOT ListFindNoCase(duplist,field2)
+				>
 					<cfset pointval = pointval + 1>
 					<cfset duplist = ListAppend(duplist,field2)>
 					<cfset ArrayAppend(aPoints,"#(1)#:(duplicate):#field2#:#arguments.data[field2]#")>

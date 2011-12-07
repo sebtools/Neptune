@@ -46,10 +46,26 @@
 	<cfset attributes.action = "include">
 	<cfset sArgs.Page = attributes.include>
 	<cfset sArgs.VariablesScope = Caller>
+	
+	<cfif
+			StructKeyExists(Application,"Framework")
+		AND	StructKeyExists(Application.Framework,"hasPageAccess")
+		AND	NOT Application.Framework.hasPageAccess(path=sArgs.Page,ScriptName=CGI.SCRIPT_NAME)
+	>
+		<cfexit>
+	</cfif>
 </cfif>
 
 <cfif StructKeyExists(attributes,"layout") AND NOT isObject(attributes.layout)>
 	<cfset StructDelete(attributes,"layout")>
+</cfif>
+
+<cfif isStruct(attributes.TitleAttributes)>
+	<cfset sTitleAtts = Duplicate(attributes.TitleAttributes)>
+	<cfset attributes.TitleAttributes = "">
+	<cfloop collection="#sTitleAtts#" item="key">
+		<cfset attributes.TitleAttributes = ListAppend(attributes.TitleAttributes,"#LCase(key)#=#sTitleAtts[key]#",";")>
+	</cfloop>
 </cfif>
 
 <!--- Find layout component --->

@@ -1,4 +1,5 @@
-﻿<cf_PageController>
+﻿<!--- Serves uploaded files: http://www.bryantwebconsulting.com/docs/neptune/file-uploads.cfm --->
+<cf_PageController>
 
 <cfif NOT isValidFile>
 	<cfheader statuscode="404" statustext="Not Found">

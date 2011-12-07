@@ -1,5 +1,5 @@
-<!--- 1.0 Beta 1.5 (Build 13) --->
-<!--- Last Updated: 2011-01-16 --->
+<!--- 1.0 Beta 2 (Build 25) --->
+<!--- Last Updated: 2011-11-23 --->
 <!--- Information: sebtools.com --->
 <!--- 
 This application is licensed under the Apache License, Version 2.0 . 
@@ -23,6 +23,11 @@ http://www.apache.org/licenses/
 	<cfset This["throw"] = This.throwError>
 	
 	<cfreturn this />
+</cffunction>
+
+<cffunction name="dump" access="public" returntype="any" output="false" hint="">
+	
+	<cfreturn variables.instance>
 </cffunction>
 
 <cffunction name="exists" access="public" returntype="any" output="false" hint="">

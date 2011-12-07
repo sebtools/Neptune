@@ -125,9 +125,12 @@ if (  NOT ( StructKeyExists(attributes,"vars") AND isStruct(attributes.vars) )  
 }
 //loadPageController(attributes.vars,attributes.page,attributes.reload);
 if (  StructKeyExists(Application,"Framework") AND isObject(Application.Framework) AND StructKeyExists(Application.Framework,"loadPageController")  ) {
-	Application.Framework.loadPageController(attributes.vars,attributes.page,attributes.reload);
+	oPageController = Application.Framework.loadPageController(attributes.vars,attributes.page,attributes.reload);
 } else {
-	loadPageController(attributes.vars,attributes.page,attributes.reload);
+	oPageController = loadPageController(attributes.vars,attributes.page,attributes.reload);
+}
+if ( StructKeyExists(oPageController,"checkAccess") ) {
+	oPageController.checkAccess();
 }
 </cfscript>
 </cfsilent>

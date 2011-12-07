@@ -1,4 +1,4 @@
-<!--- 1.1 Build 9 --->
+<!--- 1.1.5 Build 10 --->
 <!--- Last Updated: 2011-03-30 --->
 <!--- Created by Steve Bryant 2006-12-07 --->
 <!---
@@ -146,12 +146,13 @@
 </cffunction>
 
 <cffunction name="getNotices" access="public" returntype="query" output="no" hint="I get all of the notices.">
-	<cfreturn variables.DataMgr.getRecords("emlNotices")>
+	<cfargument name="fieldlist" type="string" default="">
+	<cfreturn variables.DataMgr.getRecords(tablename="emlNotices",fieldlist=Arguments.fieldlist)>
 </cffunction>
 
 <cffunction name="loadNotices" access="public" returntype="any" output="no">
 	
-	<cfset var qNotices = getNotices()>
+	<cfset var qNotices = getNotices(fieldlist="Name,Subject,DataKeys,HTML,Text")>
 	
 	<cfloop query="qNotices">
 		<cfinvoke component="#variables.Mailer#" method="addNotice">
@@ -291,7 +292,7 @@
 			<field ColumnName="Subject" CF_DataType="CF_SQL_VARCHAR" Length="100" />
 			<field ColumnName="Text" CF_DataType="CF_SQL_LONGVARCHAR" />
 			<field ColumnName="HTML" CF_DataType="CF_SQL_LONGVARCHAR" />
-			<field ColumnName="DataKeys" CF_DataType="CF_SQL_VARCHAR" Length="150" />
+			<field ColumnName="DataKeys" CF_DataType="CF_SQL_VARCHAR" Length="250" />
 			<field ColumnName="Notes" CF_DataType="CF_SQL_VARCHAR" Length="250" />
 		</table>
 	</tables>

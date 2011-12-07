@@ -1,5 +1,5 @@
-<!--- 2.5 Beta 3 Dev 2 (Build 168) --->
-<!--- Last Updated: 2011-03-30 --->
+<!--- 2.5 Beta 3 Dev 3 (Build 169) --->
+<!--- Last Updated: 2011-10-11 --->
 <!--- Created by Beth Bowden and Steve Bryant 2007-01-14 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for Oracle" hint="I manage data interactions with the Oracle database.">
 
@@ -289,7 +289,7 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 	<!--- long --->
 	<!---   @@Note: bfile  not supported --->
 	<cfelseif compareNocase(arguments.type, "blob") is 0>
-		<cfset result = "CF_SQL_BINARY" />
+		<cfset result = "CF_SQL_BLOB" />
 	<cfelseif compareNocase(arguments.type, "clob") is 0>
 		<cfset result = "CF_SQL_LONGVARCHAR" />
 	<cfelseif compareNocase(arguments.type, "nclob") is 0>
@@ -297,9 +297,9 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 	<cfelseif compareNocase(arguments.type, "long") is 0>
 		<cfset result = "CF_SQL_LONGVARCHAR" />
    <cfelseif compareNocase(arguments.type, "long raw") is 0>
-		<cfset result = "CF_SQL_BINARY" />
+		<cfset result = "CF_SQL_BLOB" />
 	<cfelseif compareNocase(arguments.type, "raw") is 0>
-		<cfset result = "CF_SQL_BINARY" />
+		<cfset result = "CF_SQL_BLOB" />
 
 	<!--- numerics --->
 	<cfelseif compareNocase(arguments.type, "float") is 0>

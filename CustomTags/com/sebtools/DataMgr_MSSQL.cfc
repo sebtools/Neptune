@@ -1,5 +1,5 @@
-<!--- 2.5 Beta 3 Dev 2 (Build 168) --->
-<!--- Last Updated: 2011-03-30 --->
+<!--- 2.5 Beta 3 Dev 3 (Build 169) --->
+<!--- Last Updated: 2011-10-11 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for MS SQL Server" hint="I manage data interactions with the MS SQL Server database.">
 
@@ -330,6 +330,8 @@
 	var sqlarray = ArrayNew(1);
 	</cfscript>
 	
+	<cfset arguments.tablename = ListLast(arguments.tablename,".")>
+	
 	<cfset sqlarray = ArrayNew(1)>
 	<cfset ArrayAppend(sqlarray,"SELECT")>
 	<cfset ArrayAppend(sqlarray,"			COLUMN_NAME AS Field,")>
@@ -399,12 +401,13 @@
 	
 	<cfswitch expression="#arguments.type#">
 		<cfcase value="bigint"><cfset result = "CF_SQL_BIGINT"></cfcase>
-		<cfcase value="binary,image,sql_variant,sysname,varbinary"><cfset result = ""></cfcase>
+		<cfcase value="sql_variant,sysname"><cfset result = ""></cfcase>
 		<cfcase value="bit"><cfset result = "CF_SQL_BIT"></cfcase>
 		<cfcase value="char"><cfset result = "CF_SQL_CHAR"></cfcase>
 		<cfcase value="date,datetime"><cfset result = "CF_SQL_DATE"></cfcase>
 		<cfcase value="decimal"><cfset result = "CF_SQL_DECIMAL"></cfcase>
 		<cfcase value="float"><cfset result = "CF_SQL_FLOAT"></cfcase>
+		<cfcase value="binary,image,varbinary"><cfset result = "CF_SQL_BLOB"></cfcase>
 		<cfcase value="int"><cfset result = "CF_SQL_INTEGER"></cfcase>
 		<cfcase value="money"><cfset result = "CF_SQL_MONEY"></cfcase>
 		<cfcase value="nchar"><cfset result = "CF_SQL_CHAR"></cfcase>
@@ -434,6 +437,7 @@
 	<cfswitch expression="#arguments.CF_Datatype#">
 		<cfcase value="CF_SQL_BIGINT"><cfset result = "bigint"></cfcase>
 		<cfcase value="CF_SQL_BIT"><cfset result = "bit"></cfcase>
+		<cfcase value="CF_SQL_BLOB"><cfset result = "image"></cfcase>
 		<cfcase value="CF_SQL_CHAR"><cfset result = "char"></cfcase>
 		<cfcase value="CF_SQL_DATE"><cfset result = "datetime"></cfcase>
 		<cfcase value="CF_SQL_DECIMAL"><cfset result = "decimal"></cfcase>

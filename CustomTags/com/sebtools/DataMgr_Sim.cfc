@@ -1,5 +1,5 @@
-<!--- 2.5 Beta 3 Dev 2 (Build 168) --->
-<!--- Last Updated: 2011-03-30 --->
+<!--- 2.5 Beta 3 Dev 3 (Build 169) --->
+<!--- Last Updated: 2011-10-11 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for Simulated Database" hint="I manage simulated data interactions with a database.">
 
@@ -346,6 +346,17 @@
 </cffunction>
 
 <cffunction name="getStringTypes" access="public" returntype="string" output="no" hint="I return a list of datypes that hold strings / character values."><cfreturn ""></cffunction>
+
+<cffunction name="hasRecords" access="public" returntype="boolean" output="no">
+	<cfargument name="tablename" type="string" required="yes" hint="The table from which to return a record.">
+	<cfargument name="data" type="any" required="no" hint="A structure with the data for the desired record. Each key/value indicates a value for the field matching that key.">
+	<cfargument name="advsql" type="struct" hint="A structure of sqlarrays for each area of a query (SELECT,FROM,WHERE,ORDER BY).">
+	<cfargument name="filters" type="array">
+	
+	<cfset var qRecords = getRecords(argumentCollection=Arguments)>
+	
+	<cfreturn (qRecords.RecordCount GT 0)>
+</cffunction>
 
 <cffunction name="loadXML" access="public" returntype="void" output="no" hint="I add table/tables from XML and optionally create tables/columns as needed (I can also load data to a table upon its creation).">
 	<cfargument name="xmldata" type="string" required="yes" hint="XML data of tables to load into DataMgr follows. Schema: http://www.bryantwebconsulting.com/cfc/DataMgr.xsd">
@@ -697,7 +708,7 @@
 	<cfargument name="field" type="struct" required="yes">
 	
 	<cfset var result = "">
-	<cfset var mylength = Min(field.Length,RandRange(10,field.Length))>
+	<cfset var mylength = 0>
 	<cfset var SpecialFormats = "email,phone,ssn">
 	
 	<cfswitch expression="#arguments.field.CF_DataType#">
@@ -749,6 +760,7 @@
 		<cfset result = RandRange(1,8)>
 	</cfcase>
 	<cfcase value="CF_SQL_VARCHAR">
+		<cfset mylength = Min(field.Length,RandRange(10,field.Length))>
 		<cfset result = ProperCase(Mid(variables.greek,RandRange(1,(Len(variables.greek)-mylength)),mylength))>
 	</cfcase>
 	<cfdefaultcase><cfthrow message="DataMgr object cannot handle this data type." type="DataMgr" detail="DataMgr cannot handle data type '#arguments.field.CF_Datatype#'" errorcode="InvalidDataType"></cfdefaultcase>

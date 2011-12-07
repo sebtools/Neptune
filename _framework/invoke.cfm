@@ -11,3 +11,4 @@ Framework documentation: http://www.bryantwebconsulting.com/docs/neptune/
 <cfset Application.Framework.loadPage(URL.refresh)>
 <cfset FrontController = CreateObject("component","_framework.FrontController").init(CGI,Application.Framework)>
 <cfset layout = CreateObject("component","layouts.Default").init(CGI,Application.Framework.Loader)>
+<cfinclude template="/_config/udf.cfm">

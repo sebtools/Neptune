@@ -1,10 +1,10 @@
 <!---
-1.0 RC8 (Build 120)
-Last Updated: 2011-01-16
+1.0 RC9 (Build 121)
+Last Updated: 2011-10-11
 Created by Steve Bryant 2004-06-01
-Information: sebtools.com
+Information: http://www.bryantwebconsulting.com/docs/sebtags/?version=1.0
 Documentation:
-http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
+http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?version=1.0
 ---><cfsetting enablecfoutputonly="Yes">
 <cfset TagName = "cf_sebField"><cfset ParentTag = "cf_sebForm"><cfset ParentTag2 = "cf_sebSubForm"><cfset ParentTag3 = "cf_sebGroup"><cfif NOT isDefined("ThisTag.ExecutionMode")><cfthrow message="&lt;#TagName#&gt; must be called as a custom tag" type="cftag"></cfif>
 <cfif ThisTag.ExecutionMode EQ "End" OR (ThisTag.ExecutionMode EQ "Start" AND NOT ThisTag.HasEndTag)><cfsilent>
@@ -81,6 +81,9 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	ThisTag.atts.subdisplays = "";
 	ThisTag.atts.subtitles = "";
 	ThisTag.atts.subothers = "";
+	ThisTag.atts.subselections = "";
+	ThisTag.atts.defaultChecked = false;
+	ThisTag.atts.fieldlist = "";
 	ThisTag.atts.reltable = "";
 	ThisTag.atts.relquery = "";
 	ThisTag.atts.fktype = "";
@@ -95,8 +98,11 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	ThisTag.atts.input_prefix = "";
 	ThisTag.atts.input_suffix = "";
 	ThisTag.atts.other = false;
+	ThisTag.atts.requireother = false;
 	ThisTag.atts.otherlabel = "Other";
 	ThisTag.atts.DefaultValueOther = "";
+	ThisTag.atts.isEditable = ParentAtts.isEditable;
+	ThisTag.atts.minimize = ParentAtts.minimize;
 	
 	//Use "name" for fieldname
 	if ( StructKeyExists(attributes,"name") AND Len(attributes.name) AND NOT StructKeyExists(attributes,"fieldname") ) {
@@ -196,27 +202,54 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 		attributes.fieldname = attributes.name;
 	}
 	
-	if ( isDefined("attributes.type") AND attributes.type EQ "image" ) {
-		attributes.type = "file";
-		attributes.accept = "image/png,image/x-png,image/gif,image/jpg,image/jpeg,image/pjpeg";
-		attributes.extensions = "jpg,gif,png";
-	}
-	if ( isDefined("attributes.type") AND attributes.type EQ "money" ) {
-		attributes.type = "text";
-		attributes.stripregex = "[^\d\.]";
-		function fMask(str) {
-			result = arguments.str;
-			if ( isNumeric(result) ) {
-				result = "$#DecimalFormat(str)#"; 
-			}
-			return result;
+	if ( StructKeyExists(attributes,"type") ) {
+		if ( attributes.type EQ "integer" AND NOT ( StructKeyExists(attributes,"Length") AND isNumeric(attributes.Length) AND attributes.Length GT 0 AND attributes.Length LT 10 ) ) {
+			attributes.Length = 9;
 		}
-		attributes.fMask = fMask;
+		
+		if ( ( attributes.type EQ "decimal" OR attributes.type EQ "money" ) AND NOT ( StructKeyExists(attributes,"Length") AND isNumeric(attributes.Length) AND attributes.Length GT 0 AND attributes.Length LT 10 ) ) {
+			attributes.Length = 9;
+		}
+		
+		if ( attributes.type EQ "image" ) {
+			attributes.type = "file";
+			attributes.accept = "image/png,image/x-png,image/gif,image/jpg,image/jpeg,image/pjpeg";
+			attributes.extensions = "jpg,gif,png";
+		}
+		
+		if ( attributes.type EQ "money" ) {
+			attributes.type = "text";
+			attributes.stripregex = "[^\d\.]";
+			if ( NOT Len(attributes.input_prefix) ) {
+				attributes.input_prefix = "$";
+			}
+			/*
+			function fMask_Money(str) {
+				result = arguments.str;
+				if ( isNumeric(result) ) {
+					result = "$#DecimalFormat(str)#"; 
+				}
+				return result;
+			}
+			attributes.fMask = fMask_Money;
+			*/
+		}
+		
+		if ( attributes.type EQ "email" ) {
+			attributes.stripregex = " ";
+		}
+		
+		if ( attributes.type EQ "integer" OR attributes.type EQ "decimal" ) {
+			attributes.stripregex = "[ ,]+";
+		}
+		
+		if ( isDefined("attributes.type") AND ListFindNoCase(StructKeyList(ParentAtts.validations),attributes.type) ) {
+			attributes.validationtype = attributes.type;
+			attributes.regex = ParentAtts.validations[attributes.type];
+			attributes.type = "text";
+		}
 	}
-	if ( isDefined("attributes.type") AND ListFindNoCase(StructKeyList(ParentAtts.validations),attributes.type) ) {
-		attributes.regex = ParentAtts.validations[attributes.type];
-		attributes.type = "text";
-	}
+	
 	if ( ( StructKeyExists(attributes,"folder") AND Len(attributes.folder) ) OR ( isDefined("attributes.type") AND attributes.type eq "file" ) ) {
 		liReqAtts = ListAppend(liReqAtts, "destination");
 		liReqAtts = ListAppend(liReqAtts, "nameconflict");
@@ -442,26 +475,19 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	
 	//If this is a non-deletable record, just use submit/cancel
 	if ( attributes.type EQ "submit/cancel/delete" AND Len(attributes.deletable) AND NOT isBoolean(attributes.deletable) ) {
+		attributes.deletable = ParentData.doShow(ParentAtts.qFormData,attributes.deletable,1);
+		/*
 		if ( Left(attributes.deletable,1) eq "!" ) {
 			attributes.deletable = ReplaceNoCase(attributes.deletable,"!","","ONE");
 			if ( ParentAtts.qFormData.RecordCount AND ListFindNoCase(ParentAtts.qFormData.ColumnList, attributes.deletable) ) {
 				attributes.deletable = NOT ParentAtts.qFormData[attributes.deletable][1];
 			}
-			/*
-			if (  ( isBoolean(attributes.deletable) AND attributes.deletable ) OR ( isNumeric(attributes.deletable) AND attributes.deletable )  ) {
-				attributes.deletable = false;
-			}
-			*/
 		} else {
 			if ( ParentAtts.qFormData.RecordCount AND ListFindNoCase(ParentAtts.qFormData.ColumnList, attributes.deletable) ) {
 				attributes.deletable = ParentAtts.qFormData[attributes.deletable][1];
 			}
-			/*
-			if (  ( isBoolean(attributes.deletable) AND NOT attributes.deletable ) OR ( isNumeric(attributes.deletable) AND NOT attributes.deletable )  ) {
-				attributes.deletable = true;
-			}
-			*/
 		}
+		*/
 	}
 	if ( attributes.type EQ "submit/cancel/delete" AND isBoolean(attributes.deletable) AND NOT attributes.deletable ) {
 		attributes.type = "submit/cancel";
@@ -487,9 +513,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	if ( ListFindNoCase(LiErrFields,attributes.fieldname) ) {
 		attributes.class = "#attributes.class# err";
 	}
-	if ( isDefined("attributes.fMask") AND isCustomFunction(attributes.fMask) ) {
-		attributes.value = attributes.fMask(attributes.value);
-	}
+	attributes.value = ParentData.masky(attributes.value);
 
 	attributes.display = attributes.value;
 	//attributes.GeneratedContent = "";
@@ -553,7 +577,24 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 			<cfif NOT StructKeyExists(attributes,"CFC_GetArgs")>
 				<cfset attributes.CFC_GetArgs = StructNew()>
 			</cfif>
-			<cfset attributes.CFC_GetArgs.fieldlist = "#attributes.subvalues#,#attributes.subdisplays#">
+			<cfif NOT ListFindNoCase(attributes.fieldlist,attributes.subvalues)>
+				<cfset attributes.fieldlist = ListAppend(attributes.fieldlist,attributes.subvalues)>
+			</cfif>
+			<cfif NOT ListFindNoCase(attributes.fieldlist,attributes.subdisplays)>
+				<cfset attributes.fieldlist = ListAppend(attributes.fieldlist,attributes.subdisplays)>
+			</cfif>
+			<cfif NOT ListFindNoCase(attributes.fieldlist,attributes.subdisplays)>
+				<cfset attributes.fieldlist = ListAppend(attributes.fieldlist,attributes.subdisplays)>
+			</cfif>
+			<cfif Len(attributes.subtitles) AND NOT ListFindNoCase(attributes.fieldlist,attributes.subtitles)>
+				<cfset attributes.fieldlist = ListAppend(attributes.fieldlist,attributes.subtitles)>
+			</cfif>
+			<cfif Len(attributes.subselections) AND NOT ListFindNoCase(attributes.fieldlist,attributes.subselections)>
+				<cfset attributes.fieldlist = ListAppend(attributes.fieldlist,attributes.subselections)>
+			</cfif>
+			<cfif NOT StructKeyExists(attributes.CFC_GetArgs,"fieldlist")>
+				<cfset attributes.CFC_GetArgs.fieldlist = attributes.fieldlist>
+			</cfif>
 			<cfinvoke returnvariable="qSubQuery" component="#attributes.CFC_Component#" method="#attributes.CFC_Method#" argumentcollection="#attributes.CFC_GetArgs#">
 		</cfif>
 		<cfif isQuery(attributes.subquery)>
@@ -582,13 +623,18 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 				} else {
 					ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].other = false;
 				}
-				ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = false;
+				//ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = false;
+				if ( Len(attributes.subselections) AND Len(attributes.value) EQ 0 AND ListFindNoCase(qSubQuery.ColumnList,attributes.subselections) AND isBoolean(qSubQuery[attributes.subselections][CurrentRow]) ) {
+					ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = qSubQuery[attributes.subselections][CurrentRow];
+				} else {
+					ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = attributes.defaultChecked;
+				}
 				/*
 				if ( ListFindNoCase(attributes.value, qSubQuery[attributes.subvalues][CurrentRow]) ) {
 					ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = true;
 					attributes.display = ListAppend(attributes.display,ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].value);
 				} else {
-					ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = false;
+					ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = attributes.defaultChecked;
 				}
 				*/
 				</cfscript>
@@ -599,6 +645,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 						<cfif attributes.subvalues NEQ attributes.subdisplays>, #attributes.subdisplays# AS subdisplay</cfif>
 						<cfif Len(Trim(attributes.subtitles))>, #attributes.subtitles# AS subtitle</cfif>
 						<cfif Len(Trim(attributes.subothers))>, #attributes.subothers# AS subother</cfif>
+						<cfif Len(Trim(attributes.subselections))>, #attributes.subselections# AS subselections</cfif>
 			FROM		#attributes.subtable#
 			ORDER BY	#attributes.subdisplays#
 			</cfquery>
@@ -619,13 +666,18 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 			} else {
 				ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].other = false;
 			}
-			ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = false;
+			ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = attributes.defaultChecked;
+			if ( Len(attributes.subselections) AND Len(attributes.value) EQ 0 AND ListFindNoCase(qsubtable.ColumnList,attributes.subselections) AND isBoolean(qsubtable[attributes.subselections][CurrentRow]) ) {
+				ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = qsubtable[attributes.subselections][CurrentRow];
+			} else {
+				ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = attributes.defaultChecked;
+			}
 			/*
 			if ( ListFindNoCase(attributes.value, qsubtable["subvalue"][CurrentRow]) ) {
 				ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = true;
 				attributes.display = ListAppend(attributes.display,ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].value);
 			} else {
-				ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = false;
+				ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = attributes.defaultChecked;
 			}
 			*/
 			</cfscript>
@@ -661,7 +713,12 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 				<cfelse>
 					<cfset ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].other = false>
 				</cfif>
-				<cfset ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = false />
+				<cfset ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = attributes.defaultChecked />
+				<cfif Len(attributes.subselections) AND Len(attributes.value) EQ 0 AND StructKeyExists(attributes.subarray[i],attributes.subselections) AND isBoolean(attributes.subarray[i][attributes.subselections])>
+					<cfset ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = attributes.subarray[i][attributes.subselections]>
+				<cfelse>
+					<cfset ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = attributes.defaultChecked>
+				</cfif>
 			</cfloop>
 		<cfelseif Len(attributes.subvalues)>
 			<cfif ListLen(attributes.subvalues) neq ListLen(attributes.subdisplays)>
@@ -680,13 +737,18 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 				} else {
 					ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].other = false;
 				}
-				ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = false;
+				ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = attributes.defaultChecked;
+				if ( Len(attributes.subselections) AND Len(attributes.value) EQ 0 AND ListFindNoCase(attributes.subselections,ListGetAt(attributes.subvalues,i)) ) {
+					ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = true;
+				} else {
+					ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = attributes.defaultChecked;
+				}
 				/*
 				if ( ListFindNoCase(attributes.value, ListGetAt(attributes.subvalues,i))  ) {
 					ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = true;
 					attributes.display = ListAppend(attributes.display,ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].value);
 				} else {
-					ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = false;
+					ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = attributes.defaultChecked;
 				}
 				*/
 			}
@@ -713,6 +775,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 			<cfelseif ArrayLen(ThisTag.qSubFields) EQ 1 AND ( attributes.required EQ true OR attributes.defaultValue EQ ThisTag.qSubFields[1].value )>
 				<cfset attributes.type = "hidden">
 				<cfset attributes.setValue = ThisTag.qSubFields[1].value>
+				<cfset attributes.value = ThisTag.qSubFields[1].value>
 			<cfelseif StructKeyExists(attributes,"multiple") AND attributes.multiple IS true>
 				<cfset attributes.type = "checkbox">
 			<cfelse>
@@ -731,6 +794,16 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 			}
 		}
 		</cfscript>
+		<cfif attributes.minimize IS true>
+			<cfif NOT ArrayLen(ThisTag.qSubFields)>
+				<cfset attributes.type = "none">
+			<cfelseif attributes.required AND ArrayLen(ThisTag.qSubFields) EQ 1 AND ThisTag.qSubFields[1].other NEQ true>
+				<cfset attributes.type = "hidden">
+				<cfset attributes.defaultValue = ThisTag.qSubFields[1].value>
+				<cfset attributes.setValue = ThisTag.qSubFields[1].value>
+				<cfset attributes.value = ThisTag.qSubFields[1].value>
+			</cfif>
+		</cfif>
 	</cfif>
 	
 	<cfif StructKeyExists(ThisTag,"qSubFields")>
@@ -758,16 +831,18 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 		<cfset thisInput = "">
 	<cfelse> --->
 	
+	<cfset input = "">
 	<cfswitch expression="#attributes.type#">
 	
 	<cfcase value="hidden"><cfset input = ""><cfset thisInput = ""></cfcase>
+	<cfcase value="none"><cfset input = ""><cfset thisInput = ""></cfcase>
 
 	<cfcase value="text">
-		<cfsavecontent variable="input"><input type="text" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif> value="#HTMLEditFormat(attributes.value)#"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif Len(attributes.length)> maxlength="#attributes.length#"</cfif>/></cfsavecontent>
+		<cfsavecontent variable="input"><cfif attributes.isEditable IS false>#HTMLEditFormat(attributes.value)#<cfelse><input type="text" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif> value="#HTMLEditFormat(attributes.value)#"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif Len(attributes.length)> maxlength="#attributes.length#"</cfif>/></cfif></cfsavecontent>
 	</cfcase>
 	
 	<cfcase value="button">
-		<cfsavecontent variable="input"><input type="button" value="#attributes.label#"<cfif Len(attributes.fieldname)> name="#attributes.fieldname#"</cfif><cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>/></cfsavecontent>
+		<cfsavecontent variable="input"><cfif attributes.isEditable IS false><input type="button" value="#attributes.label#"<cfif Len(attributes.fieldname)> name="#attributes.fieldname#"</cfif><cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>/></cfif></cfsavecontent>
 	</cfcase>
 	
 	<cfcase value="plaintext">
@@ -787,7 +862,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 			<cfset imgPath = "#attributes.urlpath##GetFileFromPath(attributes.value)#">
 		</cfif>
 		
-		<cfif attributes.locked>
+		<cfif attributes.locked OR attributes.isEditable IS false>
 			<cfif Len(attributes.value) AND FileExists("#attributes.destination##attributes.value#")>
 				<cfif ListFindNoCase("gif,jpg,png", ListLast(attributes.value, ".")) AND attributes.showImage>
 					<cfsavecontent variable="input"><input type="hidden" name="#attributes.fieldname#" value=""/><cfif attributes.showFile><img src="#imgPath#" alt="#attributes.label#" class="sebField-image"></cfif></cfsavecontent>
@@ -806,111 +881,160 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	</cfcase>
 	
 	<cfcase value="cancel">
-		<cfsavecontent variable="input"><input type="button"<cfif Len(attributes.fieldname)> name="#attributes.fieldname#"</cfif><cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfif Len(attributes.label)> value="#attributes.label#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif StructKeyExists(attributes,"CancelURL") AND Len(attributes.CancelURL)> onclick="location.replace('#attributes.CancelURL#');"<cfelse> onclick="history.back();"</cfif>/></cfsavecontent>
+		<cfsavecontent variable="input"><cfif attributes.isEditable NEQ false><input type="button"<cfif Len(attributes.fieldname)> name="#attributes.fieldname#"</cfif><cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfif Len(attributes.label)> value="#attributes.label#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif StructKeyExists(attributes,"CancelURL") AND Len(attributes.CancelURL)> onclick="location.replace('#attributes.CancelURL#');"<cfelse> onclick="history.back();"</cfif>/></cfif></cfsavecontent>
 	</cfcase>
 
 	<cfcase value="checkbox">
-		<cfsavecontent variable="input"><fieldset class="checkbox" id="#attributes.id#_set"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt]) AND thisHtmlAtt neq "size"> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>><cfloop index="thisSubField" from="1" to="#ArrayLen(ThisTag.qsubfields)#" step="1">
-	<cfset thisID = "#attributes.id#_#thisSubField#"><input type="checkbox" id="#thisID#" name="#attributes.fieldname#" value="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].value)#"<cfif ThisTag.qsubfields[thisSubField].checked> checked="checked"</cfif><cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"other") AND ThisTag.qsubfields[thisSubField].other IS true> class="sebform-option-other"</cfif>/> <label id="lbl-#thisID#" for="#thisID#"<cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"title")> title="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].title)#"</cfif>>#ThisTag.qsubfields[thisSubField].display#</label><cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"other") AND ThisTag.qsubfields[thisSubField].other IS true AND attributes.numOtherOptions EQ 1> <input name="#attributes.OtherField#" id="#attributes.id#-other" value="#attributes.ValueOther#" size="10" onclick="document.getElementById('#thisID#').checked = true;" /></cfif><br/></cfloop><cfif attributes.numOtherOptions GT 1><div id="#attributes.id#-otherdiv"><label for="#attributes.id#-other">Other:</label> <input name="#attributes.OtherField#" id="#attributes.id#-other" value="#attributes.ValueOther#" size="10" /><br /></div></cfif></fieldset></cfsavecontent>
+		<cfif attributes.isEditable IS false>
+			<cfsavecontent variable="input"><ul><cfloop index="thisSubField" from="1" to="#ArrayLen(ThisTag.qsubfields)#" step="1"><cfif ThisTag.qsubfields[thisSubField].checked>
+				<li>#ThisTag.qsubfields[thisSubField].display#<cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"other") AND ThisTag.qsubfields[thisSubField].other IS true>(#attributes.ValueOther#)</cfif></li>
+			</cfif></cfloop></ul></cfsavecontent>
+		<cfelse>
+			<cfsavecontent variable="input"><fieldset class="checkbox<cfif StructKeyExists(attributes,"class") AND Len(attributes.class)> #attributes.class#</cfif>" id="#attributes.id#_set"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt]) AND thisHtmlAtt neq "size" AND thisHtmlAtt neq "class"> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>><cfloop index="thisSubField" from="1" to="#ArrayLen(ThisTag.qsubfields)#" step="1">
+			<cfset thisID = "#attributes.id#_#thisSubField#"><input type="checkbox" id="#thisID#" name="#attributes.fieldname#" value="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].value)#"<cfif ThisTag.qsubfields[thisSubField].checked> checked="checked"</cfif><cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"other") AND ThisTag.qsubfields[thisSubField].other IS true> class="sebform-option-other"</cfif>/> <label id="lbl-#thisID#" for="#thisID#"<cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"title")> title="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].title)#"</cfif>>#ThisTag.qsubfields[thisSubField].display#</label><cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"other") AND ThisTag.qsubfields[thisSubField].other IS true AND attributes.numOtherOptions EQ 1> <input name="#attributes.OtherField#" id="#attributes.id#-other" value="#attributes.ValueOther#" size="10" onclick="document.getElementById('#thisID#').checked = true;" /></cfif><br/></cfloop><cfif attributes.numOtherOptions GT 1><div id="#attributes.id#-otherdiv"><label for="#attributes.id#-other">Other:</label> <input name="#attributes.OtherField#" id="#attributes.id#-other" value="#attributes.ValueOther#" size="10" /><br /></div></cfif></fieldset></cfsavecontent>
+		</cfif>
 	</cfcase>
 	
-	<cfcase value="date,jtdate"><cfsavecontent variable="input">
-		<cfset formattedValue = "" ><cfset DateCodebase = "/images/">
-		<cfif Len(attributes.value)>
-			<cftry>
-				<cfset formattedValue = DateFormat(Attributes.value, 'mm/dd/yyyy') >
-				<cfcatch><cfset formattedValue = ""></cfcatch>
-			</cftry>
+	<cfcase value="date,jtdate">
+		<cfif attributes.isEditable IS false>
+			<cfsavecontent variable="input"><cfif isDate(attributes.value)>#DateFormat(attributes.value,"mm/dd/yyyy")#</cfif></cfsavecontent>
+		<cfelse>
+			<cfsavecontent variable="input">
+			<cfset formattedValue = "" ><cfset DateCodebase = "/images/">
+			<cfif Len(attributes.value)>
+				<cftry>
+					<cfset formattedValue = DateFormat(Attributes.value, 'mm/dd/yyyy') >
+					<cfcatch><cfset formattedValue = ""></cfcatch>
+				</cftry>
+			</cfif>
+			<input type="text" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif> value="#formattedValue#"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif StructKeyExists(attributes,"length") AND Len(attributes.length) AND NOT StructKeyExists(attributes,"maxlength")> maxlength="#attributes.length#"</cfif>/>
+			<cfif attributes.type eq "jtdate">
+			<cfif NOT IsDefined("ParentData.caller.EzCalendarScript") >
+				<cfset ParentData.caller.EzCalendarScript = 1 >
+	
+				<cfset EzHEADTxt = CHR(13) & '<!-- Code added by EzINPUT DATE: -->' & CHR(13) >
+				<cfhtmlhead text="#EzHEADTxt#" >
+				<cfset EzHEADTxt = '<link rel="STYLESHEET" type="text/css" href="#DateCodebase#calendar.css">' & CHR(13)  >
+				<cfhtmlhead text="#EzHEADTxt#" >
+				<cfset EzHEADTxt = '<script src="#DateCodebase#calendar.js" type="text/javascript"></script>' & CHR(13) & CHR(13) >
+				<cfhtmlhead text="#EzHEADTxt#" >
+			</cfif>
+			<a href="javascript: void(0);" onmouseover="if (timeoutId) clearTimeout(timeoutId);window.status='Show Calendar';return true;" onmouseout="if (timeoutDelay) calendarTimeout();window.status='';" onclick="g_Calendar.show(event,'#ParentAtts.formname#.#attributes.fieldname#',false,'mm/dd/yyyy'); return false;"><img src="#DateCodebase#calendar.gif" name="imgCalendar" width="34" height="21" border="0" alt=""></a>
+			</cfif>
+			<font size="1">(mm/dd/yyyy)</font>
+			</cfsavecontent>
 		</cfif>
-		<input type="text" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif> value="#formattedValue#"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif StructKeyExists(attributes,"length") AND Len(attributes.length) AND NOT StructKeyExists(attributes,"maxlength")> maxlength="#attributes.length#"</cfif>/>
-		<cfif attributes.type eq "jtdate">
-		<cfif NOT IsDefined("ParentData.caller.EzCalendarScript") >
-			<cfset ParentData.caller.EzCalendarScript = 1 >
+	</cfcase>
 
-			<cfset EzHEADTxt = CHR(13) & '<!-- Code added by EzINPUT DATE: -->' & CHR(13) >
-			<cfhtmlhead text="#EzHEADTxt#" >
-			<cfset EzHEADTxt = '<link rel="STYLESHEET" type="text/css" href="#DateCodebase#calendar.css">' & CHR(13)  >
-			<cfhtmlhead text="#EzHEADTxt#" >
-			<cfset EzHEADTxt = '<script src="#DateCodebase#calendar.js" type="text/javascript"></script>' & CHR(13) & CHR(13) >
-			<cfhtmlhead text="#EzHEADTxt#" >
+	<cfcase value="date2">
+		<cfif attributes.isEditable IS false>
+			<cfsavecontent variable="input"><cfif isDate(attributes.value)>#DateFormat(attributes.value,"mm/dd/yyyy")#</cfif></cfsavecontent>
+		<cfelse>
+			<cfsavecontent variable="input">
+			<cfset formattedValue = "" >
+			<cfif Len(attributes.value)>
+				<cftry>
+					<cfset formattedValue = DateFormat(Attributes.value, "mm/dd/yyyy") >
+					<cfcatch><cfset formattedValue = ""></cfcatch>
+				</cftry>
+			</cfif>
+			<input type="text" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif> value="#formattedValue#"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif StructKeyExists(attributes,"length") AND Len(attributes.length) AND NOT StructKeyExists(attributes,"maxlength")> maxlength="#attributes.length#"</cfif> datepicker="true" datepicker_format="MM/DD/YYYY"/>
+			<cfif NOT IsDefined("request.sebField_Date2") >
+				<cfset request.sebField_Date2 = 1 >
+				<cfset date2Head = '<script type="text/javascript" src="#ParentAtts.librarypath#date2/datepickercontrol.js"></script>'>
+				<cfhtmlhead text="#date2Head#" >
+				<cfset date2Head = '<link type="text/css" rel="stylesheet" href="#ParentAtts.librarypath#date2/datepickercontrol_bluegray.css">'>
+				<cfhtmlhead text="#date2Head#" >
+				<cfset date2Head = '<link type="text/css" rel="stylesheet" href="#ParentAtts.librarypath#date2/content.css">'>
+				<cfhtmlhead text="#date2Head#" >
+			</cfif>
+			<cfif NOT StructKeyExists(request,"sebField_#ParentAtts.formname#_Date2") >
+				<cfset request["sebField_#ParentAtts.formname#_Date2"] = 1 >
+				<input type="hidden" id="DPC_TODAY_TEXT" value="today"/>
+				<input type="hidden" id="DPC_BUTTON_TITLE" value="Open calendar..."/>
+				<input type="hidden" id="DPC_MONTH_NAMES" value="['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']"/>
+				<input type="hidden" id="DPC_DAY_NAMES" value="['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']"/>
+			</cfif>
+			</cfsavecontent>
 		</cfif>
-		<a href="javascript: void(0);" onmouseover="if (timeoutId) clearTimeout(timeoutId);window.status='Show Calendar';return true;" onmouseout="if (timeoutDelay) calendarTimeout();window.status='';" onclick="g_Calendar.show(event,'#ParentAtts.formname#.#attributes.fieldname#',false,'mm/dd/yyyy'); return false;"><img src="#DateCodebase#calendar.gif" name="imgCalendar" width="34" height="21" border="0" alt=""></a>
-		</cfif>
-		<font size="1">(mm/dd/yyyy)</font>
-	</cfsavecontent></cfcase>
-
-	<cfcase value="date2"><cfsavecontent variable="input">
-		<cfset formattedValue = "" >
-		<cfif Len(attributes.value)>
-			<cftry>
-				<cfset formattedValue = DateFormat(Attributes.value, "mm/dd/yyyy") >
-				<cfcatch><cfset formattedValue = ""></cfcatch>
-			</cftry>
-		</cfif>
-		<input type="text" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif> value="#formattedValue#"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif StructKeyExists(attributes,"length") AND Len(attributes.length) AND NOT StructKeyExists(attributes,"maxlength")> maxlength="#attributes.length#"</cfif> datepicker="true" datepicker_format="MM/DD/YYYY"/>
-		<cfif NOT IsDefined("request.sebField_Date2") >
-			<cfset request.sebField_Date2 = 1 >
-			<cfset date2Head = '<script type="text/javascript" src="#ParentAtts.librarypath#date2/datepickercontrol.js"></script>'>
-			<cfhtmlhead text="#date2Head#" >
-			<cfset date2Head = '<link type="text/css" rel="stylesheet" href="#ParentAtts.librarypath#date2/datepickercontrol_bluegray.css">'>
-			<cfhtmlhead text="#date2Head#" >
-			<cfset date2Head = '<link type="text/css" rel="stylesheet" href="#ParentAtts.librarypath#date2/content.css">'>
-			<cfhtmlhead text="#date2Head#" >
-		</cfif>
-		<cfif NOT StructKeyExists(request,"sebField_#ParentAtts.formname#_Date2") >
-			<cfset request["sebField_#ParentAtts.formname#_Date2"] = 1 >
-			<input type="hidden" id="DPC_TODAY_TEXT" value="today"/>
-			<input type="hidden" id="DPC_BUTTON_TITLE" value="Open calendar..."/>
-			<input type="hidden" id="DPC_MONTH_NAMES" value="['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']"/>
-			<input type="hidden" id="DPC_DAY_NAMES" value="['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']"/>
-		</cfif>
-	</cfsavecontent></cfcase>
+	</cfcase>
 
 	<cfcase value="datestamp"></cfcase>
 
 	<cfcase value="delete"><cfif Len(attributes.fieldname) eq 0><cfset attributes.fieldname = "sebformDelete"></cfif>
-		<cfsavecontent variable="input"><input type="submit" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfif Len(attributes.label)> value="#attributes.label#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop> onclick="return confirm('Are you sure you want to permanantly DELETE this item?');"/></cfsavecontent>
+		<cfsavecontent variable="input"><cfif attributes.isEditable NEQ false><input type="submit" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfif Len(attributes.label)> value="#attributes.label#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop> onclick="return confirm('Are you sure you want to permanantly DELETE this item?');"/></cfif></cfsavecontent>
 		<cfif NOT Len(ParentAtts.datasource) OR NOT isNumeric(ParentAtts.recordid)><cfset input = "<!-- Delete button only displays when editing a record -->"></cfif>
 	</cfcase>
 
 	<cfcase value="password">
-		<cfsavecontent variable="input"><input type="password" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif> value="#HTMLEditFormat(attributes.value)#"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif Len(attributes.length)> maxlength="#attributes.length#"</cfif>/></cfsavecontent>
+		<cfif attributes.isEditable IS false>
+			<cfsavecontent variable="input">********</cfsavecontent>
+		<cfelse>
+			<cfsavecontent variable="input"><input type="password" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif> value="#HTMLEditFormat(attributes.value)#"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif Len(attributes.length)> maxlength="#attributes.length#"</cfif>/></cfsavecontent>
+		</cfif>
 	</cfcase>
 
 	<cfcase value="radio">
-		<cfsavecontent variable="input"><!-- #HTMLEditFormat(attributes.value)# --><fieldset class="radio" id="#attributes.id#_set"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt]) AND thisHtmlAtt neq "size"> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>><cfloop index="thisSubField" from="1" to="#ArrayLen(ThisTag.qsubfields)#" step="1">
-	<cfset thisID = "#attributes.id#_#thisSubField#"><input type="radio" id="#thisID#" name="#attributes.fieldname#" value="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].value)#"<cfif ThisTag.qsubfields[thisSubField].checked> checked="checked"</cfif><cfif ThisTag.qsubfields[thisSubField].other IS true> class="sebform-option-other"</cfif>/> <label id="lbl-#thisID#" for="#thisID#"<cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"title")> title="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].title)#"</cfif>>#ThisTag.qsubfields[thisSubField].display#</label><cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"other") AND ThisTag.qsubfields[thisSubField].other IS true AND attributes.numOtherOptions EQ 1> <input name="#attributes.OtherField#" id="#attributes.id#-other" value="#attributes.ValueOther#" size="10" onclick="document.getElementById('#thisID#').checked = true;" /></cfif><br/></cfloop><cfif attributes.numOtherOptions GT 1><div id="#attributes.id#-otherdiv"><label for="#attributes.id#-other">Other:</label> <input name="#attributes.OtherField#" id="#attributes.id#-other" value="#attributes.ValueOther#" size="10" /></div><br/></cfif></fieldset></cfsavecontent>
+		<cfif attributes.isEditable IS false>
+			<cfsavecontent variable="input"><ul><cfloop index="thisSubField" from="1" to="#ArrayLen(ThisTag.qsubfields)#" step="1"><cfif ThisTag.qsubfields[thisSubField].checked>
+				<li>#ThisTag.qsubfields[thisSubField].display#<cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"other") AND ThisTag.qsubfields[thisSubField].other IS true>(#attributes.ValueOther#)</cfif></li>
+			</cfif></cfloop></ul></cfsavecontent>
+		<cfelse>
+			<cfsavecontent variable="input"><!-- #HTMLEditFormat(attributes.value)# --><fieldset class="radio" id="#attributes.id#_set"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt]) AND thisHtmlAtt neq "size"> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>><cfloop index="thisSubField" from="1" to="#ArrayLen(ThisTag.qsubfields)#" step="1">
+			<cfset thisID = "#attributes.id#_#thisSubField#"><input type="radio" id="#thisID#" name="#attributes.fieldname#" value="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].value)#"<cfif ThisTag.qsubfields[thisSubField].checked> checked="checked"</cfif><cfif ThisTag.qsubfields[thisSubField].other IS true> class="sebform-option-other"</cfif>/> <label id="lbl-#thisID#" for="#thisID#"<cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"title")> title="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].title)#"</cfif>>#ThisTag.qsubfields[thisSubField].display#</label><cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"other") AND ThisTag.qsubfields[thisSubField].other IS true AND attributes.numOtherOptions EQ 1> <input name="#attributes.OtherField#" id="#attributes.id#-other" value="#attributes.ValueOther#" size="10" onclick="document.getElementById('#thisID#').checked = true;" /></cfif><br/></cfloop><cfif attributes.numOtherOptions GT 1><div id="#attributes.id#-otherdiv"><label for="#attributes.id#-other">Other:</label> <input name="#attributes.OtherField#" id="#attributes.id#-other" value="#attributes.ValueOther#" size="10" /></div><br/></cfif></fieldset></cfsavecontent>
+		</cfif>
 	</cfcase>
 	
 	<cfcase value="reset">
-		<cfsavecontent variable="input"><input type="reset"<cfif Len(attributes.fieldname)> name="#attributes.fieldname#"</cfif><cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfif Len(attributes.label)> value="#attributes.label#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>/></cfsavecontent>
+		<cfsavecontent variable="input"><cfif attributes.isEditable NEQ false><input type="reset"<cfif Len(attributes.fieldname)> name="#attributes.fieldname#"</cfif><cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfif Len(attributes.label)> value="#attributes.label#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>/></cfif></cfsavecontent>
 	</cfcase>
 
 	<cfcase value="select">
+		<cfif attributes.isEditable NEQ false>
 		<cfsavecontent variable="input">
 <select name="#attributes.fieldname#"<cfif StructKeyExists(attributes,"multiple") AND attributes.multiple IS true> multiple</cfif><cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>><option value="#attributes.topoptvalue#"><cfif Len(Trim(attributes.topopt))>#attributes.topopt#<cfelse>&nbsp;</cfif></option><cfloop index="thisSubField" from="1" to="#ArrayLen(ThisTag.qsubfields)#" step="1">
 	<option value="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].value)#"<cfif ThisTag.qsubfields[thisSubField].checked> selected="selected"</cfif><cfif ThisTag.qsubfields[thisSubField].other IS true> class="sebform-option-other"</cfif>><cfif Len(Trim(ThisTag.qsubfields[thisSubField].display))>#ThisTag.qsubfields[thisSubField].display#<cfelse>&nbsp;</cfif></option></cfloop>
 </select><cfif attributes.hasOtherOption> <input name="#attributes.OtherField#" id="#attributes.id#-other" class="sebfield-select-other" value="#attributes.ValueOther#" size="10" /></cfif><cfif Len(attributes.addlink)> <a href="#attributes.addlink#" id="#attributes.id#-addlink">add new #LCase(attributes.label)#</a></cfif><cfif Len(attributes.link)> <a href="#attributes.link#" id="#attributes.id#-link"><cfif Len(attributes.linktext)>#attributes.linktext#<cfelse>#attributes.link#</cfif></a></cfif>
 </cfsavecontent>
+		<cfelse>
+			<cfsavecontent variable="input">
+			<cfif StructKeyExists(attributes,"multiple") AND attributes.multiple IS true>
+				<ul><cfloop index="thisSubField" from="1" to="#ArrayLen(ThisTag.qsubfields)#" step="1"><cfif ThisTag.qsubfields[thisSubField].checked>
+					<li>#ThisTag.qsubfields[thisSubField].display#</li></cfif></cfloop>
+				</ul>
+			<cfelse>
+				<cfloop index="thisSubField" from="1" to="#ArrayLen(ThisTag.qsubfields)#" step="1"><cfif ThisTag.qsubfields[thisSubField].checked>
+					<div>#ThisTag.qsubfields[thisSubField].display#</div>
+				</cfif></cfloop>
+			</cfif>
+			</cfsavecontent>
+		</cfif>
 	</cfcase>
 	
 	<cfcase value="subdelete">
+		<cfif attributes.isEditable NEQ false>
 		<cfsavecontent variable="input"><input type="checkbox" id="#attributes.id#" name="#attributes.fieldname#" value="1"/> <label id="lbl-#attributes.id#" for="#attributes.id#">#attributes.label#</label><br/></cfsavecontent>
+		</cfif>
 	</cfcase>
 
 	<cfcase value="submit">
+		<cfif attributes.isEditable NEQ false>
 		<cfsavecontent variable="input"><div class="sebSubmitBar"><input type="submit" value="#attributes.label#"<cfif Len(attributes.fieldname)> name="#attributes.fieldname#"</cfif><cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>/></div></cfsavecontent>
+		</cfif>
 	</cfcase>
 	
 	<cfcase value="submit/cancel">
+		<cfif attributes.isEditable NEQ false>
 		<cfsavecontent variable="input"><div class="sebSubmitBar"><cfset attributes.Title = "">
 		<input type="submit" value="#ListFirst(attributes.label)#"<cfif Len(attributes.fieldname)> name="#attributes.fieldname#"</cfif><cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>/>
 		&nbsp;
 		<input type="button"<cfif Len(attributes.fieldname)> name="#attributes.fieldname#"</cfif><cfif Len(attributes.id)> id="#attributes.id#2"</cfif><cfif ListLen(attributes.label) gt 1> value="#ListGetAt(attributes.label,2)#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif StructKeyExists(attributes,"CancelURL") AND Len(attributes.CancelURL)> onclick="location.replace('#attributes.CancelURL#');"<cfelse> onclick="history.back();"</cfif>/>
 		</div></cfsavecontent>
+		</cfif>
 	</cfcase>
 	
 	<cfcase value="submit/cancel/delete">
+		<cfif attributes.isEditable NEQ false>
 		<cfsavecontent variable="input"><div class="sebSubmitBar"><cfset attributes.Title = "">
 		<input type="submit" value="#ListFirst(attributes.label)#"<cfif Len(attributes.fieldname)> name="#attributes.fieldname#"</cfif><cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>/>
 		&nbsp;
@@ -921,11 +1045,16 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 		<input type="submit" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#3"</cfif><cfif ListLen(attributes.label) gt 2> value="#ListLast(attributes.label)#"<cfelse> value="Delete"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop> onclick="return confirm('Are you sure you want to permanantly DELETE this item?');"/>
 		</cfif>
 		</div></cfsavecontent>
+		</cfif>
 	</cfcase>
 
 	<cfcase value="textarea,paragraph,memo">
-		<cfset attributes.type = "textarea"><!---<cfset attributes.value = ReplaceNoCase(attributes.value, "</textarea>", "&lt;/textarea&gt;", "ALL")>--->
-		<cfsavecontent variable="input"><textarea name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif> cols="#attributes.cols#" rows="#attributes.rows#"<cfif Len(attributes.wrap)> wrap="#attributes.wrap#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt]) AND thisHtmlAtt neq "size"> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>>#HTMLEditFormat(attributes.value)#</textarea><cfif isNumeric(attributes.length) AND attributes.length gt 0><div class="sebTextareaMaxLength" id="#attributes.id#-maxlength">(Maximum characters: #attributes.length#)</div><div id="#attributes.id#-countdiv" style="display:none;">You have <input readonly="readonly" type="text" name="#attributes.id#_countdown" id="#attributes.id#-countdown" size="3" value="#attributes.length-Len(attributes.value)#"> characters left.</div></cfif></cfsavecontent>
+		<cfif attributes.isEditable NEQ false>
+			<cfset attributes.type = "textarea"><!---<cfset attributes.value = ReplaceNoCase(attributes.value, "</textarea>", "&lt;/textarea&gt;", "ALL")>--->
+			<cfsavecontent variable="input"><textarea name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif> cols="#attributes.cols#" rows="#attributes.rows#"<cfif Len(attributes.wrap)> wrap="#attributes.wrap#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt]) AND thisHtmlAtt neq "size"> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>>#HTMLEditFormat(attributes.value)#</textarea><cfif isNumeric(attributes.length) AND attributes.length gt 0><div class="sebTextareaMaxLength" id="#attributes.id#-maxlength">(Maximum characters: #attributes.length#)</div><div id="#attributes.id#-countdiv" style="display:none;">You have <input readonly="readonly" type="text" name="#attributes.id#_countdown" id="#attributes.id#-countdown" size="3" value="#attributes.length-Len(attributes.value)#"> characters left.</div></cfif></cfsavecontent>
+		<cfelse>
+			<cfsavecontent variable="input">#HTMLEditFormat(attributes.value)#</cfsavecontent>
+		</cfif>
 	</cfcase>
 
 	<cfcase value="time"><cfif isDate(attributes.value)><cfset attributes.value = TimeFormat(attributes.value)></cfif>
@@ -933,7 +1062,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	</cfcase>
 	
 	<cfcase value="yesno,yes/no,YES/NO RADIO">
-		<cfif attributes.locked>
+		<cfif attributes.locked OR attributes.isEditable IS false>
 			<cfsavecontent variable="input">#YesNoFormat(attributes.value)#<input type="hidden" id="#attributes.id#" name="#attributes.fieldname#" value="#HTMLEditFormat(attributes.value)#" /></cfsavecontent>
 		<cfelse>
 			<cfif NOT Len(attributes.style)><cfset attributes.style = "border: 0px solid white;"></cfif>
@@ -1091,13 +1220,19 @@ ha#attributes.id#.generate();
 	</cfscript>
 	<cfset attributes.output = Trim(thisInput)>
 </cfsilent>
-<cfif ListFindNoCase(GetBaseTagList(), ParentTag2) AND NOT attributes.isInSubFormCT><cfset request.cftags.cf_sebSubForm.fieldsnum = request.cftags.cf_sebSubForm.fieldsnum + 1>[Field:#request.cftags.cf_sebSubForm.fieldsnum#]<cfelseif attributes.type neq "hidden">#attributes.output#</cfif></cfoutput></cfif><cfsilent>
+<cfif ListFindNoCase(GetBaseTagList(), ParentTag2) AND NOT attributes.isInSubFormCT><cfset request.cftags.cf_sebSubForm.fieldsnum = request.cftags.cf_sebSubForm.fieldsnum + 1>[Field:#request.cftags.cf_sebSubForm.fieldsnum#]<cfelseif attributes.type neq "hidden" AND attributes.type neq "none">#attributes.output#</cfif></cfoutput></cfif><cfsilent>
 <cfscript>
 if ( ThisTag.ExecutionMode eq "End" ) {
 	if ( StructKeyExists(ThisTag, "qsubfields") ) {
 		attributes.qsubfields = ThisTag.qsubfields;
 	}
 	ThisTag.GeneratedContent = "";
+}
+if ( StructKeyExists(attributes,"type") AND attributes.type EQ "none" ) {
+	thisInput = "";
+	ThisTag.GeneratedContent = "";
+	attributes.GeneratedContent = "";
+	ArrayDeleteAt(ParentData.ThisTag.qfields,ArrayLen(ParentData.ThisTag.qfields));
 }
 </cfscript>
 <!--- </cfsilent> --->

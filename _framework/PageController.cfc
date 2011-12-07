@@ -1,5 +1,5 @@
-<!--- 1.0 Beta 1.5 (Build 21) --->
-<!--- Last Updated: 2011-01-16 --->
+<!--- 1.0 Beta 2 (Build 25) --->
+<!--- Last Updated: 2011-11-23 --->
 <!--- Information: sebtools.com --->
 <cfcomponent displayname="Page Controller" output="false">
 
@@ -10,12 +10,20 @@
 	<cfargument name="path" type="string" required="false">
 	<cfargument name="Framework" type="any" required="false">
 	
-	<cfif StructKeyExists(arguments,"path") AND StructKeyExists(arguments,"path") AND StructKeyExists(arguments,"Framework")>
+	<cfset variables.instance = Arguments>
+	
+	<cfif StructKeyExists(arguments,"path") AND StructKeyExists(arguments,"path")>
 		<cfinvoke method="setScriptName">
 			<cfinvokeargument name="ScriptName" value="#arguments.path#">
-			<cfinvokeargument name="Framework" value="#arguments.Framework#">
+			<cfif StructKeyExists(arguments,"Framework")>
+				<cfinvokeargument name="Framework" value="#arguments.Framework#">
+			</cfif>
 		</cfinvoke>
 	</cfif>
+	
+	<!---<cfif NOT ( StructKeyExists(arguments,"check") AND arguments.check EQ false )>
+		<cfset checkAccess()>
+	</cfif>--->
 	
 	<cfif StructKeyExists(arguments,"Caller")>
 		<cfset StructAppend(Caller,loadData())>
@@ -79,9 +87,139 @@
 		<cfset vars.sebTableAttributes.isDeletable = true>
 		
 		<cfset addURLFilters(vars,"sFilters")>
+	<cfelseif arguments.type EQ "import">
+	
+		<cfset vars.Action = "Import">
+		<cfset vars.Title = "#vars.Action# #vars.Title#">
+	
+		<cfset vars.SebFormAttributes = StructNew()>
+		<cfset vars.SebFormAttributes.CFC_Component = me>
+		<cfset vars.SebFormAttributes.sendback = true>
+	<cfelseif arguments.type EQ "index" AND isSecuredPage()>
+		
+		<cfif
+				StructKeyExists(Variables,"ScriptName")
+			AND	StructKeyExists(Variables.instance,"Framework")
+			AND	StructKeyExists(Variables.instance.Framework,"getProgramFromPath")
+			AND	StructKeyExists(Variables.instance.Framework,"getProgramLinksArray")
+		>
+			<cfset vars.sProgram = Variables.instance.Framework.getProgramFromPath(Variables.ScriptName)>
+			<cfif StructKeyExists(vars.sProgram,"name")>
+				<cfset vars.aLinks = Variables.instance.Framework.getProgramLinksArray(vars.sProgram.name)>
+				<cfset vars.Title = vars.sProgram.name>
+			<cfelse>
+				<cfset vars.aLinks = Variables.instance.Framework.getProgramLinksArray()>
+			</cfif>
+			
+			<cfif ArrayLen(vars.aLinks) EQ 1>
+				<cfset go(vars.aLinks[1].link)>
+			</cfif>
+			
+		<cfelse>
+			<cfset vars.aLinks = ArrayNew(1)>
+		</cfif>
+	
 	</cfif>
 	
 	<cfreturn vars>
+</cffunction>
+
+<cffunction name="getNoAccessURL" access="public" returntype="string" output="no">
+	
+	<cfset var oSecurity = 0>
+	<cfset var result = "/">
+	
+	<cfif
+			hasSecurityService()
+		AND	StructKeyExists(variables,"ScriptName")
+	>
+		<cfset oSecurity = getSecurityService()>
+		<cfif StructKeyExists(oSecurity,"getNoAccessURL")>
+			<cfset result = oSecurity.getNoAccessURL(variables.ScriptName)>
+		</cfif>
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="blockAccess" access="public" returntype="any" output="no">
+	
+	<cfset go(getNoAccessURL())>
+	<cfabort>
+	
+</cffunction>
+
+<cffunction name="checkAccess" access="public" returntype="void" output="no">
+	
+	<cfif NOT hasAccess()>
+		<cfset blockAccess()>
+		<cfabort>
+	</cfif>
+	
+</cffunction>
+
+<cffunction name="isSecuredPage" access="public" returntype="boolean" output="no">
+	
+	<cfset var result = false>
+	<cfset var oSecurity = 0>
+	
+	<cfif StructKeyExists(variables,"ScriptName")>
+		<cfif hasSecurityService()>
+			<cfset oSecurity = getSecurityService()>
+			<cfif StructKeyExists(oSecurity,"isSecuredPath")>
+				<cfset result = oSecurity.isSecuredPath(variables.ScriptName)>
+				<cfif NOT isBoolean(result)>
+					<cfset result = false>
+				</cfif>
+			</cfif>
+		<cfelse>
+			<cfset result = ListFirst(variables.ScriptName,"/") EQ "admin">
+		</cfif>
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="hasAccess" access="public" returntype="boolean" output="no">
+	
+	<cfset var result = true>
+	<cfset var permissions = "">
+	<cfset var sProgram = 0>
+	<cfset var oSecurity = 0>
+	
+	<cfif hasSecurityService() AND isSecuredPage()>
+		<cfset oSecurity = getSecurityService()>
+		
+		<cfif StructKeyExists(oSecurity,"checkUserAllowed")>
+			<cfif
+					StructKeyExists(variables,"ScriptName")
+				AND	StructKeyExists(variables.instance,"Framework")
+				AND	StructKeyExists(variables.instance.Framework,"getProgramFromPath")
+			>
+				<cfset sProgram = variables.instance.Framework.getProgramFromPath(variables.ScriptName)>
+				
+				<cfif StructKeyExists(sProgram,"permissions") AND Len(sProgram.permissions)>
+					<cfset result = oSecurity.checkUserAllowed(sProgram.permissions)>
+				</cfif>
+			</cfif>
+			
+			<cfif result AND hasInheritsWithMetaStruct()>
+				<cfset sCompMeta = variables.this.getMetaStruct()>
+				
+				<cfif StructKeyExists(sCompMeta,"method_security_permissions")>
+					<cfinvoke
+						returnvariable="permissions"
+						component="#variables.this#"
+						method="#sCompMeta.method_security_permissions#"
+					>
+					<cfset result = oSecurity.checkUserAllowed(permissions)>
+				</cfif>
+			</cfif>
+		</cfif>
+		
+	</cfif>
+	
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="loadData" access="public" returntype="struct" output="no">
@@ -89,9 +227,7 @@
 	<cfset var vars = StructNew()>
 	
 	<cfif
-			StructKeyExists(variables,"this")
-		AND	isObject(variables.this)
-		AND	StructKeyExists(variables.this,"getMetaStruct")
+			hasInheritsWithMetaStruct()
 		AND	StructKeyExists(variables,"ScriptName")
 	>
 		<cfset vars = getDefaultVars(argumentCollection=getDefaultVarArgs())>
@@ -129,7 +265,7 @@
 
 <cffunction name="getDefaultVarArgs" access="private" returntype="struct" output="no">
 	
-	<cfset var pagetype = ListFirst(ListLast(variables.ScriptName,"-"),".")>
+	<cfset var pagetype = ListFirst(ListLast(getFileFromPath(variables.ScriptName),"-"),".")>
 	<cfset var sMetaStruct = variables.this.getMetaStruct()>
 	<cfset var sResult = StructNew()>
 	
@@ -141,9 +277,22 @@
 		<cfset sResult.title = sMetaStruct.label_Plural>
 	<cfelseif pagetype EQ "edit" AND StructKeyExists(sMetaStruct,"label_Singular")>
 		<cfset sResult.title = sMetaStruct.label_Singular>
+	<cfelseif pagetype EQ "import" AND StructKeyExists(sMetaStruct,"label_Plural")>
+		<cfset sResult.title = sMetaStruct.label_Plural>
 	</cfif>
 	
 	<cfreturn sResult>
+</cffunction>
+
+<cffunction name="hasInheritsWithMetaStruct" access="private" returntype="boolean" output="no">
+	
+	<cfset var result = (
+			StructKeyExists(variables,"this")
+		AND	isObject(variables.this)
+		AND	StructKeyExists(variables.this,"getMetaStruct")
+	)>
+	
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="setScriptName" access="public" returntype="any" output="no">
@@ -158,7 +307,8 @@
 	variables.ScriptName = arguments.ScriptName;
 	
 	if (
-			sThis.path EQ sCurrService.Path
+			StructKeyExists(sCurrService,"path")
+		AND	sThis.path EQ sCurrService.Path
 		AND	StructKeyExists(arguments,"Framework")
 		AND	StructKeyExists(arguments.Framework,"getService")
 	) {
@@ -181,7 +331,8 @@
 	<cfset var varname = "">
 	<cfset var scopestruct = 0>
 	
-	<cfif Left(arguments.scope,1) EQ ".">
+	<cfif Left(arguments.scope,1) EQ "." AND Len(arguments.scope) GTE 2>
+		<cfset variables[Right(arguments.scope,Len(arguments.scope)-1)] = Application[Right(arguments.scope,Len(arguments.scope)-1)]>
 		<cfset arguments.scope = "Application#arguments.scope#">
 	</cfif>
 	
@@ -214,6 +365,18 @@
 </cffunction>
 
 <cffunction name="default" access="public" returntype="any" output="no" hint="I provide a default value if the variable doesn't exist or isn't of the appropriate data type.">
+	<cfargument name="name" type="string" required="yes">
+	<cfargument name="type" type="string" required="yes">
+	<cfargument name="default" type="any" required="yes">
+	<cfargument name="valuelist" type="string" default="">
+	
+	<cfif NOT isVarType(arguments.name,arguments.type,arguments.valuelist)>
+		<cfset setVariable(arguments.name,arguments.default)>
+	</cfif>
+	
+</cffunction>
+
+<cffunction name="defaultVar" access="public" returntype="any" output="no" hint="I provide a default value if the variable doesn't exist or isn't of the appropriate data type.">
 	<cfargument name="name" type="string" required="yes">
 	<cfargument name="type" type="string" required="yes">
 	<cfargument name="default" type="any" required="yes">
@@ -273,8 +436,8 @@
 	</cfif>
 	
 	<!--- Make sure struct exists --->
-	<cfif NOT StructKeyExists(vars,arguments.structname)>
-		<cfset vars[arguments.structname] = StructNew()>
+	<cfif NOT StructKeyExists(arguments.vars,arguments.structname)>
+		<cfset arguments.vars[arguments.structname] = StructNew()>
 	</cfif>
 	
 	<!--- Convert comp string to object --->
@@ -286,17 +449,22 @@
 		</cfif>
 	</cfif>
 	
-	<cfif NOT ( StructKeyExists(vars,"sebTableAttributes") )>
-		<cfset vars.sebTableAttributes = StructNew()>
+	<cfif NOT ( StructKeyExists(arguments.vars,"sebTableAttributes") )>
+		<cfset arguments.vars.sebTableAttributes = StructNew()>
 	</cfif>
-	<cfif NOT ( StructKeyExists(vars.sebTableAttributes,"urlvars") )>
-		<cfset vars.sebTableAttributes.urlvars = "">
+	<cfif NOT ( StructKeyExists(arguments.vars.sebTableAttributes,"urlvars") )>
+		<cfset arguments.vars.sebTableAttributes.urlvars = "">
 	</cfif>
-	<cfif NOT ( StructKeyExists(vars.sebTableAttributes,"CFC_GetArgs") )>
-		<cfset vars.sebTableAttributes.CFC_GetArgs = StructNew()>
+	<cfif NOT ( StructKeyExists(arguments.vars.sebTableAttributes,"CFC_GetArgs") )>
+		<cfset arguments.vars.sebTableAttributes.CFC_GetArgs = StructNew()>
 	</cfif>
 	
-	<cfif StructKeyExists(URL,arguments.urlvar)>
+	<cfif
+			StructKeyExists(URL,arguments.urlvar)
+		AND	isSimpleValue(URL[arguments.urlvar])
+		AND	Len(URL[arguments.urlvar])
+		AND	URL[arguments.urlvar] NEQ 0
+	>
 		<cfif Len(arguments.method)>
 			<cfinvoke returnvariable="label"  component="#arguments.comp#" method="#arguments.method#">
 				<cfinvokeargument name="1" value="#URL[arguments.urlvar]#">
@@ -311,27 +479,27 @@
 		</cfif>
 		<!---<cfset label = arguments.comp.getLabelFieldValue(URL[arguments.urlvar])>--->
 		<cfif Len(label)>
-			<cfif NOT StructKeyExists(vars,"TitleBase")>
-				<cfset vars.TitleBase = vars.Title>
+			<cfif NOT StructKeyExists(arguments.vars,"TitleBase")>
+				<cfset arguments.vars.TitleBase = arguments.vars.Title>
 			</cfif>
-			<cfif NOT StructKeyExists(vars,"TitleExt")>
-				<cfset vars.TitleExt = "">
+			<cfif NOT StructKeyExists(arguments.vars,"TitleExt")>
+				<cfset arguments.vars.TitleExt = "">
 			</cfif>
 			<cfif arguments.TitleJoin CONTAINS "[title]" AND arguments.TitleJoin CONTAINS "[label]">
-				<cfset vars.Title = ReplaceNoCase(arguments.TitleJoin,"[title]",arguments.Title)>
-				<cfset vars.Title = ReplaceNoCase(arguments.TitleJoin,"[label]",label)>
+				<cfset arguments.vars.Title = ReplaceNoCase(arguments.TitleJoin,"[title]",arguments.Title)>
+				<cfset arguments.vars.Title = ReplaceNoCase(arguments.TitleJoin,"[label]",label)>
 			<cfelse>
 				<cfif isDate(label)>
-					<cfset vars.TitleExt = "#vars.TitleExt# #arguments.TitleJoin# #label#">
+					<cfset arguments.vars.TitleExt = "#arguments.vars.TitleExt# #arguments.TitleJoin# #label#">
 				<cfelse>
-					<cfset vars.TitleExt = "#vars.TitleExt# #arguments.TitleJoin# ""#label#""">
+					<cfset arguments.vars.TitleExt = "#arguments.vars.TitleExt# #arguments.TitleJoin# ""#label#""">
 				</cfif>
-				<cfset vars.Title = "#vars.TitleBase# #vars.TitleExt#">
+				<cfset arguments.vars.Title = "#arguments.vars.TitleBase# #arguments.vars.TitleExt#">
 			</cfif>
-			<cfset vars[arguments.structname][arguments.key] = URL[arguments.urlvar]>
-			<cfset StructAppend(vars.sebTableAttributes.CFC_GetArgs,vars[arguments.structname],true)>
+			<cfset arguments.vars[arguments.structname][arguments.key] = URL[arguments.urlvar]>
+			<cfset StructAppend(arguments.vars.sebTableAttributes.CFC_GetArgs,arguments.vars[arguments.structname],true)>
 		</cfif>
-		<cfset vars.sebTableAttributes.urlvars = ListAppend(vars.sebTableAttributes.urlvars,arguments.urlvar)>
+		<cfset arguments.vars.sebTableAttributes.urlvars = ListAppend(arguments.vars.sebTableAttributes.urlvars,arguments.urlvar)>
 	</cfif>
 	
 </cffunction>
@@ -423,7 +591,13 @@
 <cffunction name="setInherits" access="public" returntype="any" output="no" hint="I set a component that the page controller should attempt to effectively inherit (by use of onMissingMethod).">
 	<cfargument name="component" type="any" required="yes">
 	
-	<cfset variables.this = arguments.component>
+	<cfif isSimpleValue(arguments.component) AND StructKeyExists(variables,arguments.component)>
+		<cfset arguments.component = variables[arguments.component]>
+	</cfif>
+	
+	<cfif isObject(arguments.component)>
+		<cfset variables.this = arguments.component>
+	</cfif>
 	
 </cffunction>
 
@@ -515,6 +689,26 @@
 			</cfloop>
 		</cfif>
 	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="getSecurityService" access="public" returntype="any" output="no">
+	<cfargument name="type" type="string" required="no">
+	
+	<cfif hasSecurityService()>
+		<cfreturn variables.instance.Framework.getSpecialService("Security")>
+	</cfif>
+</cffunction>
+
+<cffunction name="hasSecurityService" access="public" returntype="boolean" output="no">
+	
+	<cfset var result = (
+			StructKeyExists(variables.instance,"Framework")
+		AND	StructKeyExists(variables.instance.Framework,"getSpecialService")
+		AND	StructKeyExists(variables.instance.Framework,"hasSpecialService")
+		AND	variables.instance.Framework.hasSpecialService("Security")
+	)>
 	
 	<cfreturn result>
 </cffunction>

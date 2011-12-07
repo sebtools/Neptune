@@ -7,6 +7,13 @@ body {behavior:url(hover.htc)}
 	color:#008000;
 	font-weight:bold;
 }
+.sebReq {
+	color:	red;
+	margin: 0px 2px 0px 2px;
+}
+label.sebform {
+	font-weight:	900;
+}
 .sebMenu-skin-plain, .sebMenu-skin-plain td, .sebMenu-skin-plain a,
 .sebTable-skin-plain, .sebTable-skin-plain td, .sebTable-skin-plain a,
 .sebForm-skin-plain, .sebForm-skin-plain td, .sebMenu-skin-plain a

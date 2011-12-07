@@ -1,5 +1,5 @@
-<!--- 1.0 Beta 1.5 (Build 16) --->
-<!--- Last Updated: 2011-01-16 --->
+<!--- 1.0 Beta 2 (Build 25) --->
+<!--- Last Updated: 2011-11-23 --->
 <!--- Information: sebtools.com --->
 <!--- Created by Steve Bryant 2005-08-19 --->
 <cfcomponent displayname="Component Loader" output="false">
@@ -29,6 +29,8 @@
 		</cfif> --->
 	</cfif>
 	
+	<cfset variables.xSys = XmlParse(variables.SysXml)>
+	
 	<cfset variables.attorder = "name,component,config,arg">
 	
 	<cfset variables.sComponents = StructNew()>
@@ -42,17 +44,98 @@
 	<cfreturn This[arguments.service]>
 </cffunction>
 
-<cffunction name="setArgs" access="public" returntype="void" output="no">
+<cffunction name="getSpecialService" access="public" returntype="any" output="no">
+	<cfargument name="type" type="string" required="true">
 	
-	<cfif ArrayLen(arguments)>
-		<cftry>
-			<cfset StructAppend(variables.args,Duplicate(arguments),true)>
-		<cfcatch>
-			<cfset StructAppend(variables.args,arguments,true)>
-		</cfcatch>
-		</cftry>
+	<cfset var service = getSpecialServiceName(arguments.type)>
+	<cfset var oResult = 0>
+	
+	<cfif StructKeyExists(This,service)>
+		<cfset oResult = This[service]>
 	</cfif>
 	
+	<cfreturn oResult>
+</cffunction>
+
+<cffunction name="getSpecialServiceName" access="public" returntype="any" output="no">
+	<cfargument name="type" type="string" required="true">
+	
+	<cfset var aSpecialComponents = XmlSearch(variables.xSys,"//component[string-length(@name)>0][string-length(@special)>0]")>
+	<cfset var service = "">
+	<cfset var ii = 0>
+	
+	<cfloop index="ii" from="1" to="#ArrayLen(aSpecialComponents)#">
+		<cfif aSpecialComponents[ii].XmlAttributes["special"] EQ Arguments.type>
+			<cfset service = ListAppend(service,aSpecialComponents[ii].XmlAttributes["name"])>
+		</cfif>
+	</cfloop>
+	
+	<!---<cfif ListLen(service) NEQ 1>
+		<cfset service = Arguments.type>
+	</cfif>--->
+	
+	<cfreturn service>
+</cffunction>
+
+<cffunction name="hasSpecialService" access="public" returntype="any" output="no">
+	<cfargument name="type" type="string" required="true">
+	
+	<cfset var service = getSpecialServiceName(arguments.type)>
+	<cfset var oResult = 0>
+	
+	<cfreturn ( Len(service) AND StructKeyExists(This,service) )>
+</cffunction>
+
+<cffunction name="getArgs" access="public" returntype="any" output="no">
+	
+	<cfreturn variables.args>
+</cffunction>
+
+<cffunction name="getComponentsXML" access="public" returntype="any" output="no">
+	
+	<cfreturn variables.SysXml>
+</cffunction>
+
+<cffunction name="hasArgChanged" access="public" returntype="boolean" output="no">
+	<cfargument name="key" type="string" required="yes">
+	<cfargument name="value" type="any" required="yes">
+	
+	<cfset var result = false>
+	
+	<cfif StructKeyExists(variables.args,key)>
+		<cftry>
+			<cfset result = NOT ( ToScript(variables.args[key],"a") EQ ToScript(Arguments.value,"a") )>
+		<cfcatch>
+			<cfset result = false>
+		</cfcatch>
+		</cftry>
+	<cfelse>
+		<cfset result = true>
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="setArgs" access="public" returntype="string" output="no">
+	
+	<cfset var result = "">
+	<cfset var key = "">
+	
+	<cfif StructCount(Arguments)>
+		<cfloop collection="#Arguments#" item="key">
+			<cfif hasArgChanged(key,Arguments[key])>
+				<cftry>
+					<cfset variables.args[key] = Duplicate(Arguments[key])>
+				<cfcatch>
+					<cfset variables.args[key] = Arguments[key]>
+				</cfcatch>
+				</cftry>
+				<cfset result = ListAppend(result,key)>
+			</cfif>
+		</cfloop>
+	</cfif>
+	
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="getComponents" access="public" returntype="array" output="no">
@@ -213,6 +296,7 @@
 <cffunction name="getWhenComponentsUpdated" access="public" returntype="struct" output="no">
 	
 	<cfset var sDirectories = getDirectories()>
+	<cfset var qComponents = 0>
 	<cfset var key = "">
 	<cfset var sResult = StructNew()>
 	
@@ -248,6 +332,7 @@
 	<cfargument name="SysXML" type="string" default="#variables.SysXml#">
 	<cfargument name="refresh" type="string" required="yes">
 	<cfargument name="prefix" type="string" default="">
+	<cfargument name="ChangedSettings" type="string" default="">
 	
 	<cfset var Sys = XmlParse(arguments.SysXml,"no")>
 	<cfset var arrComponents = 0>
@@ -260,9 +345,15 @@
 	<cfset var refreshed = "">
 	<cfset var isRefreshing = false>
 	<cfset var sWhenUpdated = StructNew()>
+	<cfset var sArgs = Duplicate(Arguments)>
+	
+	<cfset StructDelete(sArgs,"SysXML")>
+	<cfset StructDelete(sArgs,"refresh")>
+	<cfset StructDelete(sArgs,"prefix")>
+	<cfset StructDelete(sArgs,"ChangedSettings")>
 	
 	<!--- Get sorted components --->
-	<cfset arrComponents = getComponents(arguments.SysXml,arguments)>
+	<cfset arrComponents = getComponents(arguments.SysXml,sArgs)>
 	
 	<!---<cfset sWhenUpdated = getWhenComponentsUpdated()>--->
 	
@@ -272,7 +363,7 @@
 			<cfset arguments.prefix = "#arguments.prefix#.">
 		</cfif>
 		
-		<cfset StructAppend(variables.args, Duplicate(arguments), true)>
+		<!---<cfset StructAppend(variables.args, Duplicate(arguments), true)>--->
 		
 		<cfif StructKeyExists(Sys.site,"postactions") AND StructKeyExists(Sys.site.postactions,"action")>
 			<cfset arrPostActions = Sys.site.postactions.action>
@@ -281,14 +372,15 @@
 		<!--- %%Need to check for required arguments --->
 		
 		<!--- Make sure that dependent components are refreshed if the components on which they depend or refreshed --->
-		<!---<cfset arguments.refresh = recurseRefresh(arguments.SysXml,arguments.refresh)>--->
-		
+		<cfset arguments.refresh = recurseRefresh(arguments.SysXml,arguments.refresh,arguments.ChangedSettings)>
+		<!---<cfdump var="#arguments.ChangedSettings#"><br><br>
+		<cfdump var="#arguments.refresh#"><cfabort>--->
 		<cfloop index="i" from="1" to="#ArrayLen(arrComponents)#" step="1">
 			<!---  If refresh includes this component or is true or if this component doesn't yet exist --->
-			<cfif checkDirectRefresh(arrComponents[i].name,arguments.refresh)>
+			<!---<cfif checkDirectRefresh(arrComponents[i].name,arguments.refresh)>
 				<cfset isRefreshing = true>
-			</cfif>
-			<cfif isRefreshing>
+			</cfif>--->
+			<cfif checkDirectRefresh(arrComponents[i].name,arguments.refresh)>
 				<cfinvoke method="loadComponent">
 					<cfinvokeargument name="componentPath" value="#arguments.prefix##arrComponents[i].path#">
 					<cfinvokeargument name="method" value="init">
@@ -299,11 +391,15 @@
 				<cfset variables.sComponents[arrComponents[i].name] = StructNew()>
 				<cfset variables.sComponents[arrComponents[i].name]["Component"] = Application[arrComponents[i].name]>
 				<cfset variables.sComponents[arrComponents[i].name]["WhenLoaded"] = now()>
-				<cfset variables.sComponents[arrComponents[i].name]["sMetaData"] = getMetaData(variables.sComponents[arrComponents[i].name]["Component"])>
-				<cfset variables.sComponents[arrComponents[i].name]["FilePath"] = variables.sComponents[arrComponents[i].name]["sMetaData"].path>
+				<cfif StructKeyExists(variables.sComponents[arrComponents[i].name],"Component")>
+					<cfset variables.sComponents[arrComponents[i].name]["sMetaData"] = getMetaData(variables.sComponents[arrComponents[i].name]["Component"])>
+					<cfset variables.sComponents[arrComponents[i].name]["FilePath"] = variables.sComponents[arrComponents[i].name]["sMetaData"].path>
+				</cfif>
 			</cfif>
 			<!--- /If refresh includes this component or is true or if this component doesn't yet exist --->
-			<cfset this[arrComponents[i].name] = Application[arrComponents[i].name]>
+			<cfif arrComponents[i].name NEQ "Framework">
+				<cfset this[arrComponents[i].name] = Application[arrComponents[i].name]>
+			</cfif>
 		</cfloop>
 		
 		<cfif ArrayLen(arrPostActions)>
@@ -410,6 +506,7 @@
 		<cfif ReFindNoCase(".*parameter.*function.*required but was not passed in",CFCATCH.Message) AND FindNoCase("init",CFCATCH.Message)>
 			<cfthrow message="Error on #compName#: #CFCATCH.Message#" detail="#CFCATCH.Detail#">
 		<cfelse>
+			<!---<cfthrow message="Error on #compName#: #CFCATCH.Message#" detail="#CFCATCH.Detail#">--->
 			<cfrethrow>
 		</cfif>
 	</cfcatch>
@@ -460,6 +557,7 @@
 	<cfargument name="overwrite" type="boolean" default="false">
 	
 	<cfset var xSys = XmlParse(variables.SysXml)>
+	<cfset var MyComponentXML = "">
 	<cfset var xComponent = XmlParse(Trim(arguments.ComponentXML))>
 	<cfset var xComponents = XmlSearch(xComponent,"//component")>
 	<cfset var RootPath = "">
@@ -481,7 +579,7 @@
 	
 	<cfloop index="jj" from="1" to="#ArrayLen(xComponents)#" step="1">
 		<cfset xComponent = xComponents[jj]>
-		<cfset ComponentXML = XmlHumanReadable(xComponent,variables.attorder)>
+		<cfset MyComponentXML = XmlHumanReadable(xComponent,variables.attorder)>
 		
 		<cfset exists = false>
 		
@@ -552,7 +650,7 @@
 			<!--- <cfset xSys.site.components = XmlAppendElem(xSys,xSys.site.components,xComponent.XmlRoot)> --->
 			<!--- %%Need to check for existence of argument variables --->
 			
-			<cfset variables.SysXml = ReplaceNoCase(variables.SysXml, "</components>", "#ComponentXML#</components>")>
+			<cfset variables.SysXml = ReplaceNoCase(variables.SysXml, "</components>", "#MyComponentXML#</components>")>
 			<cfset xSys = XmlParse(variables.SysXml)>
 			<cfset isUpdated = true>
 		</cfif>
@@ -586,9 +684,10 @@
 	
 </cffunction>
 
-<cffunction name="recurseRefresh" access="private" returntype="string" output="no">
+<cffunction name="recurseRefresh" access="public" returntype="string" output="no">
 	<cfargument name="SysXML" type="string" default="#variables.SysXml#">
 	<cfargument name="refresh" type="string" required="yes">
+	<cfargument name="ChangedSettings" type="string" default="">
 	
 	<cfset var Sys = XmlParse(arguments.SysXml,"no")>
 	<cfset var arrComponents = Sys.site.components.component>
@@ -614,18 +713,44 @@
 		<!---  If component has name and path --->
 		<cfif StructKeyExists(Comp,"name") AND StructKeyExists(Comp,"path")>
 			<!---  If this component isn't set to be refreshed --->
-			<cfif NOT checkDirectRefresh(Comp.name,arguments.refresh)>
+			<cfif NOT checkDirectRefresh(Comp.name,arguments.refresh) AND NOT ListFindNoCase(result,Comp.name)>
 				<cfif StructKeyExists(arrComponents[i],"XmlChildren") AND ArrayLen(arrComponents[i].xmlChildren)>
 					<!---  Loop over arguments --->
-					<cfloop index="j" from="1" to="#ArrayLen(arrComponents[i].XmlChildren)#" step="1">
+					<cfloop index="j" from="1" to="#ArrayLen(arrComponents[i].XmlChildren)#" step="1"><cfif NOT ListFindNoCase(result,Comp.name)>
 						<cfset Arg = arrComponents[i].XmlChildren[j].XmlAttributes>
 						<!---  If argument is a component that is being refreshed --->
-						<cfif StructKeyExists(Arg,"Component") AND ListFindNoCase(result,Arg.Component)>
-							<!--- Refresh this component --->
+						<cfif StructKeyExists(Arg,"Component")>
+							<cfif ListFindNoCase(result,Arg.Component)>
+								<!--- Refresh this component --->
+								<cfset result = ListAppend(result,Comp.name)>
+							</cfif>
+						<cfelseif
+								StructKeyExists(Arg,"Name")
+							AND	ListFindNoCase(result,Arg.Name)
+							AND	NOT StructKeyExists(Arg,"arg")
+							AND	NOT StructKeyExists(Arg,"config")
+							AND	NOT StructKeyExists(Arg,"value")
+						>
+							<cfset result = ListAppend(result,Comp.name)>
+						<cfelseif
+								Len(Trim(Arguments.ChangedSettings))
+							AND	(
+										false
+									OR	( StructKeyExists(Arg,"arg") AND ListFindNoCase(Arguments.ChangedSettings,Arg.arg) )
+									OR	( StructKeyExists(Arg,"config") AND ListFindNoCase(Arguments.ChangedSettings,Arg.config) )
+									OR	(
+												StructKeyExists(Arg,"Name")
+											AND	NOT StructKeyExists(Arg,"arg")
+											AND	NOT StructKeyExists(Arg,"config")
+											AND	NOT StructKeyExists(Arg,"value")
+											AND	ListFindNoCase(Arguments.ChangedSettings,Arg.name)
+									)
+								)
+						>
 							<cfset result = ListAppend(result,Comp.name)>
 						</cfif>
 						<!--- /If argument is a component that is being refreshed --->
-					</cfloop>
+					</cfif></cfloop>
 					<!--- /Loop over arguments --->
 				</cfif>
 			</cfif>
@@ -788,9 +913,9 @@ function isListInList(l1,l2) {
 	if(arrayLen(arguments) gte 4) delim2 = arguments[4];
 	if(arrayLen(arguments) gte 5) matchany = arguments[5];
 	
-	for(i=1; i lte listLen(l1,delim1); i=i+1) {
-		if(matchany and listFind(l2,listGetAt(l1,i,delim1),delim2)) return true;
-		if(not matchany and not listFind(l2,listGetAt(l1,i,delim1),delim2)) return false;
+	for(i=1; i lte ListLen(l1,delim1); i=i+1) {
+		if(matchany and ListFindNoCase(l2,listGetAt(l1,i,delim1),delim2)) return true;
+		if(not matchany and not ListFindNoCase(l2,listGetAt(l1,i,delim1),delim2)) return false;
 	}
 	return true;
 }

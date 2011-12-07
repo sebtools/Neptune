@@ -1,7 +1,7 @@
 <cfcomponent displayname="SessionMgr" hint="I handle setting and retreiving session-related variables. Enabling storage mechanism for the variables to be changed.">
 <!--- %%Must add time-out. --->
 <cffunction name="init" access="public" returntype="SessionMgr" output="no" hint="I instantiate and return this object.">
-	<cfargument name="scope" type="string" required="yes">
+	<cfargument name="scope" type="string" default="Session">
 	<cfargument name="requestvar" type="string" default="SessionInfo">
 	
 	<cfset var scopes = "Client,Session">

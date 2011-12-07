@@ -1,10 +1,10 @@
 <!---
-1.0 RC8 (Build 120)
-Last Updated: 2011-01-16
+1.0 RC9 (Build 121)
+Last Updated: 2011-10-11
 Created by Steve Bryant 2004-06-01
-Information: sebtools.com
+Information: http://www.bryantwebconsulting.com/docs/sebtags/?version=1.0
 Documentation:
-http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
+http://www.bryantwebconsulting.com/docs/sebtags/sebtable-overview.cfm?version=1.0
 ---><cfsilent>
 <cfset TagName = "cf_sebTable">
 <cfif ThisTag.ExecutionMode eq "Start">
@@ -30,33 +30,8 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	
 	liHtmlAtts = "id,class,title,style,dir,lang,xml:lang,onclick,ondblclick,onmousedown,onmouseup,onmouseover,onmousemove,onmouseout,onkeypress,onkeydown,onkeyup";
 	liColAtts = liHtmlAtts & ",align,char,charoff,span,valign";
+	NonTextSortTypes = "date,datetime,numeric,time,money,yesno";
 	
-	function doShow(showval,rownum) {
-		var result = true;
-		var fieldname = "";
-		var negate = false;
-		if ( isBoolean(showval) ) {
-			result = showval;
-		} else {
-			if ( Left(showval,1) eq "!" ) {
-				fieldname = Right(showval,Len(showval)-1);
-				negate = true;
-			} else {
-				fieldname = showval;
-			}
-			if ( ListFindNoCase(qTableData.ColumnList,fieldname) ) {
-				if ( isBoolean(qTableData[fieldname][rownum]) ) {
-					result = qTableData[fieldname][rownum];
-				} else {
-					result = Len(qTableData[fieldname][rownum]);
-				}
-			}
-			if ( negate ) {
-				result = NOT result;
-			}
-		}
-		return result;
-	}
 	</cfscript>
 	<cfparam name="attributes.suffix" default="">
 	<cfparam name="attributes.query" default="">
@@ -103,6 +78,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	<cfparam name="attributes.Message_Sort" default="">
 	<cfparam name="attributes.doSort" default="true" type="boolean">
 	<cfparam name="attributes.jqhover" default="false" type="boolean">
+	<cfparam name="attributes.isExcel" default="false" type="boolean">
 	<cfparam name="url.sebdeleteid#sfx#" default="">
 	<cfparam name="url.sebsort#sfx#" default="">
 	<cfparam name="url.sebsortorder#sfx#" default="ASC">
@@ -167,8 +143,11 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 			<cfif StructKeyExists(sCompMeta,"method_sort") AND Len(sCompMeta.method_sort) AND NOT Len(attributes.CFC_SortMethod)>
 				<cfset attributes.CFC_SortMethod = sCompMeta.method_sort>
 			</cfif>
-			<cfif StructKeyExists(sCompMeta,"property_deletable") AND Len(sCompMeta.property_deletable) AND NOT Len(attributes.isDeletable)>
+			<cfif StructKeyExists(sCompMeta,"property_deletable") AND Len(sCompMeta.property_deletable) AND ( attributes.isDeletable IS true OR NOT Len(attributes.isDeletable))>
 				<cfset attributes.isDeletable = sCompMeta.property_deletable>
+			</cfif>
+			<cfif StructKeyExists(sCompMeta,"property_editable") AND Len(sCompMeta.property_editable) AND NOT Len(attributes.property_editable)>
+				<cfset attributes.isEditable = sCompMeta.property_editable>
 			</cfif>
 			<cfif StructKeyExists(sCompMeta,"property_hidecols") AND isBoolean(sCompMeta.property_hidecols) AND NOT isBoolean(attributes.CFC_HideGetArgCols)>
 				<cfset attributes.CFC_HideGetArgCols = sCompMeta.property_hidecols>
@@ -193,8 +172,11 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	<cfif NOT Len(attributes.isDeletable)>
 		<cfset attributes.isDeletable = false>
 	</cfif>
+	<cfif NOT Len(attributes.isEditable)>
+		<cfset attributes.isEditable = false>
+	</cfif>
 	
-	<cfif Len(attributes.label)>
+	<cfif Len(attributes.label) AND NOT attributes.isExcel>
 		<cfparam name="attributes.showHeader" type="boolean" default="true">
 	<cfelse>
 		<cfparam name="attributes.showHeader" type="boolean" default="false">
@@ -238,6 +220,11 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	
 	<cfif NOT ( Len(attributes.query) OR Len(attributes.datasource) OR ( isDefined("attributes.CFC_Component") AND Len(attributes.CFC_GetMethod) ) )>
 		<cfthrow message="Either the query attribute or datasource attribute must be provided." type="ctag">
+	</cfif>
+	
+	<cfif attributes.isExcel>
+		<cfset attributes.isDeletable = false>
+		<cfset attributes.isEditable = false>
 	</cfif>
 
 </cfif><cfinclude template="sebtools.cfm">
@@ -330,11 +317,12 @@ request.cftags[TagName].attributes = attributes;
 	</cfloop>
 </cfif>
 <cfif NOT ( isDefined("ThisTag.qColumns") AND ArrayLen(ThisTag.qColumns) )><cfthrow message="You must include at least one column with cf_sebColumn in order to use cf_sebTable." type="ctag"></cfif>
-<cfif attributes.isEditable>
+<cfif attributes.isEditable IS NOT false>
 	<cfif NOT FindNoCase("?",attributes.editpage)>
 		<cfset attributes.editpage = "#attributes.editpage#?">
 	</cfif>
 	<cf_sebColumn label="edit" link="#attributes.editpage#&#attributes.urlvar#=">
+	<!---<cf_sebColumn type="edit">--->
 </cfif>
 <cfif attributes.isDeletable IS NOT false AND NOT ( StructKeyExists(variables,"HasDeleteColumn") AND variables.HasDeleteColumn IS true )>
 	<cf_sebColumn type="delete">
@@ -342,11 +330,36 @@ request.cftags[TagName].attributes = attributes;
 
 <cfset hasSorter = request["sebTableHasSorter#sfx#"]>
 
+<cfif StructKeyExists(attributes,"Function_HasPageAccess") AND IsCustomFunction(attributes.Function_HasPageAccess)>
+	<cfset fHasPageAccess = attributes.Function_HasPageAccess>
+	<cfloop index="ii" to="1" from="#ArrayLen(ThisTag.qColumns)#" step="-1">
+		<cfif StructKeyExists(ThisTag.qColumns[ii],"link") AND Len(Trim(ThisTag.qColumns[ii].link)) AND fHasPageAccess(ThisTag.qColumns[ii].link) IS false>
+			<cfif ThisTag.qColumns[ii].type IS "link">
+				<cfset ArrayDeleteAt(ThisTag.qColumns,ii)>
+			<cfelse>
+				<cfset ThisTag.qColumns[ii]["link"] = "">
+			</cfif>
+		</cfif>
+	</cfloop>
+</cfif>
+
 <!--- Make field/column list --->
 <cfset columns = "">
 <cfloop index="ii" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
 	<cfif StructKeyExists(ThisTag.qColumns[ii],"dbfield") AND Len(Trim(ThisTag.qColumns[ii].dbfield))>
 		<cfset columns = ListAppend(columns,ThisTag.qColumns[ii].dbfield)>
+	</cfif>
+</cfloop>
+<cfloop index="col" list="#attributes.isDeletable#">
+	<cfset col = ReplaceNoCase(col,"!","")>
+	<cfif NOT isBoolean(col) AND NOT ListFindNoCase(columns,col)>
+		<cfset columns = ListAppend(columns,col)>
+	</cfif>
+</cfloop>
+<cfloop index="col" list="#attributes.isEditable#">
+	<cfset col = ReplaceNoCase(col,"!","")>
+	<cfif NOT isBoolean(col) AND NOT ListFindNoCase(columns,col)>
+		<cfset columns = ListAppend(columns,col)>
 	</cfif>
 </cfloop>
 
@@ -368,6 +381,9 @@ request.cftags[TagName].attributes = attributes;
 	<cfif StructKeyExists(Form,"SortList") AND Len(Form.SortList)>
 		<cfset SortList = Form["SortList"]>
 	</cfif>
+	<cfif StructKeyExists(Form,"sebTableSubmit")>
+		<cfset isSubmittingTable = true>
+	</cfif>
 	<cfloop index="i" from="1" to="#Form.sebTableRows#" step="1">
 		<!--- Handle submission --->
 		<cfif StructKeyExists(Form,"submit_#i#")>
@@ -379,11 +395,9 @@ request.cftags[TagName].attributes = attributes;
 				</cfif>
 			</cfloop>
 		</cfif>
-		<cfif StructKeyExists(Form,"sebTableSubmit")>
-			<cfset isSubmittingTable = true>
-		</cfif>
 		<!--- Handle deletion --->
 		<cfif StructKeyExists(Form,"delete_#i#") AND StructKeyExists(Form,"sebTable_#i#")>
+			<cfset isSubmittingTable = false>
 			<cfset isDeleting = true>
 			<cfset DeleteID = Form["sebTable_#i#"]>
 		</cfif>
@@ -444,6 +458,7 @@ request.cftags[TagName].attributes = attributes;
 </cfif>
 
 <cfif attributes.isDeletable IS NOT false AND Len(url["sebdeleteid#sfx#"])>
+	<cfset isSubmittingTable = false>
 	<cfset isDeleting = true>
 	<cfset DeleteID = url["sebdeleteid#sfx#"]>
 </cfif>
@@ -627,17 +642,29 @@ request.cftags[TagName].attributes = attributes;
 	<cfif Len(Trim(attributes.filter)) OR Len(url["sebsort#sfx#"]) OR ( Len(RolodexField) AND Len(Trim(url["sebrolodex#sfx#"]) eq 1) ) OR Len(attributes.orderby)>
 		<cfif Len(url["sebsort#sfx#"])>
 			<cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
-				<cfif url["sebsort#sfx#"] EQ ThisTag.qColumns[i].label AND StructKeyExists(ThisTag.qColumns[i],"sortfield") AND Len(ThisTag.qColumns[i].sortfield) AND ThisTag.qColumns[i].type NEQ "Date">
-					<cfif ListFindNoCase(qTableData.ColumnList,ThisTag.qColumns[i].sortfield) AND NOT ListFindNoCase(qTableData.ColumnList,"#ThisTag.qColumns[i].sortfield#_UCase")>
+				<cfif url["sebsort#sfx#"] EQ ThisTag.qColumns[i].label AND StructKeyExists(ThisTag.qColumns[i],"sortfield") AND Len(ThisTag.qColumns[i].sortfield)>
+					<cfif ListFindNoCase(qTableData.ColumnList,ThisTag.qColumns[i].sortfield) AND NOT ListFindNoCase(qTableData.ColumnList,"#ThisTag.qColumns[i].sortfield#_Sort")>
 						<cfset aSortVals = ArrayNew(1)>
+						<cfswitch expression="#ThisTag.qColumns[i].type#">
+						<cfcase value="date,datetime"><cfset qofqdatatype = "CF_SQL_DATE"><cfset javadatatype = "float"></cfcase>
+						<cfcase value="numeric"><cfset qofqdatatype = "CF_SQL_NUMERIC"><cfset javadatatype = "bigdecimal"></cfcase>
+						<cfcase value="time"><cfset qofqdatatype = "CF_SQL_Time"><cfset javadatatype = "string"></cfcase>
+						<cfcase value="yesno"><cfset qofqdatatype = "CF_SQL_BIT"><cfset javadatatype = "boolean"></cfcase>
+						<cfdefaultcase><cfset qofqdatatype = "CF_SQL_VARCHAR"><cfset javadatatype = "string"></cfdefaultcase>
+						</cfswitch>
 						<cfloop query="qTableData">
-							<!--- <cfif isDate(qTableData[ThisTag.qColumns[i].sortfield][CurrentRow]) OR isNumeric(qTableData[ThisTag.qColumns[i].sortfield][CurrentRow])>
-								<cfset ArrayAppend(aSortVals,qTableData[ThisTag.qColumns[i].sortfield][CurrentRow])>
-							<cfelse> --->
+							<cfif ListFindNoCase(NonTextSortTypes,ThisTag.qColumns[i].type)>
+								<cfif Len(Trim(qTableData[ThisTag.qColumns[i].sortfield][CurrentRow]))>
+									<cfset ArrayAppend(aSortVals,JavaCast(javadatatype,qTableData[ThisTag.qColumns[i].sortfield][CurrentRow]))>
+								<cfelse>
+									<cfset ArrayAppend(aSortVals,JavaCast("null",""))>
+								</cfif>
+								<!---<cfset ArrayAppend(aSortVals,qTableData[ThisTag.qColumns[i].sortfield][CurrentRow])>--->
+							<cfelse>
 								<cfset ArrayAppend(aSortVals,UCase(qTableData[ThisTag.qColumns[i].sortfield][CurrentRow]))>
-							<!--- </cfif> --->
+							</cfif>
 						</cfloop>
-						<cfset QueryAddColumn(qTableData, "#ThisTag.qColumns[i].sortfield#_UCase",  aSortVals)>
+						<cfset QueryAddColumn(qTableData, "#ThisTag.qColumns[i].sortfield#_Sort", aSortVals)>
 					</cfif>
 				</cfif>
 			</cfloop>
@@ -663,7 +690,7 @@ request.cftags[TagName].attributes = attributes;
 			<cfif Len(url["sebsort#sfx#"])><cfset sortcount = 0>
 				<cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
 					<cfif url["sebsort#sfx#"] EQ ThisTag.qColumns[i].label AND StructKeyExists(ThisTag.qColumns[i],"sortfield") AND Len(ThisTag.qColumns[i].sortfield) AND ListFindNoCase(qTableData.ColumnList,ThisTag.qColumns[i].sortfield)>
-					<cfif sortcount>,<cfelse>ORDER BY</cfif>	[#ThisTag.qColumns[i].sortfield#<cfif ThisTag.qColumns[i].type NEQ "Date">_UCase</cfif>]<cfif url["sebsortorder#sfx#"] eq "DESC"> DESC</cfif><cfset sortcount = sortcount + 1>
+					<cfif sortcount>,<cfelse>ORDER BY</cfif>	[#ThisTag.qColumns[i].sortfield#_Sort]<cfif url["sebsortorder#sfx#"] eq "DESC"> DESC</cfif><cfset sortcount = sortcount + 1>
 					</cfif>
 				</cfloop>
 			<cfelseif Len(attributes.orderby) AND ListFindNoCase(qTableData.ColumnList,ListFirst(attributes.orderby," "))>
@@ -714,7 +741,7 @@ request.cftags[TagName].attributes = attributes;
 				<cfif Len(url["sebsort#sfx#"])><cfset sortcount = 0>
 					<cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
 						<cfif url["sebsort#sfx#"] eq ThisTag.qColumns[i].label AND Len(ThisTag.qColumns[i].sortfield)>
-						<cfif sortcount>,<cfelse>ORDER BY</cfif>	[#ThisTag.qColumns[i].sortfield#_UCase]<cfif url["sebsortorder#sfx#"] eq "DESC"> DESC</cfif><cfset sortcount = sortcount + 1>
+						<cfif sortcount>,<cfelse>ORDER BY</cfif>	[#ThisTag.qColumns[i].sortfield#_Sort]<cfif url["sebsortorder#sfx#"] eq "DESC"> DESC</cfif><cfset sortcount = sortcount + 1>
 						</cfif>
 					</cfloop>
 				<cfelseif Len(attributes.orderby)>
@@ -937,7 +964,7 @@ $(document).ready(function() {
 		$(sebTableId + " form").append('<input type="submit" value="Save Sort Order">');
 	}
 });</cfif>
-</script></cfif></cfsavecontent><cfhtmlhead text="#htmlhead#">
+</script></cfif></cfsavecontent><cfif NOT attributes.isExcel><cfhtmlhead text="#htmlhead#"></cfif>
 <div<cfif Len(Trim(attributes.skin))> class="sebTable-skin-#LCase(attributes.skin)#"</cfif>>
 <div id="sebTable#sfx#" class="seb sebTable"<cfif Len(attributes.width)> style="width:#attributes.width#<cfif isNumeric(attributes.width)>px</cfif>;"</cfif>><cfif Len(ErrMessage)>
 <p class="sebMessage sebError">#ErrMessage#</p></cfif><cfif Len(Message)>
@@ -963,11 +990,11 @@ $(document).ready(function() {
 	</div>
 	</cfif>
 <cfif qTableData.RecordCount>
-<table id="sebTable#sfx#-table"<cfif Len(attributes.width)> width="#attributes.width#"</cfif> border="0" cellspacing="0"><cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
+<table id="sebTable#sfx#-table"<cfif Len(attributes.width)> width="#attributes.width#"</cfif> border="<cfif attributes.isExcel>1<cfelse>0</cfif>" cellspacing="0"><cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
 <col<cfif StructKeyExists(ThisTag.qColumns[i],"width") AND Len(ThisTag.qColumns[i].width) AND isNumeric(ThisTag.qColumns[i].width) AND ThisTag.qColumns[i].width> width="#ThisTag.qColumns[i].width#"</cfif><cfloop index="att" list="#liColAtts#"><cfif StructKeyExists(ThisTag.qColumns[i],att) AND Len(ThisTag.qColumns[i][att])> #att#="#ThisTag.qColumns[i][att]#"</cfif></cfloop>><cfif attributes.xhtml></col></cfif></cfloop>
-<tr id="row#attributes.Table#0" class="nodrag nodrop"><cfset editLinkShowed = false><cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1"><cfif StructKeyExists(ThisTag.qColumns[i],"datatype") AND ThisTag.qColumns[i].datatype eq "delete" AND attributes.isEditable AND NOT editLinkShowed>
+<tr id="row#attributes.Table#0" class="nodrag nodrop"><cfset editLinkShowed = false><cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1"><cfif StructKeyExists(ThisTag.qColumns[i],"datatype") AND ThisTag.qColumns[i].datatype eq "delete" AND attributes.isEditable IS NOT false AND NOT editLinkShowed>
 	<td>&nbsp;</td><cfset editLinkShowed = true></cfif>
-	<th><cfif Len(ThisTag.qColumns[i].header)><cfif hasSorter>#ThisTag.qColumns[i].header#<cfelse><a href="#varThisPage#sebrolodex#sfx#=#url['sebrolodex#sfx#']#&amp;sebsort#sfx#=#URLEncodedFormat(ThisTag.qColumns[i].label)#<cfif (url['sebsort#sfx#'] eq ThisTag.qColumns[i].label) AND (url['sebsortorder#sfx#'] neq 'DESC')>&amp;sebsortorder#sfx#=desc</cfif>##sebTable#sfx#" title="Sort by #ThisTag.qColumns[i].label#"<cfif (url["sebsort#sfx#"] eq ThisTag.qColumns[i].label)> class="sort #LCase(url['sebsortorder#sfx#'])#"</cfif>>#ThisTag.qColumns[i].header#</a></cfif><cfelse>&nbsp;</cfif></th></cfloop><!---<cfif attributes.isEditable>
+	<th><cfif Len(ThisTag.qColumns[i].header)><cfif hasSorter OR attributes.isExcel>#ThisTag.qColumns[i].header#<cfelse><a href="#varThisPage#sebrolodex#sfx#=#url['sebrolodex#sfx#']#&amp;sebsort#sfx#=#URLEncodedFormat(ThisTag.qColumns[i].label)#<cfif (url['sebsort#sfx#'] eq ThisTag.qColumns[i].label) AND (url['sebsortorder#sfx#'] neq 'DESC')>&amp;sebsortorder#sfx#=desc</cfif>##sebTable#sfx#" title="Sort by #ThisTag.qColumns[i].label#"<cfif (url["sebsort#sfx#"] eq ThisTag.qColumns[i].label)> class="sort #LCase(url['sebsortorder#sfx#'])#"</cfif>>#ThisTag.qColumns[i].header#</a></cfif><cfelse>&nbsp;</cfif></th></cfloop><!---<cfif attributes.isEditable>
 	<th class="sebTable-editlink">&nbsp;</th></cfif>---><!---<cfif attributes.isDeletable>
 	<th class="sebTable-deletelink">&nbsp;</th></cfif>--->
 </tr><cfloop query="qTableData" startrow="#url['sebstartrow#sfx#']#" endrow="#EndRow#"><cfset editLinkShowed = false><cfset deleteShowed = false><cfif CurrentRow MOD 2><cfset rowClass = ClassOdd><cfelse><cfset rowClass = ClassEven></cfif><cfset pkid = qTableData[attributes.pkfield][CurrentRow]><cfset arrHiddenPK[CurrentRow] = false>
@@ -999,7 +1026,7 @@ $(document).ready(function() {
 	fDisplay = ThisTag.qColumns[i].display;
 	thisDisplay = fDisplay(thisValue,CurrentRow,pkid,ThisTag.qColumns[i]);
 	//Adjust display by show and link atts
-	if ( (isBoolean(ThisTag.qColumns[i].show) AND ThisTag.qColumns[i].show) OR doShow(ThisTag.qColumns[i].show,CurrentRow) ) {
+	if ( (isBoolean(ThisTag.qColumns[i].show) AND ThisTag.qColumns[i].show) OR doShow(qTableData,ThisTag.qColumns[i].show,CurrentRow) ) {
 		if ( Len(ThisTag.qColumns[i].link) AND NOT ThisTag.qColumns[i].type eq "link" ) {
 			linkatts = '';
 			if ( StructKeyExists(ThisTag.qColumns[i],"title") AND Len(ThisTag.qColumns[i].title) ) {
@@ -1033,7 +1060,11 @@ $(document).ready(function() {
 	if ( ThisTag.qColumns[i].datatype eq "delete" ) {
 		deleteShowed = true;
 	}
-	</cfscript><cfif ThisTag.qColumns[i].datatype eq "delete" AND attributes.isEditable AND NOT editLinkShowed>
+	</cfscript><cfif
+			ThisTag.qColumns[i].datatype eq "delete"
+		AND	NOT editLinkShowed
+		AND	attributes.isEditable IS NOT false
+	><!--- AND	NOT	( NOT isBoolean(attributes.isEditable) AND ListFindNoCase(qTableData.ColumnList,attributes.isEditable) AND isBoolean(qTableData[attributes.isEditable][CurrentRow]) AND NOT qTableData[attributes.isEditable][CurrentRow] ) --->
 	<td>&nbsp;<a href="#varEditPage##pkid#">edit</a>&nbsp;</td><cfset editLinkShowed = true></cfif>
 	<td valign="top" class="sebcol-#LCase(ThisTag.qColumns[i].type)#"<cfif attributes.isRowClickable AND NOT Len(ThisTag.qColumns[i].link) AND NOT ThisTag.qColumns[i].type eq "link"> onclick="sebEditIt('#jsEditPage#','#JSStringFormat(URLEncodedFormat(pkid))#');"</cfif>>#thisDisplay#</td></cfloop><!---<cfif attributes.isEditable AND NOT editLinkShowed>
 	<td class="sebTable-editlink">&nbsp;<a href="#varEditPage##URLEncodedFormat(pkid)#">edit</a>&nbsp;</td></cfif>---><!---<cfif attributes.isDeletable AND NOT deleteShowed>

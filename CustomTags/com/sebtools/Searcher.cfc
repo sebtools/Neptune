@@ -302,6 +302,10 @@ Optionally run search through google
 		<cfthrow message="Searcher does not have any collections to search." type="Searcher">
 	</cfif>
 	
+	<cfif NOT Len(Trim(arguments.searchterm))>
+		<cfreturn qSearch>
+	</cfif>
+	
 	<!--- Fix uneven quotes for potential error --->
 	<cfset arguments.searchterm = fixQuotes(arguments.searchterm)>
 	
@@ -314,6 +318,10 @@ Optionally run search through google
 		<cfset arguments.searchterm = Left(arguments.searchterm,Len(arguments.searchterm)-1)>
 	</cfif>
 	
+	
+	<cfif NOT Len(Trim(arguments.searchterm))>
+		<cfreturn qSearch>
+	</cfif>
 	
 	<cftry>
 		<cfsearch collection="#arguments.collections#" name="qSearch" criteria="#arguments.searchterm#">

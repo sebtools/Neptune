@@ -1,7 +1,20 @@
-<!--- 1.0 Alpha 1 (Build 3) --->
-<!--- Last Updated: 2010-10-11 --->
+<!--- 1.0 Beta 1 (Build 4) --->
+<!--- Last Updated: 2010-11-23 --->
 <!--- Created by Steve Bryant 2009-07-14 --->
 <cfcomponent displayname="Records" extends="mxunit.framework.TestCase">
+
+<cffunction name="init" access="public" returntype="any" output="no">
+	
+	<cfscript>
+	var key = "";
+	
+	for (key in Arguments) {
+		variables[key] = Arguments[key];
+	}
+	</cfscript>
+	
+	<cfreturn This>
+</cffunction>
 
 <cffunction name="setUp" access="public" returntype="void" output="no">
 	
@@ -27,7 +40,7 @@
 
 <cffunction name="assertEmailTestable" access="public" returntype="void" output="no" hint="I assert that email can be tested using isEmailTestable().">
 	<cfif NOT isEmailTestable()>
-		<cfset fail("Email is not currently testable")>
+		<cfset fail("Email is not currently testable (DataMgr and Mailer must be available in the test component and logging email and DataMgr must be available and not in Simulation mode.)")>
 	</cfif>
 </cffunction>
 
@@ -184,14 +197,25 @@
 <cffunction name="isEmailTestable" access="public" returntype="boolean" output="no">
 	
 	<cfset var result = false>
-	<cfset var oMailer = 0>
 	
 	<cfif StructKeyExists(variables,"NoticeMgr")>
-		<cfset oMailer = variables.NoticeMgr.getMailer()>
-		<cfif oMailer.getIsLogging()>
-			<cfset result = true>
+		<cfif NOT StructKeyExists(variables,"DataMgr")>
+			<cfset variables.DataMgr = variables.NoticeMgr.getDataMgr()>
+		</cfif>
+		<cfif NOT StructKeyExists(variables,"Mailer")>
+			<cfset variables.Mailer = variables.NoticeMgr.getMailer()>
 		</cfif>
 	</cfif>
+	<cfif StructKeyExists(variables,"Manager") AND NOT StructKeyExists(Variables,"DataMgr")>
+		<cfset variables.DataMgr = variables.Manager.DataMgr>
+	</cfif>
+	
+	<cfset result = (
+			StructKeyExists(variables,"DataMgr")
+		AND	StructKeyExists(variables,"Mailer")
+		AND	variables.DataMgr.getDatabase() NEQ "Sim"
+		AND	variables.Mailer.getIsLogging()
+	)>
 	
 	<cfreturn result>
 </cffunction>
@@ -224,7 +248,7 @@
 	<cfreturn DateAdd(arguments.interval,-Abs(arguments.range),arguments.date)>
 </cffunction>
 
-<cffunction name="NumEmailsSent" access="public" returntype="boolean" output="no">
+<cffunction name="NumEmailsSent" access="public" returntype="numeric" output="no">
 	<cfargument name="when" type="date" default="#now()#">
 	
 	<cfset var result = 0>
@@ -232,10 +256,11 @@
 	<cfset var sFilter = StructNew()>
 	<cfset var qSentMessages = 0>
 	<cfset var oDataMgr = 0>
+	<cfset var fieldlist = "LogID">
 	
 	<cfset assertEmailTestable()>
 	
-	<cfset oDataMgr = variables.NoticeMgr.getDataMgr()>
+	<cfset oDataMgr = variables.DataMgr>
 	
 	<cfset sFilter["field"] = "DateSent">
 	<cfset sFilter["operator"] = ">=">
@@ -243,9 +268,26 @@
 	
 	<cfset ArrayAppend(aFilters,sFilter)>
 	
-	<cfset qSentMessages = oDataMgr.getRecords(tablename=variables.NoticeMgr.getMailer().getLogTable(),data=arguments,filters=aFilters,fieldlist="LogID")>
+	<cfif StructKeyExists(arguments,"regex") AND Len(arguments.regex)>
+		<cfset fieldlist = "LogID,Subject,Contents,HTML,Text">
+	</cfif>
+	
+	<cfset qSentMessages = oDataMgr.getRecords(tablename=variables.Mailer.getLogTable(),data=arguments,filters=aFilters,fieldlist=fieldlist)>
 	
 	<cfset result = qSentMessages.RecordCount>
+	
+	<cfif StructKeyExists(arguments,"regex") AND Len(arguments.regex)>
+		<cfoutput query="qSentMessages">
+			<cfif NOT (
+					ReFindNoCase(arguments.regex,Subject)
+				OR	ReFindNoCase(arguments.regex,Contents)
+				OR	ReFindNoCase(arguments.regex,Text)
+				OR	ReFindNoCase(arguments.regex,HTML)
+			)>
+				<cfset result = result - 1>
+			</cfif>
+		</cfoutput>
+	</cfif>
 	
 	<cfreturn result>
 </cffunction>
@@ -256,7 +298,14 @@
 	<cfargument name="skipmissing" type="boolean" default="false">
 	
 	<cfset var varname = "">
-	<cfset var scopestruct = StructGet(arguments.scope)>
+	<cfset var scopestruct = 0>
+	
+	<cfif Left(arguments.scope,1) EQ "." AND Len(arguments.scope) GTE 2>
+		<cfset variables[Right(arguments.scope,Len(arguments.scope)-1)] = Application[Right(arguments.scope,Len(arguments.scope)-1)]>
+		<cfset arguments.scope = "Application#arguments.scope#">
+	</cfif>
+	
+	<cfset scopestruct = StructGet(arguments.scope)>
 	
 	<cfloop index="varname" list="#arguments.varlist#">
 		<cfif StructKeyExists(scopestruct,varname)>
@@ -266,6 +315,16 @@
 		</cfif>
 	</cfloop>
 	
+</cffunction>
+
+<cffunction name="RecordObject" access="public" returntype="any" output="no">
+	<cfargument name="Service" type="any" required="yes">
+	<cfargument name="Record" type="any" required="yes">
+	<cfargument name="fields" type="string" default="">
+	
+	<cfset Arguments.Service = CreateObject("component","com.sebtools.TestRecords").init(Arguments.Service)>
+	
+	<cfreturn CreateObject("component","RecordObject").init(ArgumentCollection=Arguments)>
 </cffunction>
 
 <cffunction name="runInRollbackTransaction" access="public" returntype="any" output="no">
@@ -304,9 +363,10 @@
 <cffunction name="getTestRecord" access="public" returntype="query" output="no">
 	<cfargument name="comp" type="any" required="yes">
 	<cfargument name="data" type="struct" required="no">
+	<cfargument name="fieldlist" type="string" default="">
 	
-	<cfset var sCompMeta = arguments.comp.getMetaStruct()>
-	<cfset var id = saveTestRecord(argumentCollection=arguments)>
+	<cfset var sCompMeta = Arguments.comp.getMetaStruct()>
+	<cfset var id = saveTestRecord(argumentCollection=Arguments)>
 	<cfset var qRecord = 0>
 	
 	<cfinvoke
@@ -315,6 +375,7 @@
 		method="#sCompMeta.method_get#"
 	>
 		<cfinvokeargument name="#sCompMeta.arg_pk#" value="#id#">
+		<cfinvokeargument name="fieldlist" value="#Arguments.fieldlist#">
 	</cfinvoke>
 	
 	<cfreturn qRecord>

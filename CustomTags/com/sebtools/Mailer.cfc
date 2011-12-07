@@ -14,6 +14,7 @@
 	<cfargument name="Sender" type="string" default="">
 	<cfargument name="logtable" type="string" default="mailerLogs">
 	<cfargument name="mode" type="string" required="false">
+	<cfargument name="log" type="boolean" default="false">
 	
 	<cfset variables.MailServer = arguments.MailServer>
 	<cfset variables.DefaultFrom = arguments.From>
@@ -47,7 +48,7 @@
 	
 	<cfif StructKeyExists(arguments,"DataMgr")>
 		<cfset variables.DataMgr = arguments.DataMgr>
-		<cfif variables.mode EQ "Sim">
+		<cfif Arguments.log OR variables.mode EQ "Sim">
 			<cfset startLogging(variables.DataMgr)>
 		</cfif>
 	</cfif>
@@ -114,6 +115,10 @@
 	<cfreturn variables.isLogging>
 </cffunction>
 
+<cffunction name="getMailServer" access="public" returntype="string" output="no">
+	<cfreturn variables.MailServer>
+</cffunction>
+
 <cffunction name="getMessages" access="public" returntype="query" output="no">
 	
 	<cfif StructKeyExists(variables,"DataMgr")>
@@ -139,6 +144,10 @@
 
 <cffunction name="getNotices" access="public" returntype="struct" output="no">
 	<cfreturn variables.Notices>
+</cffunction>
+
+<cffunction name="getTo" access="public" returntype="string" output="no">
+	<cfreturn variables.Defaultto>
 </cffunction>
 
 <cffunction name="removeNotice" access="public" returntype="void" output="no" hint="I remove a notice from the mailer.">
@@ -358,14 +367,18 @@
 	<cfargument name="DataMgr" type="any" required="yes">
 	<cfargument name="tablename" type="string" default="#variables.logtable#">
 	
-	<cfset var dbXml = getDbXml(arguments.tablename)>
+	<cfset var dbXml = "">
 	
-	<cfset variables.logtable = arguments.tablename>
-	<cfset variables.DataMgr = arguments.DataMgr>
-	
-	<cfset variables.DataMgr.loadXml(dbXml,true,true)>
-	
-	<cfset variables.isLogging = true>
+	<cfif NOT variables.isLogging>
+		<cfset dbXml = getDbXml(arguments.tablename)>
+		
+		<cfset variables.logtable = arguments.tablename>
+		<cfset variables.DataMgr = arguments.DataMgr>
+		
+		<cfset variables.DataMgr.loadXml(dbXml,true,true)>
+		
+		<cfset variables.isLogging = true>
+	</cfif>
 	
 </cffunction>
 

@@ -1,6 +1,5 @@
-<cf_layout title="Administrative Area">
-<cf_layout showTitle="true">
+<cf_Template title="Administrative Area" showTitle="true">
 
 <p>Welcome to the site administrative area.</p>
 
-<cf_layout>
+</cf_Template>
