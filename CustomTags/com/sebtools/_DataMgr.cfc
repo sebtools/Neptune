@@ -1,5 +1,5 @@
-<!--- 2.5 Beta 3 Dev 3 (Build 169) --->
-<!--- Last Updated: 2011-10-11 --->
+<!--- 2.5 Beta 3 Dev 3 (Build 170) --->
+<!--- Last Updated: 2011-12-14 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <!--- Information: http://www.bryantwebconsulting.com/docs/datamgr/?version=2.5 --->
 <cfcomponent displayname="Data Manager" hint="I manage data interactions with the database. I can be used to handle inserts/updates.">
@@ -3745,6 +3745,7 @@
 	<cfset var in = clean(arguments.data_set)><!--- holds incoming data for ease of use --->
 	<cfset var sqlarray = ArrayNew(1)>
 	<cfset var Specials = "LastUpdatedDate">
+	<cfset var usedfields = "">
 	
 	<cfif NOT StructKeyExists(arguments,"data_where")>
 		<cfset arguments.data_where = StructNew()>
@@ -3769,32 +3770,37 @@
 	<cfset ArrayAppend(sqlarray,"UPDATE	#escape(arguments.tablename)#")>
 	<cfset ArrayAppend(sqlarray,"SET")>
 	<cfloop index="ii" from="1" to="#ArrayLen(fields)#" step="1">
-		<cfif useField(in,fields[ii])><!--- Include update if this is valid data --->
-			<cfset checkLength(fields[ii],in[fields[ii].ColumnName])>
-			<cfset fieldcount = fieldcount + 1>
-			<cfif fieldcount GT 1>
-				<cfset ArrayAppend(sqlarray,",")>
-			</cfif>
-			<cfset ArrayAppend(sqlarray,"#escape(fields[ii].ColumnName)# = ")>
-			<cfset ArrayAppend(sqlarray,sval(fields[ii],in))>
-		<cfelseif isBlankValue(in,fields[ii])><!--- Or if it is passed in as empty value and null are allowed --->
-			<cfset fieldcount = fieldcount + 1>
-			<cfif fieldcount GT 1>
-				<cfset ArrayAppend(sqlarray,",")>
-			</cfif>
-			<cfif StructKeyExists(fields[ii],"AllowNulls") AND isBoolean(fields[ii].AllowNulls) AND NOT fields[ii].AllowNulls>
-				<cfset ArrayAppend(sqlarray,"#escape(fields[ii].ColumnName)# = ''")>
-			<cfelse>
-				<cfset ArrayAppend(sqlarray,"#escape(fields[ii].ColumnName)# = NULL")>
-			</cfif>
-		<cfelseif StructKeyExists(fields[ii],"Special") AND Len(fields[ii].Special) AND ListFindNoCase(Specials,fields[ii].Special)>
-			<cfif fields[ii]["Special"] EQ "LastUpdatedDate">
+		<cfif StructKeyExists(fields[ii],"ColumnName") AND NOT ListFindNoCase(usedfields,fields[ii]["ColumnName"])>
+			<cfif useField(in,fields[ii])><!--- Include update if this is valid data --->
+				<cfset checkLength(fields[ii],in[fields[ii].ColumnName])>
 				<cfset fieldcount = fieldcount + 1>
+				<cfset usedfields = ListAppend(usedfields,fields[ii]["ColumnName"])>
 				<cfif fieldcount GT 1>
 					<cfset ArrayAppend(sqlarray,",")>
 				</cfif>
 				<cfset ArrayAppend(sqlarray,"#escape(fields[ii].ColumnName)# = ")>
-				<cfset ArrayAppend(sqlarray,getFieldNowValue(arguments.tablename,fields[ii]))>
+				<cfset ArrayAppend(sqlarray,sval(fields[ii],in))>
+			<cfelseif isBlankValue(in,fields[ii])><!--- Or if it is passed in as empty value and null are allowed --->
+				<cfset fieldcount = fieldcount + 1>
+				<cfset usedfields = ListAppend(usedfields,fields[ii]["ColumnName"])>
+				<cfif fieldcount GT 1>
+					<cfset ArrayAppend(sqlarray,",")>
+				</cfif>
+				<cfif StructKeyExists(fields[ii],"AllowNulls") AND isBoolean(fields[ii].AllowNulls) AND NOT fields[ii].AllowNulls>
+					<cfset ArrayAppend(sqlarray,"#escape(fields[ii].ColumnName)# = ''")>
+				<cfelse>
+					<cfset ArrayAppend(sqlarray,"#escape(fields[ii].ColumnName)# = NULL")>
+				</cfif>
+			<cfelseif StructKeyExists(fields[ii],"Special") AND Len(fields[ii].Special) AND ListFindNoCase(Specials,fields[ii].Special)>
+				<cfif fields[ii]["Special"] EQ "LastUpdatedDate">
+					<cfset fieldcount = fieldcount + 1>
+					<cfset usedfields = ListAppend(usedfields,fields[ii]["ColumnName"])>
+					<cfif fieldcount GT 1>
+						<cfset ArrayAppend(sqlarray,",")>
+					</cfif>
+					<cfset ArrayAppend(sqlarray,"#escape(fields[ii].ColumnName)# = ")>
+					<cfset ArrayAppend(sqlarray,getFieldNowValue(arguments.tablename,fields[ii]))>
+				</cfif>
 			</cfif>
 		</cfif>
 	</cfloop>
@@ -4791,16 +4797,24 @@
 	<cfset var orderarray = ArrayNew(1)>
 	<cfset var temp = "">
 	<cfset var fields = getFieldList(tablename=arguments.tablename)>
+	<cfset var sql = 0>
+	<cfset var sqlkeys = "">
+	<cfset var sqlkey = "">
 	<!---<cfset var sqlarray = ArrayNew(1)>--->
 	
 	<cfif Len(arguments.fieldlist)>
 		<cfloop list="#arguments.fieldlist#" index="temp">
 			<cfif ListFindNoCase(fields,temp)>
 				<!---<cfset adjustedfieldlist = ListAppend(adjustedfieldlist,escape(arguments.tablealias & '.' & temp))>--->
-				<cfif ArrayLen(orderarray) GT 0>
-					<cfset ArrayAppend(orderarray,",")>
+				<cfset sql = getFieldSelectSQL(tablename=arguments.tablename,field=temp,tablealias=arguments.tablealias,useFieldAlias=false)>
+				<cfset sqlkey = Hash(readableSQL(sql))>
+				<cfif NOT ListFindNoCase(sqlkeys,sqlkey)>
+					<cfif ArrayLen(orderarray) GT 0>
+						<cfset ArrayAppend(orderarray,",")>
+					</cfif>
+					<cfset ArrayAppend(orderarray,sql)>
+					<cfset sqlkeys = ListAppend(sqlkeys,sqlkey)>
 				</cfif>
-				<cfset ArrayAppend(orderarray,getFieldSelectSQL(tablename=arguments.tablename,field=temp,tablealias=arguments.tablealias,useFieldAlias=false))>
 			</cfif>
 		</cfloop>
 	</cfif>

@@ -1,5 +1,5 @@
-<!--- 1.5.5 (Build 16) --->
-<!--- Last Updated: 2011-11-23 --->
+<!--- 1.6 (Build 17) --->
+<!--- Last Updated: 2011-12-14 --->
 <!--- Information: sebtools.com --->
 <cfcomponent displayname="File Manager">
 <!--- %%Handle folders w/o write permission --->
@@ -298,7 +298,15 @@
 	<cfargument name="FileName" type="string" required="yes">
 	<cfargument name="Folder" type="string" default="">
 	
-	<cfreturn getDirectory(arguments.Folder) & arguments.FileName>
+	<cfset var result = "">
+	
+	<cfif ListLen(Arguments.FileName,variables.dirdelim) GT 1 AND FileExists(Arguments.FileName)>
+		<cfset result = Arguments.FileName>
+	<cfelse>
+		<cfset result = getDirectory(arguments.Folder) & arguments.FileName>
+	</cfif>
+	
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="getFileURL" access="public" returntype="string" output="no">
@@ -564,22 +572,23 @@ Copies a directory.
 	var thePath = "";
 	var result = arguments.fullPath;
 	var counter = 0;
+	if ( FileExists(Arguments.fullPath) ) {
+		if( ListLen(fullPath,".") gte 2 ) {
+			extension = "." & ListLast(fullPath,".");
+		}
+		thePath = ListDeleteAt(fullPath,ListLen(fullPath,"."),".");
+		dir = getDirectoryFromPath(arguments.fullPath);
+		filebase = getFileFromPath(arguments.fullPath);
+		filebase = ListDeleteAt(filebase,ListLen(filebase,"."),".");
+		
+		if ( arguments.maxfilelength AND Len(filebase & extension) GT arguments.maxfilelength ) {
+			filebase = Left(filebase,arguments.maxfilelength-extension);
+		}
 	
-	if( ListLen(fullPath,".") gte 2 ) {
-		extension = "." & ListLast(fullPath,".");
-	}
-	thePath = ListDeleteAt(fullPath,ListLen(fullPath,"."),".");
-	dir = getDirectoryFromPath(arguments.fullPath);
-	filebase = getFileFromPath(arguments.fullPath);
-	filebase = ListDeleteAt(filebase,ListLen(filebase,"."),".");
-	
-	if ( arguments.maxfilelength AND Len(filebase & extension) GT arguments.maxfilelength ) {
-		filebase = Left(filebase,arguments.maxfilelength-extension);
-	}
-
-	while( FileExists(result) ) {
-		counter = counter + 1;
-		result = LimitFileNameLength(arguments.maxfilelength,thePath,"_" & counter & extension);			
+		while( FileExists(result) ) {
+			counter = counter + 1;
+			result = LimitFileNameLength(arguments.maxfilelength,thePath,"_" & counter & extension);			
+		}
 	}
 	
 	return result;	
