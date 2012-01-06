@@ -359,10 +359,10 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 	<cfsavecontent variable="ThisTag.config.Colon">:</cfsavecontent>
 	<cfif attributes.Format eq "Table">
 		<cfsavecontent variable="ThisTag.config.Layout"><cfoutput><div<cfif Len(Trim(attributes.skin))> class=" sebForm-skin-#LCase(attributes.skin)#"</cfif>><div id="sebForm" class="sebFormat-table">[ErrorHeader]<form><table border="0" cellspacing="0" cellpadding="3" class="sebFormTable">[Fields]</table></form></div></div></cfoutput></cfsavecontent>
-		<cfsavecontent variable="ThisTag.config.Fields.all"><tr id="row-[id]"><cfoutput><td valign="top" class="label"><label for="[id]">#attributes.Config_Label#</label></td><td valign="top">[Input]<div class="sebHelp">[Help]</div></td></tr></cfoutput></cfsavecontent>
+		<cfsavecontent variable="ThisTag.config.Fields.all"><tr id="row-[id]"><cfoutput><td valign="top" class="label"><label for="[id]">#attributes.Config_Label#</label></td><td valign="top">[Input]<div class="sebHelp">[Help]</div><div class="sebValidation"></div></td></tr></cfoutput></cfsavecontent>
 	<cfelse>
 		<cfsavecontent variable="ThisTag.config.Layout"><cfoutput><div<cfif Len(Trim(attributes.skin))> class=" sebForm-skin-#LCase(attributes.skin)#"</cfif>><div id="sebForm" class="sebFormat-semantic">[ErrorHeader]<form>[Fields]</form></div></div></cfoutput></cfsavecontent>
-		<cfsavecontent variable="ThisTag.config.Fields.all"><div id="div-[id]" class="sebfielddiv"><cfoutput><label for="[id]">#attributes.Config_Label#</label>[Input]<div class="sebHelp">[Help]</div></div></cfoutput></cfsavecontent>
+		<cfsavecontent variable="ThisTag.config.Fields.all"><div id="div-[id]" class="sebfielddiv"><cfoutput><label for="[id]">#attributes.Config_Label#</label>[Input]<div class="sebHelp">[Help]</div><div class="sebValidation"></div></div></cfoutput></cfsavecontent>
 	</cfif>
 	
 	<cfsavecontent variable="ThisTag.config.EmailLayout">[Fields]</cfsavecontent>
