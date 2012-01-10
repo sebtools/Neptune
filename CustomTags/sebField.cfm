@@ -235,6 +235,13 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 			*/
 		}
 		
+		if ( attributes.type EQ "date" AND StructKeyExists(sForm,attributes.fieldname) ) {
+			// Fix in case user enters date as only numbers (ex 01192011 for "January 19, 2011")
+			if ( Len(sForm[attributes.fieldname]) EQ 8 AND Right(sForm[attributes.fieldname],4) GT 1900 AND Right(sForm[attributes.fieldname],4) LT Year(now()) + 1000 ) {
+				sForm[attributes.fieldname] = "#Left(sForm[attributes.fieldname],2)#/#Mid(sForm[attributes.fieldname],3,2)#/#Right(sForm[attributes.fieldname],4)#";
+			}
+		}
+		
 		if ( attributes.type EQ "email" ) {
 			attributes.stripregex = " ";
 		}
@@ -901,12 +908,13 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 		<cfelse>
 			<cfsavecontent variable="input">
 			<cfset formattedValue = "" ><cfset DateCodebase = "/images/">
-			<cfif Len(attributes.value)>
+			<!---<cfif Len(attributes.value)>
 				<cftry>
 					<cfset formattedValue = DateFormat(Attributes.value, 'mm/dd/yyyy') >
 					<cfcatch><cfset formattedValue = ""></cfcatch>
 				</cftry>
-			</cfif>
+			</cfif>--->
+			<cfset formattedValue = Attributes.value>
 			<input type="text" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif> value="#formattedValue#"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif StructKeyExists(attributes,"length") AND Len(attributes.length) AND NOT StructKeyExists(attributes,"maxlength")> maxlength="#attributes.length#"</cfif>/>
 			<cfif attributes.type eq "jtdate">
 			<cfif NOT IsDefined("ParentData.caller.EzCalendarScript") >
@@ -931,13 +939,14 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 			<cfsavecontent variable="input"><cfif isDate(attributes.value)>#DateFormat(attributes.value,"mm/dd/yyyy")#</cfif></cfsavecontent>
 		<cfelse>
 			<cfsavecontent variable="input">
-			<cfset formattedValue = "" >
+			<!---<cfset formattedValue = "" >
 			<cfif Len(attributes.value)>
 				<cftry>
 					<cfset formattedValue = DateFormat(Attributes.value, "mm/dd/yyyy") >
 					<cfcatch><cfset formattedValue = ""></cfcatch>
 				</cftry>
-			</cfif>
+			</cfif>--->
+			<cfset formattedValue = attributes.value>
 			<input type="text" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif> value="#formattedValue#"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif StructKeyExists(attributes,"length") AND Len(attributes.length) AND NOT StructKeyExists(attributes,"maxlength")> maxlength="#attributes.length#"</cfif> datepicker="true" datepicker_format="MM/DD/YYYY"/>
 			<cfif NOT IsDefined("request.sebField_Date2") >
 				<cfset request.sebField_Date2 = 1 >

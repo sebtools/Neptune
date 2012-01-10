@@ -5,10 +5,13 @@
 		<component name="DataMgr" path="com.sebtools.DataMgr">
 			<argument name="datasource" />
 		</component>
-		<component name="Manager" path="com.sebtools.Manager">
-			<argument name="DataMgr" />
+		<component name="FileMgr" path="com.sebtools.FileMgr">
 			<argument name="UploadPath" />
 			<argument name="UploadURL" />
+		</component>
+		<component name="Manager" path="com.sebtools.Manager">
+			<argument name="DataMgr" />
+			<argument name="FileMgr" />
 			<argument name="RootURL" ifmissing="skiparg" />
 			<argument name="RootPath" ifmissing="skiparg" />
 		</component>

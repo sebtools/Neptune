@@ -302,7 +302,7 @@
 	</cfif>
 </cffunction>
 
-<cffunction name="getNamedQuery" access="private" returntype="query" output="false" hint="I return a query that uses the header row of the spreadsheet for the column names in the query.">
+<cffunction name="getNamedQuery" access="public" returntype="query" output="false" hint="I return a query that uses the header row of the spreadsheet for the column names in the query.">
 	<cfargument name="sheet" type="struct" required="true">
 	<cfargument name="CompactionDelim" type="string" default="">
 	

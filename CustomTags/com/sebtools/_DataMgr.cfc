@@ -1552,7 +1552,7 @@
 					<cfset sArgs["sql"] = arguments.filters[ii]["sql"]>
 					<cfset sArgs["value"] = "">
 				<cfelse>
-					<cfset sArgs["value"] = arguments.filters[ii].value>
+					<cfset sArgs["value"] = ToString(arguments.filters[ii].value)>
 				</cfif>
 				<cfif StructKeyExists(arguments.filters[ii],"operator") AND Len(arguments.filters[ii]["operator"])>
 					<cfset sArgs["operator"] = arguments.filters[ii].operator>
@@ -4165,8 +4165,8 @@
 	<cfelseif ArrayLen(pkfields)>
 		<cfset ArrayAppend(aResults,getFieldSelectSQL(arguments.tablename,pkfields[1].ColumnName,arguments.tablealias,false))>
 	<cfelse>
-		<cfloop index="ii" from="1" to="#ArrayLen(fields)#" step="1">
-			<cfif fields[ii].CF_DataType NEQ "CF_SQL_LONGVARCHAR">
+		<cfloop index="ii" from="1" to="#Min(ArrayLen(fields),3)#" step="1">
+			<cfif NOT ListFindNoCase(variables.nocomparetypes,fields[ii].CF_DataType)>
 				<cfset ArrayAppend(aResults,getFieldSelectSQL(arguments.tablename,fields[ii].ColumnName,arguments.tablealias,false))>
 				<cfbreak>
 			</cfif>
@@ -4277,7 +4277,7 @@
 				AND	(
 							NOT	StructKeyExists(sField,"useInMultiRecordsets")
 						OR	sField.useInMultiRecordsets IS true
-						OR arguments.maxrows EQ 1
+						OR	arguments.maxrows EQ 1
 					)
 			)
 		OR	ListFindNoCase(arguments.fieldlist,sField.ColumnName)
@@ -4800,20 +4800,26 @@
 	<cfset var sql = 0>
 	<cfset var sqlkeys = "">
 	<cfset var sqlkey = "">
+	<cfset var count = 0>
 	<!---<cfset var sqlarray = ArrayNew(1)>--->
 	
 	<cfif Len(arguments.fieldlist)>
 		<cfloop list="#arguments.fieldlist#" index="temp">
 			<cfif ListFindNoCase(fields,temp)>
-				<!---<cfset adjustedfieldlist = ListAppend(adjustedfieldlist,escape(arguments.tablealias & '.' & temp))>--->
-				<cfset sql = getFieldSelectSQL(tablename=arguments.tablename,field=temp,tablealias=arguments.tablealias,useFieldAlias=false)>
-				<cfset sqlkey = Hash(readableSQL(sql))>
-				<cfif NOT ListFindNoCase(sqlkeys,sqlkey)>
-					<cfif ArrayLen(orderarray) GT 0>
-						<cfset ArrayAppend(orderarray,",")>
+				<cfset count = count + 1>
+				<cfif count LTE 3>
+					<!---<cfset adjustedfieldlist = ListAppend(adjustedfieldlist,escape(arguments.tablealias & '.' & temp))>--->
+					<cfset sql = getFieldSelectSQL(tablename=arguments.tablename,field=temp,tablealias=arguments.tablealias,useFieldAlias=false)>
+					<cfset sqlkey = Hash(readableSQL(sql))>
+					<cfif NOT ListFindNoCase(sqlkeys,sqlkey)>
+						<cfif ArrayLen(orderarray) GT 0>
+							<cfset ArrayAppend(orderarray,",")>
+						</cfif>
+						<cfset ArrayAppend(orderarray,sql)>
+						<cfset sqlkeys = ListAppend(sqlkeys,sqlkey)>
+					<cfelse>
+						<cfset count = count - 1>
 					</cfif>
-					<cfset ArrayAppend(orderarray,sql)>
-					<cfset sqlkeys = ListAppend(sqlkeys,sqlkey)>
 				</cfif>
 			</cfif>
 		</cfloop>

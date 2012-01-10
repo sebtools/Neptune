@@ -183,6 +183,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 	setDefaultAtt("SubmitBarLabels","Submit,Cancel,Delete");
 	setDefaultAtt("deletable",true);
 	setDefaultAtt("useSebFieldsOnly",false);
+	setDefaultAtt("useSebFormMetaFields",true);
 	setDefaultAtt("hasOtherFields",false);
 	setDefaultAtt("Config_Label","{[Label][ReqMark][Colon]}");
 	setDefaultAtt("useSessionMessages",false);
@@ -1794,9 +1795,9 @@ qFormAPI.include("*");
 </cfif></cfloop></script><!--- Generate any qform API property ---><cfset request.isQformLoaded = true></cfif>
 </cfsavecontent><cfhtmlhead text="#MyHead#"><cfsavecontent variable="ThisTag.output.form"><form name="#attributes.formname#"<cfloop index="thisHtmlAtt" list="#TagInfo.liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif Len(attributes.action)> action="#xmlFormat(attributes.action)#"</cfif><cfif Len(attributes.method)> method="#attributes.method#"</cfif><cfif Len(attributes.enctype)> enctype="#attributes.enctype#"</cfif><cfif Len(attributes.target)> target="#attributes.target#"</cfif>><cfif attributes.sendback AND attributes.sendforward>
 <input type="hidden" name="sebForm_forward" value="#HTMLEditFormat(Referrer)#"/>
-</cfif><input type="hidden" name="sebformsubmit" value="#Hash(attributes.formname)#"/><cfif attributes.method EQ "get"><cfloop list="#attributes.Query_String#" delimiters="&" index="urlvalpair"><cfif ListLen(urlvalpair,"=") EQ 2 AND NOT ListFindNoCase(fieldlist,ListFirst(urlvalpair,"="))>
+</cfif><cfif attributes.useSebFormMetaFields><input type="hidden" name="sebformsubmit" value="#Hash(attributes.formname)#"/></cfif><cfif attributes.method EQ "get"><cfloop list="#attributes.Query_String#" delimiters="&" index="urlvalpair"><cfif ListLen(urlvalpair,"=") EQ 2 AND NOT ListFindNoCase(fieldlist,ListFirst(urlvalpair,"="))>
 <input type="hidden" name="#HTMLEditFormat(ListFirst(urlvalpair,"="))#" value="#HTMLEditFormat(ListLast(urlvalpair,"="))#"/></cfif></cfloop></cfif>
-<cfif ListFindNoCase(attributes.qFormData.ColumnList, attributes.pkfield)><input type="hidden" name="pkfield" value="#HTMLEditFormat(attributes.qFormData[attributes.pkfield][1])#"/><cfelse><input type="hidden" name="pkfield" value=""/></cfif><cfloop index="thisField" from="1" to="#ArrayLen(arrFields)#" step="1"><cfif arrFields[thisField].type EQ "hidden">
+<cfif attributes.useSebFormMetaFields><cfif ListFindNoCase(attributes.qFormData.ColumnList, attributes.pkfield)><input type="hidden" name="pkfield" value="#HTMLEditFormat(attributes.qFormData[attributes.pkfield][1])#"/><cfelse><input type="hidden" name="pkfield" value=""/></cfif></cfif><cfloop index="thisField" from="1" to="#ArrayLen(arrFields)#" step="1"><cfif arrFields[thisField].type EQ "hidden">
 <input type="hidden" name="#arrFields[thisField].fieldname#"<cfif Len(arrFields[thisField].id)> id="#arrFields[thisField].id#"</cfif> value="#HTMLEditFormat(arrFields[thisField].value)#"/></cfif></cfloop><cfif attributes.EmbedFields IS true><cfloop collection="#sForm#" item="ffname"><cfif NOT ListFindNoCase(SebFieldList,ffname)>
 <input type="hidden" name="#LCase(HTMLEditFormat(ffname))#" value="#HTMLEditFormat(Form[ffname])#" /></cfif></cfloop></cfif>
 </cfsavecontent></cfoutput>
