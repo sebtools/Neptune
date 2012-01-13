@@ -358,7 +358,11 @@
 </cffunction>
 
 <cffunction name="go" access="remote" returntype="any" output="no" hint="I send the browser to the specified location.">
-	<cfargument name="location" type="string" required="yes">
+	<cfargument name="location" type="string" required="no">
+	
+	<cfif NOT ( StructKeyExists(Arguments,"location") AND Len(Trim(Arguments.location)) )>
+		<cfset Arguments.location = getNoAccessURL()>
+	</cfif>
 	
 	<cflocation url="#arguments.location#" addtoken="no">
 	
@@ -579,11 +583,15 @@
 <cffunction name="require" access="public" returntype="any" output="no" hint="I redirect the browser if the variable doesn't exist of isn't of the appropriate data type.">
 	<cfargument name="name" type="string" required="yes">
 	<cfargument name="type" type="string" required="yes">
-	<cfargument name="redirect" type="string" required="yes">
+	<cfargument name="redirect" type="string" required="no">
 	<cfargument name="valuelist" type="string" default="">
 	
 	<cfif NOT isVarType(arguments.name,arguments.type,arguments.valuelist)>
-		<cfset go(arguments.redirect)>
+		<cfif StructKeyExists(Arguments,"redirect")>
+			<cfset go(arguments.redirect)>
+		<cfelse>
+			<cfset go()>
+		</cfif>
 	</cfif>
 	
 </cffunction>
@@ -591,12 +599,20 @@
 <cffunction name="setInherits" access="public" returntype="any" output="no" hint="I set a component that the page controller should attempt to effectively inherit (by use of onMissingMethod).">
 	<cfargument name="component" type="any" required="yes">
 	
+	<cfset var key = "">
+	
 	<cfif isSimpleValue(arguments.component) AND StructKeyExists(variables,arguments.component)>
 		<cfset arguments.component = variables[arguments.component]>
 	</cfif>
 	
 	<cfif isObject(arguments.component)>
 		<cfset variables.this = arguments.component>
+		<cfset me["inherits"] = arguments.component>
+		<cfloop collection="#variables.this#" item="key">
+			<cfif isObject(variables.this[key]) AND NOT StructKeyExists(me,key)>
+				<cfset me[key] = variables.this[key]>
+			</cfif>
+		</cfloop>
 	</cfif>
 	
 </cffunction>

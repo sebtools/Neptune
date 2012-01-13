@@ -1290,6 +1290,7 @@
 		<!--- ** USE AT YOUR OWN RISK! **: This is highly experimental and not supported on all database --->
 		<cfelseif
 				StructKeyExists(arguments,"sortfield")
+			AND	Len(Trim(arguments.sortfield))
 			AND	(
 						( NOT Len(arguments.function) AND NOT ( StructKeyExists(arguments,"Distinct") AND arguments.Distinct IS true ) )
 					OR	(
@@ -4708,7 +4709,7 @@
 			</cfif>
 		</cfloop>
 		<cfif NOT isStruct(result)>
-			<cfset throwDMError("The field #arguments.fieldname# could not be found in the #arguments.tablename# table.","NoSuchField")>
+			<cfset throwDMError("The field '#arguments.fieldname#' could not be found in the #arguments.tablename# table.","NoSuchField")>
 		</cfif>
 	<cfelse>
 		<cfset throwDMError("The #arguments.tablename# table does not exist.","NoSuchTable")>

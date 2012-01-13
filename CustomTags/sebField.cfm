@@ -908,13 +908,13 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 		<cfelse>
 			<cfsavecontent variable="input">
 			<cfset formattedValue = "" ><cfset DateCodebase = "/images/">
-			<!---<cfif Len(attributes.value)>
-				<cftry>
-					<cfset formattedValue = DateFormat(Attributes.value, 'mm/dd/yyyy') >
-					<cfcatch><cfset formattedValue = ""></cfcatch>
-				</cftry>
-			</cfif>--->
 			<cfset formattedValue = Attributes.value>
+			<cfif Len(Attributes.value) AND isDate(Attributes.value) AND Year(Attributes.value) GTE 1900 AND Year(Attributes.value) LTE (Year(now()) + 100)>
+				<!---<cftry>--->
+					<cfset formattedValue = DateFormat(Attributes.value, 'mm/dd/yyyy') >
+					<!---<cfcatch><cfset formattedValue = ""></cfcatch>
+				</cftry>--->
+			</cfif>
 			<input type="text" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif> value="#formattedValue#"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif StructKeyExists(attributes,"length") AND Len(attributes.length) AND NOT StructKeyExists(attributes,"maxlength")> maxlength="#attributes.length#"</cfif>/>
 			<cfif attributes.type eq "jtdate">
 			<cfif NOT IsDefined("ParentData.caller.EzCalendarScript") >
@@ -939,14 +939,14 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 			<cfsavecontent variable="input"><cfif isDate(attributes.value)>#DateFormat(attributes.value,"mm/dd/yyyy")#</cfif></cfsavecontent>
 		<cfelse>
 			<cfsavecontent variable="input">
-			<!---<cfset formattedValue = "" >
-			<cfif Len(attributes.value)>
-				<cftry>
-					<cfset formattedValue = DateFormat(Attributes.value, "mm/dd/yyyy") >
-					<cfcatch><cfset formattedValue = ""></cfcatch>
-				</cftry>
-			</cfif>--->
-			<cfset formattedValue = attributes.value>
+			<cfset formattedValue = "" ><cfset DateCodebase = "/images/">
+			<cfset formattedValue = Attributes.value>
+			<cfif Len(Attributes.value) AND isDate(Attributes.value) AND Year(Attributes.value) GTE 1900 AND Year(Attributes.value) LTE (Year(now()) + 100)>
+				<!---<cftry>--->
+					<cfset formattedValue = DateFormat(Attributes.value, 'mm/dd/yyyy') >
+					<!---<cfcatch><cfset formattedValue = ""></cfcatch>
+				</cftry>--->
+			</cfif>
 			<input type="text" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif> value="#formattedValue#"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif StructKeyExists(attributes,"length") AND Len(attributes.length) AND NOT StructKeyExists(attributes,"maxlength")> maxlength="#attributes.length#"</cfif> datepicker="true" datepicker_format="MM/DD/YYYY"/>
 			<cfif NOT IsDefined("request.sebField_Date2") >
 				<cfset request.sebField_Date2 = 1 >

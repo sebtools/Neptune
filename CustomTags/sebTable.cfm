@@ -800,6 +800,7 @@ request.cftags[TagName].attributes = attributes;
 					AND	StructKeyExists(Form,"#ThisTag.qColumns[i].name#_#CurrentRow#")
 				>
 					<!--- Set structure data (may need it - can't tell yet) --->
+					<cfset RowFormData[Attributes.pkfield] = pkid>
 					<cfset RowFormData[ThisTag.qColumns[i].name] = Form["#ThisTag.qColumns[i].name#_#CurrentRow#"]>
 					<!--- If data has changed, need to update this row (including data from previously checked rows which is why we load into struct first) --->
 					<cfif RowFormData[ThisTag.qColumns[i].name] NEQ qTableData[ThisTag.qColumns[i].dbfield][CurrentRow]>

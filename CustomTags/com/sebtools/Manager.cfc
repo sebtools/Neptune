@@ -1879,6 +1879,9 @@
 					<cfset xLabelField.XmlChildren[1].XmlAttributes["field"] = variables.sMetaData[ftable]["labelField"]>
 					<cfset xLabelField.XmlChildren[1].XmlAttributes["join-field-local"] = xField.XmlAttributes["name"]>
 					<cfset xLabelField.XmlChildren[1].XmlAttributes["join-field-remote"] = getPrimaryKeyFields(ftable,xDef)>
+					<cfif StructKeyExists(xField.XmlAttributes,"onMissing")>
+						<cfset xLabelField.XmlChildren[1].XmlAttributes["onMissing"] = xField.XmlAttributes["onMissing"]>
+					</cfif>
 					<cfif ListLen(xLabelField.XmlChildren[1].XmlAttributes["join-field-remote"]) EQ 1>
 						<cfset ArrayAppend(xTable.XmlChildren,xLabelField)>
 					</cfif>

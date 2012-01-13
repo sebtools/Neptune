@@ -249,11 +249,24 @@
 	<cfargument name="path" type="string" required="true">
 	<cfargument name="reload" type="boolean" default="false">
 	
+	<cfset var key = "">
+	<cfset var sData = 0>
+	
 	<cfif arguments.reload OR NOT ( StructKeyExists(request.cf_PageController,"isPageControllerLoaded") AND request.cf_PageController.isPageControllerLoaded )>
 		<cfset arguments.vars.Controller = getPageController(arguments.path)>
 		<cfset arguments.vars.PageController = arguments.vars.Controller>
+		
 		<cfif StructKeyExists(arguments.vars.Controller,"loadData")>
-			<cfset StructAppend(arguments.vars,arguments.vars.Controller.loadData(arguments.vars))>
+			<cfset sData = arguments.vars.Controller.loadData(arguments.vars)>
+			<cfif
+					isStruct(sData) AND StructCount(sData)
+			>
+				<cfloop collection="#sData#" item="key">
+					<cfif isSimpleValue(key) AND Len(Trim(key)) AND ListLen(key,".") EQ 1>
+						<cfset arguments.vars["#key#"] = sData[key]>
+					</cfif>
+				</cfloop>
+			</cfif>
 		</cfif>
 	</cfif>
 	
@@ -615,9 +628,6 @@ function getPageController(path) {
 	
 	<cfloop index="ii" from="1" to="#ArrayLen(axPrograms)#">
 		<cfif arguments.path CONTAINS axPrograms[ii].XmlAttributes["path"]>
-			<!---<cfdump var="#arguments.path#">
-			<cfdump var="#axPrograms[ii].XmlAttributes.path#">
-			<cfabort>--->
 			<cfset sResult = axPrograms[ii].XmlAttributes>
 			<cfset StructAppend(sResult,axPrograms[ii].XmlAttributes)>
 		</cfif>
@@ -720,6 +730,9 @@ function getPageController(path) {
 	<cfset var oComponent = 0>
 	<cfset var checkLabel = 0>
 	
+	<cfif NOT ArrayLen(aComponents)>
+		<cfset aComponents = This.Loader.getComponents()>
+	</cfif>
 	
 	<cfloop index="checkLabel" from="0" to="1" step="1">
 		<cfloop index="ii" from="1" to="#ArrayLen(aComponents)#" step="1">
@@ -1610,7 +1623,7 @@ Fixed a bug where the filter wouldn't show dirs.
 	<cfloop query="arguments.thisDir">
 		<cfset ScriptName = "/" & ReplaceNoCase(ReplaceNoCase("#arguments.directory##name#",variables.instance.RootPath,""),"\","/","ALL")>
 		<cfset isExcluded = false>
-		<!---<cfdump var="#ScriptName#">--->
+		
 		<cfif Len(arguments.exclude) AND type IS "dir">
 			<cfloop list="#arguments.exclude#" index="exdir">
 				<cfif
