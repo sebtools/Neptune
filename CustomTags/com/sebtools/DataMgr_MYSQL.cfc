@@ -1,5 +1,5 @@
-<!--- 2.5 Beta 3 Dev 3 (Build 170) --->
-<!--- Last Updated: 2011-12-15 --->
+<!--- 2.5 Beta 3 (Build 171) --->
+<!--- Last Updated: 2012-01-25 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for MySQL" hint="I manage data interactions with the MySQL database.">
 

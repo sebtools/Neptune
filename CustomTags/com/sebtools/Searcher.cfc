@@ -1,5 +1,5 @@
-<!--- 1.0 Beta 5 (Build 8) --->
-<!--- Last Updated: 2010-10-11 --->
+<!--- 1.0 RC (Build 9) --->
+<!--- Last Updated: 2012-01-24 --->
 <!--- Created by Steve Bryant 2005-10-20 --->
 <!--- Information: sebtools.com --->
 <!---
@@ -17,7 +17,7 @@ Optionally run search through google
 <cffunction name="init" access="public" returntype="any" output="no" hint="I initialize and return this object.">
 	<cfargument name="CollectionPath" type="string" required="yes">
 	<cfargument name="DataMgr" type="any" required="yes">
-	<cfargument name="sendpage" type="string" required="yes">
+	<cfargument name="sendpage" type="string" default="">
 	<cfargument name="excludedirs" type="string" default="">
 	<cfargument name="excludefiles" type="string" default="">
 	<cfargument name="UseGoogleSyntax" type="boolean" default="false">
@@ -28,7 +28,7 @@ Optionally run search through google
 <cffunction name="initInternal" access="private" returntype="any" output="no" hint="I initialize and return this object.">
 	<cfargument name="CollectionPath" type="string" required="yes">
 	<cfargument name="DataMgr" type="any" required="yes">
-	<cfargument name="sendpage" type="string" required="yes">
+	<cfargument name="sendpage" type="string" default="">
 	<cfargument name="excludedirs" type="string" default="">
 	<cfargument name="excludefiles" type="string" default="">
 	<cfargument name="UseGoogleSyntax" type="boolean" default="false">
@@ -163,11 +163,12 @@ Optionally run search through google
 <cffunction name="indexPath" access="public" returntype="void" output="no" hint="I index a path collection and add it to the Searcher.">
 	<cfargument name="CollectionName" type="string" required="yes">
 	<cfargument name="Key" type="string" required="yes">
+	<cfargument name="extensions" type="string" default="htm,html,cfm,cfml,dbm,dbml">
 
 	<!--- Try to index the given collection name from the given path --->
 	<cflock timeout="120" throwontimeout="yes" name="Searcher_IndexQuery_#arguments.CollectionName#" type="EXCLUSIVE">
 		<cftry>
-			<cfindex action="REFRESH" collection="#arguments.CollectionName#" key="#arguments.Key#" type="PATH" recurse="Yes">
+			<cfindex action="REFRESH" collection="#arguments.CollectionName#" key="#arguments.Key#" type="PATH" recurse="Yes" extensions="#Arguments.extensions#">
 			<cfcatch>
 				<!--- If index fails, try to create it and index again (exception will bubble up if it fails again) --->
 				<!--- <cftry> --->
@@ -176,7 +177,7 @@ Optionally run search through google
 					<!--- </cfcatch>
 				</cftry> --->
 				<!--- <cfset indexPath(arguments.CollectionName,arguments.Key)> --->
-				<cfindex action="REFRESH" collection="#arguments.CollectionName#" key="#arguments.Key#" type="PATH" recurse="Yes">
+				<cfindex action="REFRESH" collection="#arguments.CollectionName#" key="#arguments.Key#" type="PATH" recurse="Yes" extensions="#Arguments.extensions#">
 			</cfcatch>
 		</cftry>
 	</cflock>
@@ -341,13 +342,19 @@ Optionally run search through google
 	<cfloop query="qSearch">
 		
 		<!--- If relative URL, start from site root --->
-		<!---<cfif Len(URL) AND NOT URL CONTAINS "dummy.txt">--->
-			<cfif Left(URL,1) neq "/" AND Left(URL,7) neq "http://">
+		<cfif Len(URL) AND NOT URL CONTAINS "dummy.txt">--->
+			<cfif FileExists(key)>
+				<cfset QuerySetCell(qSearch,"URL",GetFileFromPath(key),CurrentRow)>
+			<cfelseif Left(URL,1) neq "/" AND Left(URL,7) neq "http://">
 				<cfset QuerySetCell(qSearch,"URL","/#URL#",CurrentRow)>
 			</cfif>
-		<!---<cfelse>
-			<cfset QuerySetCell(qSearch,"URL","/#Key#",CurrentRow)>
-		</cfif>--->
+		<cfelse>
+			<cfif FileExists(key)>
+				<cfset QuerySetCell(qSearch,"URL",GetFileFromPath(key),CurrentRow)>
+			<cfelse>
+				<cfset QuerySetCell(qSearch,"URL","/#Key#",CurrentRow)>
+			</cfif>
+		</cfif>
 
 		<!--- If any directories should be excluded from the results --->
 		<cfif Len(variables.excludedirs)>
@@ -377,7 +384,7 @@ Optionally run search through google
 		</cfif>
 
 		<!--- If not Title, set title to file name --->
-		<cfif Not Len(Title)>
+		<cfif NOT Len(Title)>
 			<cfset QuerySetCell(qSearch,"Title",ListLast(URL,"/"),CurrentRow)>
 		</cfif>
 		
@@ -386,7 +393,9 @@ Optionally run search through google
 		<cfset QuerySetCell(qSearch,"URL",ReplaceNoCase(URL,"[Key]",KEY,"ALL"),CurrentRow)>
 		
 		<!--- Send to this component for tracking and redirection --->
-		<cfset QuerySetCell(qSearch,"URL","#variables.sendpage#?searchid=#arguments.searchid#&to=#URL#",CurrentRow)>
+		<cfif Len(Trim(variables.sendpage))>
+			<cfset QuerySetCell(qSearch,"URL","#variables.sendpage#?searchid=#arguments.searchid#&to=#URL#",CurrentRow)>
+		</cfif>
 
 	</cfloop>
 	<cfset qSearch = QueryDeleteRows(qSearch,liDeleteRows)>

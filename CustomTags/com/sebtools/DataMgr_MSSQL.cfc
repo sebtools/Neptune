@@ -1,5 +1,5 @@
-<!--- 2.5 Beta 3 Dev 3 (Build 169) --->
-<!--- Last Updated: 2011-10-11 --->
+<!--- 2.5 Beta 3 (Build 171) --->
+<!--- Last Updated: 2012-01-25 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for MS SQL Server" hint="I manage data interactions with the MS SQL Server database.">
 
@@ -367,7 +367,7 @@
 	<cfoutput query="qStructure">
 		<cfset tmpStruct = StructNew()>
 		<cfset tmpStruct["ColumnName"] = Field>
-		<cfset tmpStruct["CF_DataType"] = getCFDataType(Type)>
+		<cfset tmpStruct["CF_DataType"] = getCFDataType(Type,MaxLength)>
 		<cfif ListFindNoCase(PrimaryKeys,Field)>
 			<cfset tmpStruct["PrimaryKey"] = true>
 		</cfif>
@@ -396,6 +396,7 @@
 
 <cffunction name="getCFDataType" access="public" returntype="string" output="no" hint="I return the cfqueryparam datatype from the database datatype.">
 	<cfargument name="type" type="string" required="yes" hint="The database data type.">
+	<cfargument name="Length" type="string" default="" hint="The field length.">
 	
 	<cfset var result = "">
 	
@@ -422,7 +423,13 @@
 		<cfcase value="timestamp"><cfset result = "CF_SQL_TIMESTAMP"></cfcase>
 		<cfcase value="tinyint"><cfset result = "CF_SQL_TINYINT"></cfcase>
 		<cfcase value="uniqueidentifier"><cfset result = "CF_SQL_IDSTAMP"></cfcase>
-		<cfcase value="varchar"><cfset result = "CF_SQL_VARCHAR"></cfcase>
+		<cfcase value="varchar">
+			<cfif Arguments.Length EQ "-1">
+				<cfset result = "CF_SQL_LONGVARCHAR">
+			<cfelse>
+				<cfset result = "CF_SQL_VARCHAR">
+			</cfif>
+		</cfcase>
 		<cfdefaultcase><cfset result = ""></cfdefaultcase>
 	</cfswitch>
 	
@@ -445,7 +452,15 @@
 		<cfcase value="CF_SQL_FLOAT"><cfset result = "float"></cfcase>
 		<cfcase value="CF_SQL_IDSTAMP"><cfset result = "uniqueidentifier"></cfcase>
 		<cfcase value="CF_SQL_INTEGER"><cfset result = "int"></cfcase>
-		<cfcase value="CF_SQL_LONGVARCHAR"><cfset result = "text"></cfcase>
+		
+		<cfcase value="CF_SQL_LONGVARCHAR">
+			<cfif getDatabaseVersion() GTE 9>
+				<cfset result = "varchar(max)">
+			<cfelse>
+				<cfset result = "text">
+			</cfif>
+		</cfcase>
+		
 		<cfcase value="CF_SQL_MONEY"><cfset result = "money"></cfcase>
 		<cfcase value="CF_SQL_MONEY4"><cfset result = "smallmoney"></cfcase>
 		<cfcase value="CF_SQL_NUMERIC"><cfset result = "numeric"></cfcase>
