@@ -6,6 +6,7 @@
 	<cfargument name="Service" type="any" required="yes">
 	<cfargument name="Record" type="any" required="yes">
 	<cfargument name="fields" type="string" default="">
+	<cfargument name="row" type="numeric" default="1">
 	
 	<cfset var oMe = initInternal(argumentCollection=arguments)>
 	
@@ -16,6 +17,7 @@
 	<cfargument name="Service" type="any" required="yes">
 	<cfargument name="Record" type="any" required="yes">
 	<cfargument name="fields" type="string" default="">
+	<cfargument name="row" type="numeric" default="1">
 	
 	<cfset var key = "">
 	<cfset var qRecord = 0>
@@ -65,7 +67,7 @@
 	
 	<!--- If a query is passed in, convert it to a structure. --->
 	<cfif isQuery(Arguments.Record)>
-		<cfset Arguments.Record = QueryRowToStruct(Arguments.Record)>
+		<cfset Arguments.Record = QueryRowToStruct(Arguments.Record,Arguments.row)>
 	</cfif>
 	
 	<!--- If a struct is passed in, use that --->
@@ -135,9 +137,13 @@
 	<cfset var result = "">
 	<cfset var sArgs = 0>
 	<cfset var sFields = 0>
+	<cfset var FieldBase = "">
 	
 	<cfif NOT StructKeyExists(Variables.sFields,Arguments.field)>
-		<cfthrow message="#Variables.sServiceInfo.label_Singular# does not have a property named #Arguments.field#.">
+		<cfset FieldBase = ReReplaceNoCase(Arguments.field,"(File$)|(URL$)","")>
+		<cfif NOT ( StructKeyExists(Variables.sFields,FieldBase) AND Variables.sFields[FieldBase].type EQ "file" )>
+			<cfthrow message="#Variables.sServiceInfo.label_Singular# does not have a property named #Arguments.field#.">
+		</cfif>
 	</cfif>
 	
 	<cfif NOT StructKeyExists(Variables.instance,Arguments.field)>

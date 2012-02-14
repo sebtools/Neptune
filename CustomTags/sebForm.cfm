@@ -325,7 +325,11 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 			)
 	>
 		<cftry>
-			<cfset attributes.sFields = attributes.CFC_Component.getFieldsStruct(transformer="sebField")>
+			<cfinvoke returnvariable="attributes.sFields" component="#attributes.CFC_Component#" method="getFieldsStruct">
+				<cfinvokeargument name="transformer" value="sebField">
+				<cfinvokeargument name="#attributes.pkfield#" value="#attributes.recordid#">
+			</cfinvoke>
+			<!---<cfset attributes.sFields = attributes.CFC_Component.getFieldsStruct(transformer="sebField")>--->
 			<!--- If component has getFieldStruct, make sure to catch "Master" errors --->
 			<cfif NOT ListFindNoCase(attributes.CatchErrTypes,"Master")>
 				<cfset attributes.CatchErrTypes = ListAppend(attributes.CatchErrTypes,"Master")>
@@ -465,7 +469,11 @@ FieldsArrayOutput = "";
 		<cfif StructKeyExists(attributes,"FieldsArray") AND isArray(attributes.FieldsArray)>
 			<cfset aDefFields = attributes.FieldsArray>
 		<cfelse>
-			<cfset aDefFields = attributes.CFC_Component.getFieldsArray(transformer='sebField')>
+			<cfinvoke returnvariable="aDefFields" component="#attributes.CFC_Component#" method="getFieldsArray">
+				<cfinvokeargument name="transformer" value="sebField">
+				<cfinvokeargument name="#attributes.pkfield#" value="#attributes.recordid#">
+			</cfinvoke>
+			<!---<cfset aDefFields = attributes.CFC_Component.getFieldsArray(transformer='sebField')>--->
 		</cfif>
 		<cfif ArrayLen(aDefFields)>
 			<cfsavecontent variable="FieldsArrayOutput">

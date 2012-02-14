@@ -552,6 +552,7 @@
 	<cfset var sManagerData = variables.Manager.getMetaStruct(getTableVariable())>
 	<cfset var single = variables.methodSingular>
 	<cfset var plural = variables.methodSingular>
+	<cfset var sParent = 0>
 	
 	<cfif StructKeyExists(sManagerData,"labelField")>
 		<cfset sMethods["field_label"] = "#sManagerData.labelField#">
@@ -586,6 +587,10 @@
 	
 	<cfset sMethods["arg_sort"] = "#plural#">
 	<cfset sMethods["catch_types"] = "#plural#">
+	<cfif StructKeyExists(Variables,"Parent") AND isObject(Variables.Parent)>
+		<cfset sParent = getMetaData(Variables.Parent)>
+		<cfset sMethods["catch_types"] = ListAppend(sMethods["catch_types"],ListLast(sParent.name,'.'))>
+	</cfif>
 	
 	<cfset sMethods["pkfields"] = variables.Manager.getPrimaryKeyFields(getTableVariable())>
 	<cfif ArrayLen(aPKFields) EQ 1>

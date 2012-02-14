@@ -474,7 +474,7 @@
 	</cfif>
 	
 	<cfthrow
-		type="#variables.me.name#"
+		type="#ListLast(variables.me.name,'.')#"
 		message="#arguments.message#"
 		errorcode="#arguments.errorcode#"
 		detail="#arguments.detail#"

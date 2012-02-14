@@ -1,5 +1,5 @@
-<!--- 2.5 Beta 3 Dev 3 (Build 170) --->
-<!--- Last Updated: 2011-12-14 --->
+<!--- 2.5 Beta 3 (Build 171) --->
+<!--- Last Updated: 2012-01-25 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <!--- Information: http://www.bryantwebconsulting.com/docs/datamgr/?version=2.5 --->
 <cfcomponent displayname="Data Manager" hint="I manage data interactions with the database. I can be used to handle inserts/updates.">
@@ -4204,7 +4204,7 @@
 	<cfreturn result>
 </cffunction>
 
-<cffunction name="getFTableFields" access="private" returntype="struct" output="no">
+<cffunction name="getFTableFields" access="public" returntype="struct" output="no">
 	<cfargument name="tablename" type="string" required="yes">
 	
 	<cfset var aFields = 0>
@@ -5839,14 +5839,16 @@
 		<cfset sData[Arguments.NewField] = "">
 		<cfset qRecords = getRecords(tablename=Arguments.tablename,data=StructCopy(sData),fieldlist=ListAppend(pklist,Arguments.OldField))>
 		
-		<cfoutput query="qRecords">
-			<cfset sData = StructNew()>
-			<cfloop list="#pklist#" index="key">
-				<cfset sData[key] = qRecords[key][CurrentRow]>
-			</cfloop>
-			<cfset sData[Arguments.NewField] = qRecords[Arguments.OldField][CurrentRow]>
-			<cfset updateRecord(tablename=Arguments.tablename,data=StructCopy(sData))>
-		</cfoutput>
+		<cfif ListFindNoCase(qRecords.ColumnList,Arguments.OldField)>
+			<cfoutput query="qRecords">
+				<cfset sData = StructNew()>
+				<cfloop list="#pklist#" index="key">
+					<cfset sData[key] = qRecords[key][CurrentRow]>
+				</cfloop>
+				<cfset sData[Arguments.NewField] = qRecords[Arguments.OldField][CurrentRow]>
+				<cfset updateRecord(tablename=Arguments.tablename,data=StructCopy(sData))>
+			</cfoutput>
+		</cfif>
 	</cfif>
 	
 </cffunction>

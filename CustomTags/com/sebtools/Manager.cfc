@@ -1,5 +1,5 @@
-<!--- 1.0 Beta 3 (Build 35) --->
-<!--- Last Updated: 2011-11-23 --->
+<!--- 1.0 Beta 3 (Build 36) --->
+<!--- Last Updated: 2012-01-31 --->
 <!--- Information: http://www.bryantwebconsulting.com/docs/com-sebtools/manager.cfm?version=Build%2012 ---><cfcomponent output="false">
 
 <cffunction name="init" access="public" returntype="any" output="no">
@@ -717,13 +717,14 @@
 		</cfloop>
 	</cfif>
 	
-	<!--- Delete any arguments that aren't primary keys --->
+	<!--- Delete any arguments that aren't simple and primary keys --->
 	<cfloop collection="#in#" item="ii">
 		<cfif
-				StructKeyExists(in,ii)
-			AND	NOT (
-							ListFindNoCase(pklist,ii)
-						OR	( isSimpleValue(in[ii]) AND Len(in[ii]) )
+				NOT (
+							StructKeyExists(in,ii)
+						AND	isSimpleValue(in[ii])
+						AND	ListFindNoCase(pklist,ii)
+						AND	Len(in[ii])
 					)
 		>
 			<cfset StructDelete(in,ii)>
@@ -874,6 +875,7 @@
 <cffunction name="copyRecord" access="public" returntype="string" output="no">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="data" type="struct" default="#StructNew()#">
+	<cfargument name="CopyChildren" type="boolean" required="no">
 	
 	<cfset var in = Duplicate(arguments.data)>
 	<cfset var aFileFields = getFileFields(tablename=arguments.tablename)>
@@ -883,6 +885,11 @@
 	<cfset var result = "">
 	<cfset var path = "">
 	<cfset var pkfields = getPrimaryKeyFields(arguments.tablename)>
+	<cfset var table = "">
+	<cfset var sChildren = 0>
+	<cfset var qChildren = 0>
+	<cfset var childpkfields = 0>
+	<cfset var sFTables = 0>
 	
 	<cfset arguments.OnExists = "insert">
 	
@@ -911,14 +918,47 @@
 	
 	<!--- Ditch primary keys --->
 	<cfloop list="#pkfields#" index="ii">
-		<cfset StructDelete(in,ii)>)
+		<cfset StructDelete(in,ii)>
 	</cfloop>
 	
 	<cfset arguments.data = in>
 	
 	<cfset result = saveRecord(argumentCollection=arguments)>
 	
+	<cfif
+			( StructKeyExists(Arguments,"CopyChildren") AND Arguments.CopyChildren IS true )
+		AND	qRecord.RecordCount
+		AND	(
+					StructKeyExists(variables.sMetaData[arguments.tablename],"childtables")
+				AND	Len(variables.sMetaData[arguments.tablename]["childtables"])
+			)
+		AND	ListLen(pkfields) EQ 1
+	>
+		<cfloop index="table" list="#variables.sMetaData[arguments.tablename].childtables#">
+			<cfset sChildren = StructNew()>
+			<cfset sFTables = Variables.DataMgr.getFTableFields(table)>
+			<cfif StructKeyExists(sFTables,arguments.tablename)>
+				<cfset sChildren[sFTables[arguments.tablename]] = qRecord[pkfields][1]>
+				<cfset childpkfields = getPrimaryKeyFields(table)>
+				<cfset qChildren = getRecords(tablename=table,data=sChildren,fieldlist=childpkfields)>
+				<cfoutput query="qChildren">
+					<cfset sRecord = StructNew()>
+					<cfset sRecord[sFTables[arguments.tablename]] = result>
+					<cfloop index="ii" list="#childpkfields#">
+						<cfset sRecord[ii] = qChildren[ii][CurrentRow]>
+					</cfloop>
+					<cfset copyRecord(tablename=table,data=sRecord,CopyChildren=true)>
+				</cfoutput>
+			</cfif>
+		</cfloop>
+	</cfif>
+	
 	<cfreturn result>
+</cffunction>
+
+<cffunction name="copyRecordChildren" access="public" returntype="void" output="no">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="data" type="struct" default="#StructNew()#">
 </cffunction>
 
 <cffunction name="saveRecord" access="public" returntype="string" output="no">
@@ -1691,7 +1731,7 @@
 	<cfset var xHasField = 0>
 	<cfset var xListField = 0>
 	<cfset var xListNamesField = 0>
-	<cfset var isMany2Many = 0>
+	<!---<cfset var isMany2Many = 0>--->
 	
 	<cfloop index="ff" from="1" to="#ArrayLen(axFields)#" step="1">
 		<cfset xField = axFields[ff]>
@@ -1717,7 +1757,7 @@
 					OR	xField.XmlAttributes["jointype"] EQ "many2many"
 				)
 		>
-			<cfset isMany2Many = ( xField.XmlAttributes["jointype"] EQ "many2many" OR ArrayLen(XmlSearch(xDef,"//table[@name='#ftable#']/field[@ftable='#table#'][@jointype='many' or @jointype='list' or @jointype='many2many']")) )>
+			<!---<cfset isMany2Many = ( xField.XmlAttributes["jointype"] EQ "many2many" OR ArrayLen(XmlSearch(xDef,"//table[@name='#ftable#']/field[@ftable='#table#'][@jointype='many' or @jointype='list' or @jointype='many2many']")) )>--->
 			<cfif NOT StructKeyExists(xField.XmlAttributes,"type")>
 				<cfset xField.XmlAttributes["type"] = "Relation">
 			</cfif>
@@ -1941,6 +1981,14 @@
 			</cfif>
 		</cfif>
 		
+		<cfif StructKeyExists(variables.sMetaData, ftable)>
+			<cfif NOT StructKeyExists(variables.sMetaData[ftable],"childtables")>
+				<cfset variables.sMetaData[ftable]["childtables"] = "">
+			</cfif>
+			<cfif NOT ListFindNoCase(variables.sMetaData[ftable]["childtables"],table)>
+				<cfset variables.sMetaData[ftable]["childtables"] = ListAppend(variables.sMetaData[ftable]["childtables"],table)>
+			</cfif>
+		</cfif>
 		
 		<!--- Add list fields if indicated --->
 		<!---<cfif StructKeyExists(xField.XmlAttributes,"withListFields") AND xField.XmlAttributes["withListFields"] IS true>
