@@ -257,12 +257,9 @@
 	<cfset var qSentMessages = 0>
 	<cfset var oDataMgr = 0>
 	<cfset var fieldlist = "LogID">
-	<cfset var secondaryFieldList = "To,CC,BCC,From">
-	<cfset var aToMatch = ArrayNew(1)>
-	<cfset var iLoop = 0>
-	<cfset var iLoop2 = 0>
-	<cfset var aRows = "">
-	<cfset var aRows2 = "">
+	<cfset var sData = Duplicate(Arguments)>
+	<cfset var RecipientFields = "To,CC,BCC,From">
+	<cfset var ii = 0>
 	<cfset var key = "">
 	
 	<cfset assertEmailTestable()>
@@ -279,11 +276,46 @@
 		<cfset fieldlist = "LogID,Subject,Contents,HTML,Text">
 	</cfif>
 	
-	<cfset qSentMessages = oDataMgr.getRecords(tablename=variables.Mailer.getLogTable(),data=arguments,filters=aFilters,fieldlist=fieldlist)>
+	<cfset qSentMessages = oDataMgr.getRecords(tablename=variables.Mailer.getLogTable(),data=sData,filters=aFilters,fieldlist=fieldlist)>
+	
+	<cfif qSentMessages.RecordCount EQ 0>
+		<!--- look more thoroughly for a match --->
+		<!--- Exclude recipient fields from the query --->
+		<cfloop list="#RecipientFields#" index="key">
+			<cfset StructDelete(sData,key)>
+		</cfloop>
+		<cfset fieldlist = ListAppend(fieldlist,RecipientFields)>
+		<cfset qSentMessages = oDataMgr.getRecords(tablename=variables.Mailer.getLogTable(),data=sData,filters=aFilters,fieldlist=fieldlist)>
+		
+		<cfif qSentMessages.RecordCount>
+			<!--- Get just the email addresses themselves --->
+			<cfloop list="#RecipientFields#" index="key">
+				<cfif StructKeyExists(Arguments,key) AND Len(Arguments[key])>
+					<cfset Arguments[key] = getEmailAddresses(Arguments[key] ) />
+				</cfif>
+			</cfloop>
+			<cfscript>
+			//Find by just email address (must be in cfscript as CFCONTINUE is not available until CF9 and we need to support CF8)
+			for ( ii = qSentMessages.RecordCount; ii GTE 1; ii=ii-1 ) {
+				for ( key in Arguments ) {
+					if ( ListFindNoCase(RecipientFields,key) AND StructKeyExists(Arguments,key) AND Len(Arguments[key]) ) {
+						if ( StructKeyExists(Arguments,key) AND Len(Arguments[key]) ) {
+							//ToDo: If any of the email addresses from Arguments[key] are NOT found in qSentMessages[key][ii]
+							if ( true ) {
+								qSentMessages = QueryDeleteRows(qSentMessages,ii);
+								continue;
+							}
+						}
+					}
+				}
+			}
+			</cfscript>
+		</cfif>
+	</cfif>
 	
 	<cfset result = qSentMessages.RecordCount>
 	
-	<cfif StructKeyExists(arguments,"regex") AND Len(arguments.regex)>
+	<cfif result AND StructKeyExists(arguments,"regex") AND Len(arguments.regex)>
 		<cfoutput query="qSentMessages">
 			<cfif NOT (
 					ReFindNoCase(arguments.regex,Subject)
@@ -295,109 +327,60 @@
 			</cfif>
 		</cfoutput>
 	</cfif>
-	<cfif result EQ 0 >
-		<!--- look more thoroughly for a match --->
-		<!--- get the records that at least match the timeframe --->
-		<cfset qSentMessages = oDataMgr.getRecords(tablename=variables.Mailer.getLogTable(),filters=aFilters,fieldlist=secondaryFieldList)>
-		<cfif qSentMessages.RecordCount>
-			<!--- get an array of email addresses that need to be matched --->
-			<cfloop collection="#ARGUMENTS#" item="key">
-				<!--- avoid unnecessary overhead --->
-				<cfif key EQ 'to' OR key EQ 'from' OR key EQ 'cc' OR key EQ 'bcc'>
-					<!--- add more delimiters here if needed --->
-					<cfset aRows = reSplit( ",|;|:", ARGUMENTS[key] ) />
-					<!--- oh dear...a loop within a loop --->
-					<cfloop index="iLoop" from="1" to="#ArrayLen( aRows )#" step="1">
-						<!--- avoid adding dupes --->
-						<cfif NOT ArrayFindNoCase(aToMatch,aRows[ iLoop ])>
-							<cfset ArrayAppend(aToMatch,aRows[ iLoop ])>
-						</cfif>
-					</cfloop>
-				</cfif>
-			</cfloop>
-			<!--- now we have our array of unique addresses to match lets do some matching --->
-			<cfoutput query="qSentMessages">
-				<!--- check To field --->
-				<cfset aRows2 = reSplit( ",|;|:", qSentMessages.to ) />
-				<cfloop index="iLoop2" from="1" to="#ArrayLen( aToMatch )#" step="1">
-					<cfif ArrayFindNoCase(aRows2,aToMatch[ iLoop2 ])>
-						<cfset result = result + 1>
-					</cfif>
-				</cfloop>
-				<!--- check From field --->
-				<cfset aRows2 = reSplit( ",|;|:", qSentMessages.from ) />
-				<cfloop index="iLoop2" from="1" to="#ArrayLen( aToMatch )#" step="1">
-					<cfif ArrayFindNoCase(aRows2,aToMatch[ iLoop2 ])>
-						<cfset result = result + 1>
-					</cfif>
-				</cfloop>
-				<!--- check CC field --->
-				<cfset aRows2 = reSplit( ",|;|:", qSentMessages.cc ) />
-				<cfloop index="iLoop2" from="1" to="#ArrayLen( aToMatch )#" step="1">
-					<cfif ArrayFindNoCase(aRows2,aToMatch[ iLoop2 ])>
-						<cfset result = result + 1>
-					</cfif>
-				</cfloop>
-				<!--- check BCC field --->
-				<cfset aRows2 = reSplit( ",|;|:", qSentMessages.bcc ) />
-				<cfloop index="iLoop2" from="1" to="#ArrayLen( aToMatch )#" step="1">
-					<cfif ArrayFindNoCase(aRows2,aToMatch[ iLoop2 ])>
-						<cfset result = result + 1>
-					</cfif>
-				</cfloop>
-			</cfoutput>
-		</cfif>
-	</cfif>
 	
 	<cfreturn result>
 </cffunction>
 
-<!--- 
-	/**
-	 * Splits a string into an array based on regex pattern.
-	 * 
-	 * @param regex 	 The regex to work with. 
-	 * @param value 	 The string to split. 
-	 * @return Returns an array. 
-	 * @author Ben Nadel (ben@epicenterconsulting.com) 
-	 * @version 1, December 11, 2001 
-	 */
- --->
-<cffunction name="reSplit" access="public" returntype="array" output="false" hint="I split the given string using the given Java regular expression.">
- 	<!--- Define arguments. --->
-	<cfargument name="regex" type="string" required="true" hint="I am the regular expression being used to split the string."/>
-	<cfargument name="value" type="string" required="true" hint="I am the string being split."/>
- 
-	<!--- Define the local scope. --->
-	<cfset var local = {} />
- 
-	<!---
-	Get the split functionality from the core Java script. I am
-	using JavaCast here as a way to alleviate the fact that I'm
-	using *undocumented* functionality... sort of.
-	 
-	The -1 argument tells the split() method to include trailing
-	parts that are empty.
-	--->
-	<cfset local.parts = javaCast( "string", arguments.value ).split(javaCast( "string", arguments.regex ),javaCast( "int", -1 )) />
-
-	<!---
-	We now have the individual parts; however, the split()
-	method does not return a ColdFusion array - it returns a
-	typed String[] array. We now have to convert that to a
-	standard ColdFusion array.
-	--->
-	<cfset local.result = [] />
-
-	<!--- Loop over the parts and append them to the results. --->
-	<cfloop index="local.part" array="#local.parts#">	 
-		<cfset arrayAppend( local.result, local.part ) />
-	</cfloop>
- 
-	<!--- Return the result. --->
-	<cfreturn local.result />
+<cffunction name="getEmailAddresses">
+	<cfargument name="string" type="string">
+	<cfargument name="EmailAddresses" type="string" default="">
+	
+	<cfset var sLenPos = 0>
+	<cfset var emailAddress = "">
+	
+	<cfif REFind("([a-zA-Z0-9_\.=-]+@[a-zA-Z0-9_\.-]+\.[[:alpha:]]{2,6})",string)>
+		<cfset sLenPos = REFind("([a-zA-Z0-9_\.=-]+@[a-zA-Z0-9_\.-]+\.[[:alpha:]]{2,6})",string,1,true) />
+		<cfset emailAddress = mid(string, sLenPos.pos[1], sLenPos.len[1]) />
+		<cfif NOT ListFindNoCase(EmailAddresses,emailAddress)>
+			<cfset EmailAddresses = ListAppend(EmailAddresses, emailAddress)>
+		</cfif>
+		<cfset string = Mid(string, sLenPos.pos[1] + sLenPos.len[1], len(string))>
+		<cfif REFind("([a-zA-Z0-9_\.=-]+@[a-zA-Z0-9_\.-]+\.[[:alpha:]]{2,6})",string)>
+			<cfset EmailAddresses = getEmailAddresses(string, EmailAddresses)>
+		</cfif>
+	</cfif>
+	
+	<cfreturn EmailAddresses>
 </cffunction>
 
+<cfscript>
+/**
+ * Removes rows from a query.
+ * Added var col = "";
+ * No longer using Evaluate. Function is MUCH smaller now.
+ * 
+ * @param Query      Query to be modified 
+ * @param Rows      Either a number or a list of numbers 
+ * @return This function returns a query. 
+ * @author Raymond Camden (ray@camdenfamily.com) 
+ * @version 2, October 11, 2001 
+ */
+function QueryDeleteRows(Query,Rows) {
+    var tmp = QueryNew(Query.ColumnList);
+    var i = 1;
+    var x = 1;
+
+    for(i=1;i lte Query.recordCount; i=i+1) {
+        if(not ListFind(Rows,i)) {
+            QueryAddRow(tmp,1);
+            for(x=1;x lte ListLen(tmp.ColumnList);x=x+1) {
+                QuerySetCell(tmp, ListGetAt(tmp.ColumnList,x), query[ListGetAt(tmp.ColumnList,x)][i]);
+            }
+        }
+    }
+    return tmp;
+}
+</cfscript>
 <cffunction name="loadExternalVars" access="public" returntype="void" output="no">
 	<cfargument name="varlist" type="string" required="true">
 	<cfargument name="scope" type="string" default="Application">
@@ -452,13 +435,13 @@
 	<cftransaction>
 		<cftry>
 			<cfset result = fMethod(argumentCollection=arguments.args)>
-			<cfcatch type="any">
-				<cftransaction action="rollback"/>
-				<cfrethrow>
-			</cfcatch>
+		<cfcatch type="any">
+			<cftransaction action="rollback">
+			<cfrethrow>
+		</cfcatch>
 		</cftry>
 		
-		<cftransaction action="rollback"/>
+		<cftransaction action="rollback">
 	</cftransaction>
 	
 	<cfif isDefined("result")>
