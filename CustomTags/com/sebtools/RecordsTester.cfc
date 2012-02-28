@@ -257,6 +257,13 @@
 	<cfset var qSentMessages = 0>
 	<cfset var oDataMgr = 0>
 	<cfset var fieldlist = "LogID">
+	<cfset var secondaryFieldList = "To,CC,BCC,From">
+	<cfset var aToMatch = ArrayNew(1)>
+	<cfset var iLoop = 0>
+	<cfset var iLoop2 = 0>
+	<cfset var aRows = "">
+	<cfset var aRows2 = "">
+	<cfset var key = "">
 	
 	<cfset assertEmailTestable()>
 	
@@ -288,8 +295,107 @@
 			</cfif>
 		</cfoutput>
 	</cfif>
+	<cfif result EQ 0 >
+		<!--- look more thoroughly for a match --->
+		<!--- get the records that at least match the timeframe --->
+		<cfset qSentMessages = oDataMgr.getRecords(tablename=variables.Mailer.getLogTable(),filters=aFilters,fieldlist=secondaryFieldList)>
+		<cfif qSentMessages.RecordCount>
+			<!--- get an array of email addresses that need to be matched --->
+			<cfloop collection="#ARGUMENTS#" item="key">
+				<!--- avoid unnecessary overhead --->
+				<cfif key EQ 'to' OR key EQ 'from' OR key EQ 'cc' OR key EQ 'bcc'>
+					<!--- add more delimiters here if needed --->
+					<cfset aRows = reSplit( ",|;|:", ARGUMENTS[key] ) />
+					<!--- oh dear...a loop within a loop --->
+					<cfloop index="iLoop" from="1" to="#ArrayLen( aRows )#" step="1">
+						<!--- avoid adding dupes --->
+						<cfif NOT ArrayFindNoCase(aToMatch,aRows[ iLoop ])>
+							<cfset ArrayAppend(aToMatch,aRows[ iLoop ])>
+						</cfif>
+					</cfloop>
+				</cfif>
+			</cfloop>
+			<!--- now we have our array of unique addresses to match lets do some matching --->
+			<cfoutput query="qSentMessages">
+				<!--- check To field --->
+				<cfset aRows2 = reSplit( ",|;|:", qSentMessages.to ) />
+				<cfloop index="iLoop2" from="1" to="#ArrayLen( aToMatch )#" step="1">
+					<cfif ArrayFindNoCase(aRows2,aToMatch[ iLoop2 ])>
+						<cfset result = result + 1>
+					</cfif>
+				</cfloop>
+				<!--- check From field --->
+				<cfset aRows2 = reSplit( ",|;|:", qSentMessages.from ) />
+				<cfloop index="iLoop2" from="1" to="#ArrayLen( aToMatch )#" step="1">
+					<cfif ArrayFindNoCase(aRows2,aToMatch[ iLoop2 ])>
+						<cfset result = result + 1>
+					</cfif>
+				</cfloop>
+				<!--- check CC field --->
+				<cfset aRows2 = reSplit( ",|;|:", qSentMessages.cc ) />
+				<cfloop index="iLoop2" from="1" to="#ArrayLen( aToMatch )#" step="1">
+					<cfif ArrayFindNoCase(aRows2,aToMatch[ iLoop2 ])>
+						<cfset result = result + 1>
+					</cfif>
+				</cfloop>
+				<!--- check BCC field --->
+				<cfset aRows2 = reSplit( ",|;|:", qSentMessages.bcc ) />
+				<cfloop index="iLoop2" from="1" to="#ArrayLen( aToMatch )#" step="1">
+					<cfif ArrayFindNoCase(aRows2,aToMatch[ iLoop2 ])>
+						<cfset result = result + 1>
+					</cfif>
+				</cfloop>
+			</cfoutput>
+		</cfif>
+	</cfif>
 	
 	<cfreturn result>
+</cffunction>
+
+<!--- 
+	/**
+	 * Splits a string into an array based on regex pattern.
+	 * 
+	 * @param regex 	 The regex to work with. 
+	 * @param value 	 The string to split. 
+	 * @return Returns an array. 
+	 * @author Ben Nadel (ben@epicenterconsulting.com) 
+	 * @version 1, December 11, 2001 
+	 */
+ --->
+<cffunction name="reSplit" access="public" returntype="array" output="false" hint="I split the given string using the given Java regular expression.">
+ 	<!--- Define arguments. --->
+	<cfargument name="regex" type="string" required="true" hint="I am the regular expression being used to split the string."/>
+	<cfargument name="value" type="string" required="true" hint="I am the string being split."/>
+ 
+	<!--- Define the local scope. --->
+	<cfset var local = {} />
+ 
+	<!---
+	Get the split functionality from the core Java script. I am
+	using JavaCast here as a way to alleviate the fact that I'm
+	using *undocumented* functionality... sort of.
+	 
+	The -1 argument tells the split() method to include trailing
+	parts that are empty.
+	--->
+	<cfset local.parts = javaCast( "string", arguments.value ).split(javaCast( "string", arguments.regex ),javaCast( "int", -1 )) />
+
+	<!---
+	We now have the individual parts; however, the split()
+	method does not return a ColdFusion array - it returns a
+	typed String[] array. We now have to convert that to a
+	standard ColdFusion array.
+	--->
+	<cfset local.result = [] />
+
+	<!--- Loop over the parts and append them to the results. --->
+	<cfloop index="local.part" array="#local.parts#">	 
+		<cfset arrayAppend( local.result, local.part ) />
+	</cfloop>
+ 
+	<!--- Return the result. --->
+	<cfreturn local.result />
 </cffunction>
 
 <cffunction name="loadExternalVars" access="public" returntype="void" output="no">
@@ -346,13 +452,13 @@
 	<cftransaction>
 		<cftry>
 			<cfset result = fMethod(argumentCollection=arguments.args)>
-		<cfcatch type="any">
-			<cftransaction action="rollback">
-			<cfrethrow>
-		</cfcatch>
+			<cfcatch type="any">
+				<cftransaction action="rollback"/>
+				<cfrethrow>
+			</cfcatch>
 		</cftry>
 		
-		<cftransaction action="rollback">
+		<cftransaction action="rollback"/>
 	</cftransaction>
 	
 	<cfif isDefined("result")>
