@@ -299,15 +299,17 @@
 			for ( ii = qSentMessages.RecordCount; ii GTE 1; ii=ii-1 ) {
 				for ( key in Arguments ) {
 					if ( ListFindNoCase(RecipientFields,key) AND StructKeyExists(Arguments,key) AND Len(Arguments[key]) ) {
-						if ( StructKeyExists(Arguments,key) AND Len(Arguments[key]) AND Len(qSentMessages[key][ii]) ) {
+						if ( StructKeyExists(Arguments,key) AND Len(Arguments[key]) ) {
 							//Are all emails that were passed in as arguments found in the query record?
-							if ( NOT isListInList(Arguments[key],getEmailAddresses(qSentMessages[key][ii])) ) {
-								qSentMessages = QueryDeleteRows(qSentMessages,ii);
-								continue;
+							if (
+									NOT (
+												Len(qSentMessages[key][ii])
+											AND	isListInList(Arguments[key],getEmailAddresses(qSentMessages[key][ii]))
+									)
+								) {
+									qSentMessages = QueryDeleteRows(qSentMessages,ii);
+									continue;
 							}
-						}else if(StructKeyExists(Arguments,key) AND Len(Arguments[key]) AND NOT Len(qSentMessages[key][ii]) ){
-							//if a query column, with the same name as an argument that is passed in, is empty; then delete it
-							qSentMessages = QueryDeleteRows(qSentMessages,ii);
 						}
 					}
 				}
@@ -474,12 +476,12 @@ function isListInList(l1,l2) {
 		<cftry>
 			<cfset result = fMethod(argumentCollection=arguments.args)>
 		<cfcatch type="any">
-			<cftransaction action="rollback"/>
+			<cftransaction action="rollback">
 			<cfrethrow>
 		</cfcatch>
 		</cftry>
 		
-		<cftransaction action="rollback"/>
+		<cftransaction action="rollback">
 	</cftransaction>
 	
 	<cfif isDefined("result")>
