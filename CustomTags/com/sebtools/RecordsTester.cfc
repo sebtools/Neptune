@@ -299,12 +299,15 @@
 			for ( ii = qSentMessages.RecordCount; ii GTE 1; ii=ii-1 ) {
 				for ( key in Arguments ) {
 					if ( ListFindNoCase(RecipientFields,key) AND StructKeyExists(Arguments,key) AND Len(Arguments[key]) ) {
-						if ( StructKeyExists(Arguments,key) AND Len(Arguments[key]) ) {
-							//ToDo: If any of the email addresses from Arguments[key] are NOT found in qSentMessages[key][ii]
-							if ( true ) {
+						if ( StructKeyExists(Arguments,key) AND Len(Arguments[key]) AND Len(qSentMessages[key][ii]) ) {
+							//Are all emails that were passed in as arguments found in the query record?
+							if ( NOT isListInList(Arguments[key],getEmailAddresses(qSentMessages[key][ii])) ) {
 								qSentMessages = QueryDeleteRows(qSentMessages,ii);
 								continue;
 							}
+						}else if(StructKeyExists(Arguments,key) AND Len(Arguments[key]) AND NOT Len(qSentMessages[key][ii]) ){
+							//if a query column, with the same name as an argument that is passed in, is empty; then delete it
+							qSentMessages = QueryDeleteRows(qSentMessages,ii);
 						}
 					}
 				}
@@ -381,6 +384,41 @@ function QueryDeleteRows(Query,Rows) {
     return tmp;
 }
 </cfscript>
+
+<cfscript>
+/**
+ * Checks is all elements of a list X is found in a list Y.
+ * v2 by Raymond Camden
+ * v3 idea by Bill King
+ * v4 fix by Chris Phillips
+ * 
+ * @param l1      The first list. (Required)
+ * @param l2      The second list. UDF checks to see if all of l1 is in l2. (Required)
+ * @param delim1      List delimiter for l1. Defaults to a comma. (Optional)
+ * @param delim2      List delimiter for l2. Defaults to a comma. (Optional)
+ * @param matchany      If true, UDF returns true if at least one item in l1 exists in l2. Defaults to false. (Optional)
+ * @return Returns a boolean. 
+ * @author Daniel Chicayban (dbastos@math.utoledo.edu) 
+ * @version 4, September 4, 2008 
+ */
+function isListInList(l1,l2) {
+    var delim1 = ",";
+    var delim2 = ",";
+    var i = 1;
+    var matchany = false;
+    
+    if(arrayLen(arguments) gte 3) delim1 = arguments[3];
+    if(arrayLen(arguments) gte 4) delim2 = arguments[4];
+    if(arrayLen(arguments) gte 5) matchany = arguments[5];
+    
+    for(i=1; i lte listLen(l1,delim1); i=i+1) {
+        if(matchany and listFind(l2,listGetAt(l1,i,delim1),delim2)) return true;
+        if(not matchany and not listFind(l2,listGetAt(l1,i,delim1),delim2)) return false;
+    }
+    return not matchany;
+}
+</cfscript>
+
 <cffunction name="loadExternalVars" access="public" returntype="void" output="no">
 	<cfargument name="varlist" type="string" required="true">
 	<cfargument name="scope" type="string" default="Application">
@@ -436,12 +474,12 @@ function QueryDeleteRows(Query,Rows) {
 		<cftry>
 			<cfset result = fMethod(argumentCollection=arguments.args)>
 		<cfcatch type="any">
-			<cftransaction action="rollback">
+			<cftransaction action="rollback"/>
 			<cfrethrow>
 		</cfcatch>
 		</cftry>
 		
-		<cftransaction action="rollback">
+		<cftransaction action="rollback"/>
 	</cftransaction>
 	
 	<cfif isDefined("result")>
