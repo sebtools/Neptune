@@ -1489,10 +1489,19 @@
 <cffunction name="loadXml" access="public" returntype="any" output="false" hint="">
 	<cfargument name="xml" type="any" required="yes">
 	
-	<cfset var xIn = XmlParse(arguments.xml)>
+	<cfset var xIn = 0>
 	<cfset var table = "">
 	<cfset var aInTables = 0>
 	<cfset var tt = 0>
+	
+	<cftry>
+		<cfset xIn = XmlParse(arguments.xml)>
+	<cfcatch>
+		XML Parse Failed
+		<cfdump var="#arguments.xml#">
+		<cfabort>
+	</cfcatch>
+	</cftry>
 	
 	<cflock name="Manager_loadXml#variables.UUID#" timeout="1800" throwontimeout="yes">
 		<cfset adjustXml(xIn)>

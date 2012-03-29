@@ -971,7 +971,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 	<cfcase value="datestamp"></cfcase>
 
 	<cfcase value="delete"><cfif Len(attributes.fieldname) eq 0><cfset attributes.fieldname = "sebformDelete"></cfif>
-		<cfsavecontent variable="input"><cfif attributes.isEditable NEQ false><input type="submit" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfif Len(attributes.label)> value="#attributes.label#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop> onclick="return confirm('Are you sure you want to permanantly DELETE this item?');"/></cfif></cfsavecontent>
+		<cfsavecontent variable="input"><cfif attributes.isEditable NEQ false><input type="submit" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfif Len(attributes.label)> value="#attributes.label#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop> onclick="return confirm('Are you sure you want to permanantly delete this item?');"/></cfif></cfsavecontent>
 		<cfif NOT Len(ParentAtts.datasource) OR NOT isNumeric(ParentAtts.recordid)><cfset input = "<!-- Delete button only displays when editing a record -->"></cfif>
 	</cfcase>
 

@@ -102,7 +102,7 @@
 	
 	<cfset var result = false>
 	
-	<cfif StructKeyExists(variables.args,key)>
+	<cfif StructKeyExists(variables.args,key) AND isSimpleValue(variables.args[key])>
 		<cftry>
 			<cfset result = NOT ( ToScript(variables.args[key],"a") EQ ToScript(Arguments.value,"a") )>
 		<cfcatch>
@@ -922,7 +922,7 @@ function isListInList(l1,l2) {
 </cfscript>
 <cfscript>
 function isListInCommon(List1, List2) {
-	return ( Len(ListInCommon(argumentCollection=arguments)) GT 0 );
+	return ( Len(ListInCommon(List1=List1,List2=List2)) GT 0 );
 }
 /**
 * Returns elements in list1 that are found in list2.

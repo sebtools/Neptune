@@ -285,6 +285,23 @@ function QueryStringDeleteVar(variable) {
 	
 </cffunction>
 
+<cffunction name="showSessionMessage" returntype="string" output="false">
+	
+	<cfset var message = useSessionMessage()>
+	<cfset var result = ''>
+	
+	<cfif Len(Trim(message))>
+		<cfset result = '<p class="sebMessage">#message#</p>'>
+		<cfif NOT StructCount(Form)>
+			<cfheader name="expires" value="#now()#"> 
+			<cfheader name="pragma" value="no-cache"> 
+			<cfheader name="cache-control" value="no-cache, no-store, must-revalidate">
+		</cfif> 
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="useSessionMessage" returntype="string" output="false">
 	
 	<cfset var result = "">

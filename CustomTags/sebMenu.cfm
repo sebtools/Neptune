@@ -332,7 +332,7 @@ if ( CurrTab ) {
 </cfif>
 </cfdefaultcase>
 </cfswitch>
-<cfif attributes.useSessionMessages><cfset message = useSessionMessage()><cfif Len(Trim(message))><p class="sebMessage">#message#</cfif></cfif>
+<cfif attributes.useSessionMessages>#showSessionMessage()#</cfif>
 <!--- ***** --->
 </cfoutput><cfset ThisTag.GeneratedContent = "">
 </cfif>

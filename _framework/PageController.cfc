@@ -1,5 +1,5 @@
-<!--- 1.0 Beta 2 (Build 25) --->
-<!--- Last Updated: 2011-11-23 --->
+<!--- 1.0 Beta 2 (Build 26) --->
+<!--- Last Updated: 2012-01-31 --->
 <!--- Information: sebtools.com --->
 <cfcomponent displayname="Page Controller" output="false">
 
@@ -43,6 +43,7 @@
 	<cfset var oComponent = me>
 	<cfset var sCompMeta = 0>
 	<cfset var vartype = "numeric">
+	<cfset var temp = "">
 	
 	<cfset vars.Title = arguments.Title>
 	<cfset vars.TitleBase = arguments.Title>
@@ -55,9 +56,24 @@
 				<cfset vartype = sCompMeta["property_pktype"]>
 			</cfif>
 		</cfif>
+		
 		<cfset param("URL.#urlvar#",vartype,0)>
-		<cfset URL[LCase(ReplaceNoCase(arguments.Title," ","_","ALL"))] = URL[urlvar]>
-		<cfset URL[LCase(ReplaceNoCase(arguments.Title," ","","ALL"))] = URL[urlvar]>
+		
+		<cfset temp = LCase(ReplaceNoCase(arguments.Title," ","_","ALL"))>
+		<cfif ReFindNoCase("^\w+$",temp)>
+			<cfset param("URL.#temp#",vartype,0)>
+			<cfif URL[urlvar]>
+				<cfset URL[temp] = URL[urlvar]>
+			</cfif>
+		</cfif>
+		
+		<cfset temp = LCase(ReplaceNoCase(arguments.Title," ","","ALL"))>
+		<cfif ReFindNoCase("^\w+$",temp)>
+			<cfset param("URL.#temp#",vartype,0)>
+			<cfif URL[urlvar]>
+				<cfset URL[temp] = URL[urlvar]>
+			</cfif>
+		</cfif>
 		
 		<cfset vars.Action = "Add">
 		

@@ -1101,6 +1101,7 @@
 		</cfif>
 	</cfinvoke>
 	
+	<cfset qRecords = applyConcatRelations(arguments.tablename,qRecords)>
 	<cfset qRecords = applyListRelations(arguments.tablename,qRecords)>
 	
 	<!--- Manage offset --->
@@ -3937,6 +3938,43 @@
 	<cfreturn sArgs>
 </cffunction>
 
+<cffunction name="applyConcatRelations" access="public" returntype="query" output="no">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="query" type="query" required="yes">
+
+	<cfset var qRecords = arguments.query>
+	<cfset var rfields = getRelationFields(arguments.tablename)><!--- relation fields in table --->
+	<cfset var i = 0><!--- Generic counter --->
+	<cfset var hasConcats = false>
+	<cfset var qRelationList = 0>
+	<cfset var temp = 0>
+	
+	<!--- Check for list values in recordset --->
+	<cfloop index="i" from="1" to="#ArrayLen(rfields)#" step="1">
+		<cfif ListFindNoCase(qRecords.ColumnList,rfields[i].ColumnName)>
+			<cfif rfields[i].Relation.type EQ "concat">
+				<cfset hasConcats = true>
+				<cfbreak>
+			</cfif>
+		</cfif>
+	</cfloop>
+	
+	<!--- Get list values --->
+	<cfif hasConcats>
+		<cfloop query="qRecords">
+			<cfloop index="i" from="1" to="#ArrayLen(rfields)#" step="1">
+				<cfif rfields[i].Relation["type"] EQ "concat" AND ListFindNoCase(qRecords.ColumnList,rfields[i].ColumnName) AND Len(rfields[i].relation.delimiter)>
+					<cfif ReFindNoCase("^(#rfields[i].relation.delimiter#\s?)+$",qRecords[rfields[i].ColumnName][CurrentRow])>
+						<cfset QuerySetCell(qRecords, rfields[i].ColumnName, "", CurrentRow)>
+					</cfif>
+				</cfif>
+			</cfloop>
+		</cfloop>
+	</cfif>
+	
+	<cfreturn qRecords>
+</cffunction>
+
 <cffunction name="applyListRelations" access="public" returntype="query" output="no">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="query" type="query" required="yes">
@@ -3953,6 +3991,7 @@
 		<cfif ListFindNoCase(qRecords.ColumnList,rfields[i].ColumnName)>
 			<cfif rfields[i].Relation.type EQ "list">
 				<cfset hasLists = true>
+				<cfbreak>
 			</cfif>
 		</cfif>
 	</cfloop>

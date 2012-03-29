@@ -294,7 +294,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebcolumn-general-attributes.cfm
 				<cfset var inputval = value>
 				
 				<cfif isDate(inputval)>
-					<cfif StructKeyExists(atts,"mask")>
+					<cfif StructKeyExists(atts,"mask") AND Len(Trim(atts.mask))>
 						<cfset inputval = DateFormat(inputval,atts.mask)>
 					<cfelse>
 						<cfset inputval = DateFormat(inputval,"mm/dd/yyyy")>

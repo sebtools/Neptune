@@ -43,7 +43,6 @@
 	
 	variables.xDefs = loadXML(getMethodOutputValue(variables,"xml"));
 	This.xDefs = variables.xDefs;
-	loadCustomFields();
 	if ( Len(Trim(xmlcustom)) ) {
 		//Make sure to use prefix attribute in customxml
 		if (
@@ -54,6 +53,7 @@
 		}
 		variables.xDefsCustom = loadXML(xmlcustom);
 	}
+	loadCustomFields();
 	
 	if ( StructKeyExists(arguments,"NoticeMgr") ) {
 		This.NoticeMgr = variables.NoticeMgr;

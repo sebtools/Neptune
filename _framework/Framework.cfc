@@ -45,7 +45,7 @@
 		component="Config"
 		method="init"
 	>
-		<cfinvokeargument name="scopes" value="request">
+		<cfinvokeargument name="scopes" value="#Arguments.scopes#">
 		<cfinvokeargument name="RootPath" value="#variables.instance.RootPath#">
 		<cfinvokeargument name="dirdelim" value="#variables.instance.dirdelim#">
 		<cfif StructKeyExists(arguments,"Proxy")>

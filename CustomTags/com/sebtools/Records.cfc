@@ -336,9 +336,20 @@
 		<cfset StructAppend(Arguments,sSpecifyingValues,"no")>
 	</cfif>
 	
-	<cfinvoke component="#This#" method="validate#variables.methodSingular#" argumentCollection="#arguments#" returnvariable="sArgs">
+	<cfinvoke component="#This#" method="validate#variables.methodSingular#" argumentCollection="#arguments#" returnvariable="Arguments">
 	
-	<cfreturn variables.Manager.saveRecord(variables.table,sArgs)>
+	<cfreturn variables.Manager.saveRecord(variables.table,Arguments)>
+</cffunction>
+
+<cffunction name="saveRecordOnly" access="public" returntype="string" output="no">
+	
+	<cfset var sSpecifyingValues = getSpecifyingValues()>
+	
+	<cfif StructCount(sSpecifyingValues) AND NOT isUpdate()>
+		<cfset StructAppend(Arguments,sSpecifyingValues,"no")>
+	</cfif>
+	
+	<cfreturn variables.Manager.saveRecord(variables.table,Arguments)>
 </cffunction>
 
 <cffunction name="Security_getPermissions" access="public" returntype="string" output="no">
@@ -585,8 +596,8 @@
 	<cfset sMethods["message_remove"] = "#variables.labelSingular# Deleted.">
 	<cfset sMethods["message_sort"] = "#variables.labelPlural# Sorted.">
 	
-	<cfset sMethods["arg_sort"] = "#plural#">
-	<cfset sMethods["catch_types"] = "#plural#">
+	<cfset sMethods["arg_sort"] = "#variables.methodPlural#">
+	<cfset sMethods["catch_types"] = "#variables.methodPlural#">
 	<cfif StructKeyExists(Variables,"Parent") AND isObject(Variables.Parent)>
 		<cfset sParent = getMetaData(Variables.Parent)>
 		<cfset sMethods["catch_types"] = ListAppend(sMethods["catch_types"],ListLast(sParent.name,'.'))>
