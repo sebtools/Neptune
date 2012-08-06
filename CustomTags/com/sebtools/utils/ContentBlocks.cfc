@@ -8,6 +8,8 @@
 	
 	<cfset initInternal(argumentCollection=arguments)>
 	
+	<cfset Variables.sContentBocks = StructNew()>
+	
 	<cfreturn This>
 </cffunction>
 
@@ -15,9 +17,11 @@
 	
 	<cfset var qCheck = getContentBlocks(ContentBlockName=Arguments.ContentBlockName,ExcludeComponent=Arguments.Component,fieldlist="ContentBlockID,Component")>
 	
-	<cfif qCheck.RecordCount>
+	<cfif qCheck.RecordCount AND Len(Variables.Manager.DataMgr.getDatasource())>
 		<cfset throwError(Message="A content block of this name is already being used by another component (""#qCheck.Component#"").",ErrorCode="NameConflict")>
 	</cfif>
+	
+	<cfset Variables.sContentBocks[Arguments.ContentBlockName] = Arguments>
 	
 	<!---
 	Only take action if this doesn't already exists for this component.
@@ -32,17 +36,27 @@
 <cffunction name="getContentBlockHTML" access="public" returntype="string" output="no" hint="I get the HTML for the requested content block.">
 	<cfargument name="ContentBlockName" type="string" required="yes">
 	
-	<cfset var qContentBlock = getContentBlocks(ContentBlockName=Arguments.ContentBlockName,fieldlist="ContentBlockID,isHTML,ContentBlockText")>
+	<cfset var qContentBlock = 0>
 	<cfset var result = "">
 	
-	<cfif qContentBlock.RecordCount>
-		<cfset result = qContentBlock.ContentBlockText>
-		<cfif NOT ( qContentBlock.isHTML IS true )>
-			<cfset result = ParagraphFormatFull(qContentBlock.ContentBlockText)>
+	<cfif Len(Variables.Manager.DataMgr.getDatasource())>
+		<cfset qContentBlock = getContentBlocks(ContentBlockName=Arguments.ContentBlockName,fieldlist="ContentBlockID,isHTML,ContentBlockText")>
+		
+		<cfif qContentBlock.RecordCount>
+			<cfset result = qContentBlock.ContentBlockText>
+			<cfif NOT ( qContentBlock.isHTML IS true )>
+				<cfset result = ParagraphFormatFull(result)>
+			</cfif>
 		</cfif>
-		<cfif StructKeyExists(Variables,"Settings") AND StructKeyExists(Variables.Settings,"populate")>
-			<cfset output = Variables.Settings.populate(result)>
+	<cfelseif StructKeyExists(Variables.sContentBocks,Arguments.ContentBlockName)>
+		<cfset result = Variables.sContentBocks[Arguments.ContentBlockName].ContentBlockText>
+		<cfif NOT ( StructKeyExists(Variables.sContentBocks[Arguments.ContentBlockName],"isHTML") AND Variables.sContentBocks[Arguments.ContentBlockName].isHTML IS true )>
+			<cfset result = ParagraphFormatFull(result)>
 		</cfif>
+	</cfif>
+	
+	<cfif Len(result) AND StructKeyExists(Variables,"Settings") AND StructKeyExists(Variables.Settings,"populate")>
+		<cfset result = Variables.Settings.populate(result)>
 	</cfif>
 	
 	<cfreturn result>
@@ -64,17 +78,26 @@
 <cffunction name="getContentBlockText" access="public" returntype="string" output="no" hint="I get the TEXT for the requested content block.">
 	<cfargument name="ContentBlockName" type="string" required="yes">
 	
-	<cfset var qContentBlock = getContentBlocks(ContentBlockName=Arguments.ContentBlockName,fieldlist="ContentBlockID,isHTML,ContentBlockText")>
+	<cfset var qContentBlock = 0>
 	<cfset var result = "">
 	
-	<cfif qContentBlock.RecordCount>
-		<cfset result = qContentBlock.ContentBlockText>
-		<cfif qContentBlock.isHTML IS true>
-			<cfset result = HTMLEditFormat(qContentBlock.ContentBlockText)>
+	<cfif Len(Variables.Manager.DataMgr.getDatasource())>
+		<cfset qContentBlock = getContentBlocks(ContentBlockName=Arguments.ContentBlockName,fieldlist="ContentBlockID,isHTML,ContentBlockText")>
+		<cfif qContentBlock.RecordCount>
+			<cfset result = qContentBlock.ContentBlockText>
+			<cfif qContentBlock.isHTML IS true>
+				<cfset result = HTMLEditFormat(result)>
+			</cfif>
 		</cfif>
-		<cfif StructKeyExists(Variables,"Settings") AND StructKeyExists(Variables.Settings,"populate")>
-			<cfset output = Variables.Settings.populate(result)>
+	<cfelseif StructKeyExists(Variables.sContentBocks,Arguments.ContentBlockName)>
+		<cfset result = Variables.sContentBocks[Arguments.ContentBlockName].ContentBlockText>
+		<cfif StructKeyExists(Variables.sContentBocks[Arguments.ContentBlockName],"isHTML") AND Variables.sContentBocks[Arguments.ContentBlockName].isHTML IS true>
+			<cfset result = ParagraphFormatFull(result)>
 		</cfif>
+	</cfif>
+	
+	<cfif Len(result) AND StructKeyExists(Variables,"Settings") AND StructKeyExists(Variables.Settings,"populate")>
+		<cfset result = Variables.Settings.populate(result)>
 	</cfif>
 	
 	<cfreturn result>
@@ -162,6 +185,13 @@
 	
 </cffunction>
 
+<cffunction name="validateContentBlock" access="public" returntype="struct" output="no">
+	
+	<cfset Arguments = validateBrief(ArgumentCollection=Arguments)>
+	
+	<cfreturn Arguments>
+</cffunction>
+
 <cffunction name="isMultiEdit" access="private" returntype="boolean" output="no">
 	
 	<cfset var qContentBlocks = getContentBlocks(fieldlist="ContentBlockID")>
@@ -174,13 +204,6 @@
 	</cfoutput>
 	
 	<cfreturn false>
-</cffunction>
-
-<cffunction name="validateContentBlock" access="public" returntype="struct" output="no">
-	
-	<cfset Arguments = validateBrief(ArgumentCollection=Arguments)>
-	
-	<cfreturn Arguments>
 </cffunction>
 
 <cffunction name="validateBrief" access="private" returntype="struct" output="no">

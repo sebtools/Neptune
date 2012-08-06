@@ -264,8 +264,11 @@
 		<cfif Right(result,1) EQ variables.dirdelim>
 			<cfset result = Left(result,Len(result)-1)>
 		</cfif>
-		
-		<cfset result = ListAppend(result,arguments.Folder,variables.dirdelim)>
+		<cfif DirectoryExists(arguments.Folder)>
+			<cfset result = arguments.Folder>
+		<cfelse>
+			<cfset result = ListAppend(result,arguments.Folder,variables.dirdelim)>
+		</cfif>
 	</cfif>
 	
 	<cfif Right(result,1) NEQ variables.dirdelim>
@@ -432,10 +435,14 @@
 	</cfif>
 	
 	<!--- Upload to temp directory. --->
-	<cfif StructKeyExists(arguments,"accept")>
-		<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#Arguments.TempDirectory#" nameconflict="MakeUnique" result="CFFILE" accept="#arguments.accept#">
+	<cfif StructKeyExists(Form,Arguments.FieldName)>
+		<cfif StructKeyExists(arguments,"accept")>
+			<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#Arguments.TempDirectory#" nameconflict="MakeUnique" result="CFFILE" accept="#arguments.accept#">
+		<cfelse>
+			<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#Arguments.TempDirectory#" nameconflict="MakeUnique" result="CFFILE">
+		</cfif>
 	<cfelse>
-		<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#Arguments.TempDirectory#" nameconflict="MakeUnique" result="CFFILE">
+		<cffile destination="#Arguments.TempDirectory#" source="#Arguments.FieldName#" action="copy">
 	</cfif>
 	
 	<cfset tempPath = ListAppend(CFFILE.ServerDirectory, CFFILE.ServerFile, dirdelim)>

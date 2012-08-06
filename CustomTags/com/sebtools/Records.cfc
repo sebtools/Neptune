@@ -161,7 +161,11 @@
 
 <cffunction name="copyRecord" access="public" returntype="string" output="no">
 	
-	<cfreturn variables.Manager.copyRecord(tablename=variables.table,data=arguments)>
+	<cfset var result = Variables.Manager.copyRecord(tablename=Variables.table,data=Arguments)>
+	
+	<cfset notifyEvent(EventName=variables.sMetaStruct["method_copy"],Args=Arguments,result=result)>
+	
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="getFieldsArray" access="public" returntype="array" output="no">
@@ -316,6 +320,8 @@
 	
 	<cfset variables.Manager.removeRecord(variables.table,arguments)>
 	
+	<cfset notifyEvent(EventName=variables.sMetaStruct["method_remove"],Args=Arguments)>
+	
 </cffunction>
 
 <cffunction name="RecordObject" access="public" returntype="any" output="no">
@@ -331,6 +337,7 @@
 	
 	<cfset var sArgs = 0>
 	<cfset var sSpecifyingValues = getSpecifyingValues()>
+	<cfset var result = 0>
 	
 	<cfif StructCount(sSpecifyingValues) AND NOT isUpdate()>
 		<cfset StructAppend(Arguments,sSpecifyingValues,"no")>
@@ -338,7 +345,15 @@
 	
 	<cfinvoke component="#This#" method="validate#variables.methodSingular#" argumentCollection="#arguments#" returnvariable="Arguments">
 	
-	<cfreturn variables.Manager.saveRecord(variables.table,Arguments)>
+	<cfif NOT StructKeyExists(Arguments,"OnExists")>
+		<cfset Arguments.OnExists = Variables.OnExists>
+	</cfif>
+	
+	<cfset result = variables.Manager.saveRecord(variables.table,Arguments)>
+	
+	<cfset notifyEvent(EventName=variables.sMetaStruct["method_save"],Args=Arguments,result=result)>
+	
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="saveRecordOnly" access="public" returntype="string" output="no">
@@ -368,11 +383,13 @@
 		</cfif>
 	</cfif>
 	
+	<cfset notifyEvent(EventName=variables.sMetaStruct["method_sort"],Args=Arguments)>
+	
 </cffunction>
 
 <cffunction name="validateRecord" access="public" returntype="struct" output="no">
 	
-	<cfreturn arguments>
+	<cfreturn Arguments>
 </cffunction>
 
 <cffunction name="addMethods" access="private" returntype="void" output="no">
@@ -599,8 +616,12 @@
 	<cfset sMethods["arg_sort"] = "#variables.methodPlural#">
 	<cfset sMethods["catch_types"] = "#variables.methodPlural#">
 	<cfif StructKeyExists(Variables,"Parent") AND isObject(Variables.Parent)>
-		<cfset sParent = getMetaData(Variables.Parent)>
-		<cfset sMethods["catch_types"] = ListAppend(sMethods["catch_types"],ListLast(sParent.name,'.'))>
+		<cfif StructKeyExists(Variables.Parent,"getErrorType")>
+			<cfset sMethods["catch_types"] = ListAppend(sMethods["catch_types"],Variables.Parent.getErrorType())>
+		<cfelse>
+			<cfset sParent = getMetaData(Variables.Parent)>
+			<cfset sMethods["catch_types"] = ListAppend(sMethods["catch_types"],ListFirst(ListLast(sParent.name,'.')),'_')>
+		</cfif>
 	</cfif>
 	
 	<cfset sMethods["pkfields"] = variables.Manager.getPrimaryKeyFields(getTableVariable())>
@@ -725,6 +746,21 @@
 	
 	<cfif isDefined("result")>
 		<cfreturn result>
+	</cfif>
+	
+</cffunction>
+
+<cffunction name="notifyEvent" access="package" returntype="void" output="false" hint="">
+	<cfargument name="EventName" type="string" required="true">
+	<cfargument name="Args" type="struct" required="false">
+	<cfargument name="result" type="any" required="false">
+	
+	<cfif StructKeyExists(variables,"Parent") AND isObject(variables.Parent) AND StructKeyExists(variables.Parent,"notifyEvent")>
+		<cfset variables.Parent.notifyEvent(ArgumentCollection=Arguments)>
+	</cfif>
+	
+	<cfif StructKeyExists(Variables,"Observer")>
+		<cfset Variables.Observer.notifyEvent(ArgumentCollection=Arguments)>
 	</cfif>
 	
 </cffunction>

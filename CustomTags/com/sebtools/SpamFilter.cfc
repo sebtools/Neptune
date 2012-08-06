@@ -1,5 +1,5 @@
-<!--- 1.1.4 (Build 15) --->
-<!--- Last Updated: 2010-07-05 --->
+<!--- 1.1.5 (Build 16) --->
+<!--- Last Updated: 2012-07-27 --->
 <!--- Created by Steve Bryant 2007-08-15 --->
 <!--- Information: sebtools.com --->
 <cfcomponent displayname="Spam Filter" output="false">
@@ -281,17 +281,17 @@
 	<cfargument name="checkcase" type="boolean" default="false">
 	
 	<cfset var result = 0>
-	<cfset var findat = 0>
+	<cfset var sFind = 0>
 	
 	<cfif arguments.checkcase>
 		<cfreturn numRegExCaseMatches(arguments.string,arguments.regex)>
 	</cfif>
 	
 	<cfscript>
-	findat = REFindNoCase(arguments.regex, arguments.string);
-	while ( findat GT 0 ) {
+	sFind = REFindNoCase(arguments.regex, arguments.string, 1, true);
+	while ( sFind.pos[1] GT 0 ) {
 		result = result + 1;
-		findat = REFindNoCase(arguments.regex, arguments.string, findat+1);
+		sFind = REFindNoCase(arguments.regex, arguments.string, sFind.pos[1]+sFind.len[1], true );
 	}
 	</cfscript>
 	
@@ -371,7 +371,7 @@
 			<row Label="URL2" points="2" RegEx="URL=[\w-]+\.+[\w-]{3,}\b" />
 			<row Label="Million Dollars" points="3" Regex="\$.*,\d{3},\d{3}(\.d{2})?" />
 			<row Label="IP Address" points="3" Regex="\b(((\d{1,2})|(1\d{2})|(2[0-4])|(25[0-5]))\.){3}((\d{1,2})|(1\d{2})|(2[0-4])|(25[0-5]))\b" />
-			<row Label="GobbledyGook" points="0" Regex="\b[^\b]*?[bcdfghjklmnpqrstvxwz]{5,}[^\b]*?\b" />
+			<row Label="GobbledyGook" points="0" Regex="\b[^\s]*?[bcdfghjklmnpqrstvxwz]{5,}[^\s]*?\b" />
 			<row Label="Junk" points="3" Regex="[^a-z\d_\-\.@##\s:;/\+]{5,}" />
 			<row Label="Case Changes" points="2" Regex="\b([a-z][A-Z][^ \n\b]*){3,}\b" checkcase="true" />
 			<row Label="Words with numbers" points="2" Regex="\b[a-z]+\d+\w+\b" />

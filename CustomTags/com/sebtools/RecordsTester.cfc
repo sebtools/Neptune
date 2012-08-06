@@ -661,4 +661,8 @@ function QuerySim(queryData) {
 	<cfreturn sResult>
 </cffunction>
 
+<cffunction name="da" access="public" returntype="void" output="true" hint="">
+	<cfdump var="#Arguments#">
+	<cfabort>
+</cffunction>
 </cfcomponent>

@@ -678,7 +678,7 @@
 			<cfif StructKeyExists(rfields[ii].Relation,"join-table")>
 				<cfset subdatum.subadvsql = StructNew()>
 				<cfset subdatum.subadvsql.WHERE = "#escape( rfields[ii].Relation['join-table'] & '.' & rfields[ii].Relation['join-table-field-remote'] )# = #escape( rfields[ii].Relation['table'] & '.' & rfields[ii].Relation['remote-table-join-field'] )#">
-				<cfset subdatum.data[rfields[ii].Relation["local-table-join-field"]] = qRecord[rfields[ii].Relation["join-table-field-local"]][1]>
+				<cfset subdatum.data[rfields[ii].Relation["local-table-join-field"]] = arguments.qRecord[rfields[ii].Relation["join-table-field-local"]][1]>
 				<cfset subdatum.advsql.WHERE = ArrayNew(1)>
 				<cfset ArrayAppend(subdatum.advsql.WHERE,"EXISTS (")>
 				<cfset ArrayAppend(subdatum.advsql.WHERE,getRecordsSQL(tablename=rfields[ii].Relation["join-table"],data=subdatum.data,advsql=subdatum.subadvsql,isInExists=true))>
@@ -1070,7 +1070,13 @@
 		<cfset throwDMError("The data argument of getRecord must contain at least one field from the #arguments.tablename# table. To get all records, use the getRecords method.","NeedWhereFields","(data passed in: #DataString#)")>
 	</cfif>
 	
-	<cfreturn getRecords(tablename=arguments.tablename,data=in,fieldlist=arguments.fieldlist,maxrows=1)>
+	<cfif ArrayLen(pkfields)>
+		<cfset Arguments.orderBy = pkfields[1].ColumnName>
+	</cfif>
+	<cfset arguments.data = in>
+	<cfset arguments.maxrows = 1>
+	
+	<cfreturn getRecords(argumentcollection=arguments)>
 </cffunction>
 
 <cffunction name="getRecords" access="public" returntype="query" output="no" hint="I get a recordset based on the data given.">
@@ -1101,7 +1107,6 @@
 		</cfif>
 	</cfinvoke>
 	
-	<cfset qRecords = applyConcatRelations(arguments.tablename,qRecords)>
 	<cfset qRecords = applyListRelations(arguments.tablename,qRecords)>
 	
 	<!--- Manage offset --->
@@ -1335,6 +1340,7 @@
 	<cfset var numcols = 0>
 	<cfset var ii = 0>
 	<cfset var aFields = variables.tables[arguments.tablename]>
+	<cfset var dbfields = "">
 	<cfset var temp = "">
 	<cfset var fields = "">
 	
@@ -1367,7 +1373,7 @@
 		<cfset numcols = numcols + 1>
 	<cfelse>
 		<cfloop index="ii" from="1" to="#ArrayLen(aFields)#" step="1">
-			<cfif ( NOT ListFindNoCase(fields,aFields[ii]["ColumnName"]) ) AND isFieldInSelect(aFields[ii],arguments.fieldlist,arguments.maxrows)>
+			<cfif Len(aFields[ii]["ColumnName"]) AND ( NOT ListFindNoCase(fields,aFields[ii]["ColumnName"]) ) AND isFieldInSelect(aFields[ii],arguments.fieldlist,arguments.maxrows)>
 				<cfif numcols GT 0><cfset ArrayAppend(sqlarray,",")></cfif>
 				<cfset numcols = numcols + 1>
 				<cfset fields = ListAppend(fields,aFields[ii]["ColumnName"])>
@@ -1401,8 +1407,9 @@
 	</cfif>
 	
 	<!--- Make sure at least one field is retrieved --->
-	<cfif numcols EQ 0>
-		<cfset throwDMError("At least one valid field must be retrieved from the #arguments.tablename# table (actual fields in table are: #getDBFieldList(arguments.tablename)#) (requested fields: #arguments.fieldlist#).","NeedSelectFields")>
+	<cfif numcols EQ 0 AND NOT Len(fields)>
+		<cfset dbfields = getDBFieldList(arguments.tablename)>
+		<cfset throwDMError("At least one valid field must be retrieved from the #arguments.tablename# table (actual fields in table are: #dbfields#) (requested fields: #arguments.fieldlist#).","NeedSelectFields")>
 	</cfif>
 	
 	<cfreturn sqlarray>
@@ -3938,43 +3945,6 @@
 	<cfreturn sArgs>
 </cffunction>
 
-<cffunction name="applyConcatRelations" access="public" returntype="query" output="no">
-	<cfargument name="tablename" type="string" required="yes">
-	<cfargument name="query" type="query" required="yes">
-
-	<cfset var qRecords = arguments.query>
-	<cfset var rfields = getRelationFields(arguments.tablename)><!--- relation fields in table --->
-	<cfset var i = 0><!--- Generic counter --->
-	<cfset var hasConcats = false>
-	<cfset var qRelationList = 0>
-	<cfset var temp = 0>
-	
-	<!--- Check for list values in recordset --->
-	<cfloop index="i" from="1" to="#ArrayLen(rfields)#" step="1">
-		<cfif ListFindNoCase(qRecords.ColumnList,rfields[i].ColumnName)>
-			<cfif rfields[i].Relation.type EQ "concat">
-				<cfset hasConcats = true>
-				<cfbreak>
-			</cfif>
-		</cfif>
-	</cfloop>
-	
-	<!--- Get list values --->
-	<cfif hasConcats>
-		<cfloop query="qRecords">
-			<cfloop index="i" from="1" to="#ArrayLen(rfields)#" step="1">
-				<cfif rfields[i].Relation["type"] EQ "concat" AND ListFindNoCase(qRecords.ColumnList,rfields[i].ColumnName) AND Len(rfields[i].relation.delimiter)>
-					<cfif ReFindNoCase("^(#rfields[i].relation.delimiter#\s?)+$",qRecords[rfields[i].ColumnName][CurrentRow])>
-						<cfset QuerySetCell(qRecords, rfields[i].ColumnName, "", CurrentRow)>
-					</cfif>
-				</cfif>
-			</cfloop>
-		</cfloop>
-	</cfif>
-	
-	<cfreturn qRecords>
-</cffunction>
-
 <cffunction name="applyListRelations" access="public" returntype="query" output="no">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="query" type="query" required="yes">
@@ -3991,7 +3961,6 @@
 		<cfif ListFindNoCase(qRecords.ColumnList,rfields[i].ColumnName)>
 			<cfif rfields[i].Relation.type EQ "list">
 				<cfset hasLists = true>
-				<cfbreak>
 			</cfif>
 		</cfif>
 	</cfloop>

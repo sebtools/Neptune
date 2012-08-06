@@ -60,7 +60,7 @@
 		<cfif PhoneNumber NEQ PhoneNumber_Formatted>
 			<cfset data = StructNew()>
 			<cfloop index="pkfield" list="#arguments.pkfields#">
-				<cfset data[pkfield] = qRecords[pkfield][CurrentRow]>
+				<cfset data[pkfield] = qPhoneNumbers['ID'][CurrentRow]>
 			</cfloop>
 			<cfset data[arguments.phonefield] = PhoneNumber_Formatted>
 			

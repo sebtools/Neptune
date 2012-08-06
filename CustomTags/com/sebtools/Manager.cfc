@@ -747,6 +747,8 @@
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="data" type="struct" required="yes">
 	
+	<cfset var qRecord = 0>
+	
 	<cfset arguments.isGetRecord = true>
 	
 	<cfset arguments = alterArgs(argumentCollection=arguments)>
@@ -756,7 +758,9 @@
 		<cfset arguments.fieldlist = "">
 	</cfif>
 	
-	<cfreturn alterRecords(arguments.tablename,variables.DataMgr.getRecord(argumentCollection=arguments))>
+	<cfset qRecord = variables.DataMgr.getRecord(argumentCollection=arguments)>
+	
+	<cfreturn alterRecords(arguments.tablename,qRecord)>
 </cffunction>
 
 <cffunction name="getRecords" access="public" returntype="query" output="no">
@@ -974,6 +978,7 @@
 	<cfset var FormField = "">
 	<cfset var FileResult = "">
 	<cfset var isUpload = false>
+	<cfset var isFormUpload = false>
 	
 	<!--- Default OnExists to update, but use key from data if it exists --->
 	<cfif NOT StructKeyExists(arguments,"OnExists")>
@@ -996,9 +1001,11 @@
 				<cfset FormField = in['#aFileFields[ii].name#_FormField']>
 			</cfif>
 			<cfset isUpload = false>
+			<cfset isFormUpload = isUpload>
 			<cfif StructKeyExists(in,aFileFields[ii].name)>
 				<cftry>
 					<cfset isUpload = FileExists(Form[FormField])>
+					<cfset isFormUpload = isUpload>
 				<cfcatch>
 				</cfcatch>
 				</cftry>
@@ -1011,31 +1018,40 @@
 				</cfif>
 			</cfif>
 			<cfif isUpload>
-				<cfinvoke returnvariable="FileResult" component="#variables.FileMgr#" method="uploadFile">
-					<cfinvokeargument name="FieldName" value="#FormField#">
-					<cfinvokeargument name="Folder" value="#aFileFields[ii].Folder#">
-					<cfif StructKeyExists(aFileFields[ii],"NameConflict")>
-						<cfinvokeargument name="NameConflict" value="#aFileFields[ii].NameConflict#">
+				<cfif isFormUpload>
+					<cfinvoke returnvariable="FileResult" component="#variables.FileMgr#" method="uploadFile">
+						<cfif isFormUpload>
+							<cfinvokeargument name="FieldName" value="#FormField#">
+						<cfelse>
+							<cfinvokeargument name="FieldName" value="#in[aFileFields[ii].name]#">
+						</cfif>
+						<cfinvokeargument name="Folder" value="#aFileFields[ii].Folder#">
+						<cfif StructKeyExists(aFileFields[ii],"NameConflict")>
+							<cfinvokeargument name="NameConflict" value="#aFileFields[ii].NameConflict#">
+						</cfif>
+						<cfif StructKeyExists(aFileFields[ii],"accept")>
+							<cfinvokeargument name="accept" value="#aFileFields[ii].accept#">
+						</cfif>
+						<cfif StructKeyExists(aFileFields[ii],"extensions")>
+							<cfinvokeargument name="extensions" value="#aFileFields[ii].extensions#">
+						</cfif>
+						<cfinvokeargument name="return" value="name">
+					</cfinvoke>
+					<cfif isStruct(FileResult) AND StructKeyExists(FileResult,"ServerFile")>
+						<cfset in[aFileFields[ii].name] = FileResult["ServerFile"]>
 					</cfif>
-					<cfif StructKeyExists(aFileFields[ii],"accept")>
-						<cfinvokeargument name="accept" value="#aFileFields[ii].accept#">
+					<cfif isSimpleValue(FileResult)>
+						<cfset in[aFileFields[ii].name] = FileResult>
 					</cfif>
-					<cfif StructKeyExists(aFileFields[ii],"extensions")>
-						<cfinvokeargument name="extensions" value="#aFileFields[ii].extensions#">
+					<cfif StructKeyExists(in,aFileFields[ii].name) AND isSimpleValue(in[aFileFields[ii].name])>
+						<cfif NOT StructKeyExists(aFileFields[ii],"Length")>
+							<cfset aFileFields[ii].Length = 50>
+						</cfif>
+						<cfset in[aFileFields[ii].name] = fixFileName(in[aFileFields[ii].name],variables.FileMgr.getDirectory(aFileFields[ii].Folder),aFileFields[ii].Length)>
 					</cfif>
-					<cfinvokeargument name="return" value="name">
-				</cfinvoke>
-				<cfif isStruct(FileResult) AND StructKeyExists(FileResult,"ServerFile")>
-					<cfset in[aFileFields[ii].name] = FileResult["ServerFile"]>
-				</cfif>
-				<cfif isSimpleValue(FileResult)>
-					<cfset in[aFileFields[ii].name] = FileResult>
-				</cfif>
-				<cfif StructKeyExists(in,aFileFields[ii].name) AND isSimpleValue(in[aFileFields[ii].name])>
-					<cfif NOT StructKeyExists(aFileFields[ii],"Length")>
-						<cfset aFileFields[ii].Length = 50>
-					</cfif>
-					<cfset in[aFileFields[ii].name] = fixFileName(in[aFileFields[ii].name],variables.FileMgr.getDirectory(aFileFields[ii].Folder),aFileFields[ii].Length)>
+				<cfelse>
+					<cffile destination="#Variables.FileMgr.getDirectory(aFileFields[ii].Folder)#" source="#in[aFileFields[ii].name]#" action="copy">
+					<cfset in[aFileFields[ii].name] = getFileFromPath(in[aFileFields[ii].name])>
 				</cfif>
 			</cfif>
 		</cfloop>
@@ -1295,9 +1311,15 @@
 	</cfif>
 	
 	<!--- Set argument names if not given by names --->
-	<cfif StructCount(arguments.data) GTE ArrayLen(pkfields) AND NOT StructKeyExists(arguments.data,pkfields[1].ColumnName)>
+	<cfif
+			StructCount(arguments.data) GTE ArrayLen(pkfields)
+		AND	NOT StructKeyExists(arguments.data,pkfields[1].ColumnName)
+	>
 		<cfloop index="ii" from="1" to="#ArrayLen(pkfields)#" step="1">
-			<cfif StructKeyExists(arguments.data,ii) AND NOT StructKeyExists(arguments.data,pkfields[ii].ColumnName)>
+			<cfif
+					StructKeyExists(arguments.data,ii)
+				AND	NOT StructKeyExists(arguments.data,pkfields[ii].ColumnName)
+			>
 				<cfset arguments.data[pkfields[ii].ColumnName] = arguments.data[ii]>
 				<cfset StructDelete(arguments.data,ii)>
 			</cfif>
@@ -1489,19 +1511,10 @@
 <cffunction name="loadXml" access="public" returntype="any" output="false" hint="">
 	<cfargument name="xml" type="any" required="yes">
 	
-	<cfset var xIn = 0>
+	<cfset var xIn = XmlParse(arguments.xml)>
 	<cfset var table = "">
 	<cfset var aInTables = 0>
 	<cfset var tt = 0>
-	
-	<cftry>
-		<cfset xIn = XmlParse(arguments.xml)>
-	<cfcatch>
-		XML Parse Failed
-		<cfdump var="#arguments.xml#">
-		<cfabort>
-	</cfcatch>
-	</cftry>
 	
 	<cflock name="Manager_loadXml#variables.UUID#" timeout="1800" throwontimeout="yes">
 		<cfset adjustXml(xIn)>
@@ -1740,7 +1753,7 @@
 	<cfset var xHasField = 0>
 	<cfset var xListField = 0>
 	<cfset var xListNamesField = 0>
-	<!---<cfset var isMany2Many = 0>--->
+	<cfset var isMany2Many = 0>
 	
 	<cfloop index="ff" from="1" to="#ArrayLen(axFields)#" step="1">
 		<cfset xField = axFields[ff]>
@@ -1766,7 +1779,7 @@
 					OR	xField.XmlAttributes["jointype"] EQ "many2many"
 				)
 		>
-			<!---<cfset isMany2Many = ( xField.XmlAttributes["jointype"] EQ "many2many" OR ArrayLen(XmlSearch(xDef,"//table[@name='#ftable#']/field[@ftable='#table#'][@jointype='many' or @jointype='list' or @jointype='many2many']")) )>--->
+			<cfset isMany2Many = ( xField.XmlAttributes["jointype"] EQ "many2many" OR ArrayLen(XmlSearch(xDef,"//table[@name='#ftable#']/field[@ftable='#table#'][@jointype='many' or @jointype='list' or @jointype='many2many']")) )>
 			<cfif NOT StructKeyExists(xField.XmlAttributes,"type")>
 				<cfset xField.XmlAttributes["type"] = "Relation">
 			</cfif>
@@ -2176,8 +2189,8 @@
 	
 	<cfif Len(Arguments.Permissions)>
 		<cfif StructKeyExists(Variables,"Security")>
-				<cfinvoke component="#Variables.Security#" method="addPermissions" permissions="#Arguments.Permissions#">
-				</cfinvoke>
+			<cfinvoke component="#Variables.Security#" method="addPermissions" permissions="#Arguments.Permissions#" OnExists="update">
+			</cfinvoke>
 		<cfelse>
 			<cfif NOT StructKeyExists(Variables,"Security_Permissions")>
 				<cfset Variables.Security_Permissions = "">

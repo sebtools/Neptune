@@ -8,6 +8,7 @@
 	<cfargument name="NoticeMgr" type="any" required="no">
 	<cfargument name="Scheduler" type="any" required="no">
 	<cfargument name="ErrorEmail" type="string" required="no">
+	<cfargument name="Observer" type="any" required="no">
 	
 	<cfset initInternal(argumentCollection=arguments)>
 	
@@ -19,6 +20,7 @@
 	<cfargument name="NoticeMgr" type="any" required="no">
 	<cfargument name="Scheduler" type="any" required="no">
 	<cfargument name="ErrorEmail" type="string" required="no">
+	<cfargument name="Observer" type="any" required="no">
 	
 	<!--- Copy initialization arguments to variables so that they will be persistent with component but not available outside component --->
 	<cfscript>
@@ -63,10 +65,13 @@
 		This.Scheduler = variables.Scheduler;
 		loadScheduledTask();
 	}
-	
 	loadComponents();
 	
 	variables.SendEmailOnError = true;
+	
+	if ( StructKeyExists(This,"Observer") AND StructKeyExists(This.Observer,"setSubject") ) {
+		This.Observer.setSubject(This);
+	}
 	</cfscript>
 	
 	<cfreturn This>
@@ -85,23 +90,39 @@
 	<cfreturn result>
 </cffunction>
 
+<cffunction name="getMeData" access="public" returntype="struct" output="false" hint="">
+	
+	<cfset var sThis = 0>
+	<cfset var filename = "">
+	
+	<cfif NOT StructKeyExists(Variables,"me")>
+		<cfset sThis = getMetaData(This)>
+		<cfset filename = ListLast(sThis.name,".")>
+		
+		<cfset variables.me = StructNew()>
+		<cfset variables.me["fullname"] = filename>
+		<cfset variables.me["name"] = ListFirst(variables.me["fullname"],"_")>
+		<cfset variables.me["path"] = reverse(ListRest(reverse(sThis.name),"."))>
+		<cfif StructKeyExists(sThis,"DisplayName")>
+			<cfset variables.me["label"] = sThis.DisplayName>
+		<cfelse>
+			<cfset variables.me["label"] = variables.me["name"]>
+		</cfif>
+		<cfset variables.me["dir"] = getDirectoryFromPath(sThis.path)>
+	</cfif>
+	
+	<cfreturn Variables.me>
+</cffunction>
+
 <cffunction name="loadComponentData" access="public" returntype="void" output="false" hint="">
 	
-	<cfset var sThis = getMetaData(This)>
-	<cfset var filename = ListLast(sThis.name,".")>
-	<cfset var result = "">
+	<cfset getMeData()>
 	
-	<cfset variables.me = StructNew()>
-	<cfset variables.me["fullname"] = filename>
-	<cfset variables.me["name"] = ListFirst(variables.me["fullname"],"_")>
-	<cfset variables.me["path"] = reverse(ListRest(reverse(sThis.name),"."))>
-	<cfif StructKeyExists(sThis,"DisplayName")>
-		<cfset variables.me["label"] = sThis.DisplayName>
-	<cfelse>
-		<cfset variables.me["label"] = variables.me["name"]>
-	</cfif>
-	<cfset variables.me["dir"] = getDirectoryFromPath(sThis.path)>
+</cffunction>
+
+<cffunction name="getPrefix" access="public" returntype="string" output="no">
 	
+	<cfreturn Variables.prefix>
 </cffunction>
 
 <cffunction name="getServiceComponent" access="public" returntype="any" output="no">
@@ -215,6 +236,17 @@
 	</cfif>
 	
 	<cfreturn result>
+</cffunction>
+
+<cffunction name="notifyEvent" access="public" returntype="void" output="no">
+	<cfargument name="EventName" type="string" required="true">
+	<cfargument name="Args" type="struct" required="false">
+	<cfargument name="result" type="any" required="false">
+	
+	<cfif StructKeyExists(Variables,"Observer") AND StructKeyExists(Variables.Observer,"notifyEvent")>
+		<cfset Variables.Observer.notifyEvent(ArgumentCollection=Arguments)>
+	</cfif>
+	
 </cffunction>
 
 <cffunction name="customxml" access="private" returntype="string" output="false" hint="">
@@ -398,6 +430,17 @@
 	<cfreturn sArgs>
 </cffunction>
 
+<cffunction name="getErrorType" access="public" returntype="string" output="no">
+	
+	<cfset getMeData()>
+	
+	<cfif NOT StructKeyExists(Variables,"ErrorType")>
+		<cfset Variables.ErrorType = ListLast(variables.me.name,'.')>
+	</cfif>
+	
+	<cfreturn Variables.ErrorType>
+</cffunction>
+
 <cffunction name="getRootURL" access="package" returntype="string" output="no">
 	
 	<cfset var SiteURL = variables.Manager.getRootURL()>
@@ -474,7 +517,7 @@
 	</cfif>
 	
 	<cfthrow
-		type="#ListLast(variables.me.name,'.')#"
+		type="#getErrorType()#"
 		message="#arguments.message#"
 		errorcode="#arguments.errorcode#"
 		detail="#arguments.detail#"

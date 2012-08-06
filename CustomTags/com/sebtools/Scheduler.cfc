@@ -110,6 +110,10 @@
 	
 	<cfset var qTask = getTaskNameRecord(arguments.Name)>
 	
+	<cfif Len(Arguments.ComponentPath) GT 50>
+		<cfset Arguments.ComponentPath = Right(Arguments.ComponentPath,50)>
+	</cfif>
+	
 	<!--- Make sure task of this name doesn't exist for another component. --->
 	<cfif StructKeyExists(variables.tasks,arguments.Name)>
 		<cfif

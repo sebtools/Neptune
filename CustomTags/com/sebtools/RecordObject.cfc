@@ -209,12 +209,23 @@
 	<cfset var MissingFields = "">
 	<cfset var sArgs = 0>
 	<cfset var qRecord = 0>
+	<cfset var ServiceFields = "">
 	
 	<cfloop list="#Arguments.fields#" index="Field">
 		<cfif NOT ListFindNoCase(LoaddedFields,Field)>
 			<cfset MissingFields = ListAppend(MissingFields,Field)> 
 		</cfif>
 	</cfloop>
+	
+	<!--- Ditch any fields that don't actually exist in the service --->
+	<cfif Len(MissingFields)>
+		<cfset ServiceFields = Variables.oService.getFieldList()>
+		<cfloop list="#Arguments.fields#" index="Field">
+			<cfif NOT ListFindNoCase(ServiceFields,Field)>
+				<cfset MissingFields = ListDeleteAt(MissingFields,ListFindNoCase(MissingFields,Field))> 
+			</cfif>
+		</cfloop>
+	</cfif>
 	
 	<cfif Len(MissingFields)>
 		<cfset sArgs = StructNew()>

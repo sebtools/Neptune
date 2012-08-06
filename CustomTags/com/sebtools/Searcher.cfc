@@ -1,4 +1,4 @@
-<!--- 1.0 RC (Build 9) --->
+<!--- 1.0 Beta 6 (Build 9) --->
 <!--- Last Updated: 2012-01-24 --->
 <!--- Created by Steve Bryant 2005-10-20 --->
 <!--- Information: sebtools.com --->
@@ -341,16 +341,21 @@ Optionally run search through google
 	
 	<cfloop query="qSearch">
 		
+		<!---<cfif FileExists(key)>
+			<cfset QuerySetCell(qSearch,"URL",URL,CurrentRow)>
+		<cfelseif Len(URL) AND NOT URL CONTAINS "dummy.txt">
+		</cfif>--->
+		
 		<!--- If relative URL, start from site root --->
-		<cfif Len(URL) AND NOT URL CONTAINS "dummy.txt">--->
+		<cfif Len(URL) AND NOT URL CONTAINS "dummy.txt">
 			<cfif FileExists(key)>
-				<cfset QuerySetCell(qSearch,"URL",GetFileFromPath(key),CurrentRow)>
+				<!---<cfset QuerySetCell(qSearch,"URL",URL,CurrentRow)>--->
 			<cfelseif Left(URL,1) neq "/" AND Left(URL,7) neq "http://">
 				<cfset QuerySetCell(qSearch,"URL","/#URL#",CurrentRow)>
 			</cfif>
 		<cfelse>
 			<cfif FileExists(key)>
-				<cfset QuerySetCell(qSearch,"URL",GetFileFromPath(key),CurrentRow)>
+				<cfset QuerySetCell(qSearch,"URL",URL,CurrentRow)>
 			<cfelse>
 				<cfset QuerySetCell(qSearch,"URL","/#Key#",CurrentRow)>
 			</cfif>
