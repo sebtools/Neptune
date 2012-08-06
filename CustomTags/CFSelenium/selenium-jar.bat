@@ -1,0 +1,1 @@
+"C:\ColdFusion9\runtime\jre\bin\java.exe" -jar "C:\ColdFusion9\CustomTags\CFSelenium\Selenium-RC\selenium-server-standalone-2.2.0.jar"
