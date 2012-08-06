@@ -1,4 +1,5 @@
-<cf_Template title="Administrative Area" showTitle="true">
+<cf_PageController>
+<cf_Template title="Administrative Area">
 
 <p>Welcome to the site administrative area.</p>
 
