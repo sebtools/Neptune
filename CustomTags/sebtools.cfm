@@ -1,6 +1,6 @@
 <!---
-1.0 RC9 (Build 121)
-Last Updated: 2011-10-11
+1.0 RC8 (Build 120)
+Last Updated: 2011-01-16
 --->
 <cfscript>
 sebtools = StructNew();
@@ -58,4 +58,8 @@ sebtools.skins.tim = StructNew();
 sebtools.skins.tim.format = "table";
 sebtools.skins.tim.shape = "round";
 sebtools.skins.tim.menutype = "roundtab";
+
+if ( StructKeyExists(Attributes,"returnvar") ) {
+	Caller[attributes.returnvar]["sebtools"] = sebtools;
+}
 </cfscript>

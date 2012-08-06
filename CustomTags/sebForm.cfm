@@ -327,7 +327,9 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 		<cftry>
 			<cfinvoke returnvariable="attributes.sFields" component="#attributes.CFC_Component#" method="getFieldsStruct">
 				<cfinvokeargument name="transformer" value="sebField">
-				<cfinvokeargument name="#attributes.pkfield#" value="#attributes.recordid#">
+				<cfif StructKeyExists(attributes,"pkfield") and Len(attributes.pkfield)>
+					<cfinvokeargument name="#attributes.pkfield#" value="#attributes.recordid#">
+				</cfif>
 			</cfinvoke>
 			<!---<cfset attributes.sFields = attributes.CFC_Component.getFieldsStruct(transformer="sebField")>--->
 			<!--- If component has getFieldStruct, make sure to catch "Master" errors --->
@@ -471,7 +473,9 @@ FieldsArrayOutput = "";
 		<cfelse>
 			<cfinvoke returnvariable="aDefFields" component="#attributes.CFC_Component#" method="getFieldsArray">
 				<cfinvokeargument name="transformer" value="sebField">
-				<cfinvokeargument name="#attributes.pkfield#" value="#attributes.recordid#">
+				<cfif Len(attributes.pkfield)>
+					<cfinvokeargument name="#attributes.pkfield#" value="#attributes.recordid#">
+				</cfif>
 			</cfinvoke>
 			<!---<cfset aDefFields = attributes.CFC_Component.getFieldsArray(transformer='sebField')>--->
 		</cfif>

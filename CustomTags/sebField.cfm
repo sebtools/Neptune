@@ -219,7 +219,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 		
 		if ( attributes.type EQ "money" ) {
 			attributes.type = "text";
-			attributes.stripregex = "[^\d\.]";
+			attributes.stripregex = "[^\-\d\.]";
 			if ( NOT Len(attributes.input_prefix) ) {
 				attributes.input_prefix = "$";
 			}

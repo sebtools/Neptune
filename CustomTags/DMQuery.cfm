@@ -24,7 +24,14 @@ Created: 2010-01-12
 
 <cfif ThisTag.HasEndTag AND ThisTag.ExecutionMode EQ "End" AND Len(Trim(ThisTag.GeneratedContent))>
 	<!--- Execute the given SQL if given any --->
-	<cfset qRecords = attributes.DataMgr.runSQLArray(getDMSQLArray())>
+	<cfset aSQL = getDMSQLArray()>
+	<cftry>
+		<cfset qRecords = attributes.DataMgr.runSQLArray(aSQL)>
+	<cfcatch>
+		<cfdump var="#aSQL#">
+		<cfabort>
+	</cfcatch>
+	</cftry>
 	<cfif StructKeyExists(attributes,"name") AND isDefined("qRecords")>
 		<cfset Caller[attributes.name] = qRecords>
 	</cfif>

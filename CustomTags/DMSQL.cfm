@@ -19,6 +19,25 @@ Created: 2010-01-12
 	</cfif>
 </cfif>
 
+<cfif isNestedTag>
+	<cfset Variables.DataMgr = ParentData.attributes.DataMgr>
+<cfelse>
+	<cfif StructKeyExists(Attributes,"DataMgr")>
+		<cfset Variables.DataMgr = Attributes.DataMgr>
+	<cfelseif StructKeyExists(Caller,"DataMgr")>
+		<cfset Variables.DataMgr = Caller.DataMgr>
+	<cfelseif StructKeyExists(Application,"DataMgr")>
+		<cfset Variables.DataMgr = Application.DataMgr>
+	<cfelse>
+		<!---<cfparam name="attributes.path" default="com.sebtools.DataMgr">
+		<cfinvoke returnvariable="Variables.DataMgr" component="#attributes.path#" method="init" argumentCollection="#attributes#">
+		</cfinvoke>--->
+		<cfthrow message="Unable to determine DataMgr">
+	</cfif>
+</cfif>
+
+<cfparam name="Attributes.method" default="getRecordsSQL">
+
 <cfif ThisTag.ExecutionMode EQ "End" OR NOT ThisTag.HasEndTag>
 	<!--- Return the SQL array --->
 	<cfif NOT (
@@ -34,11 +53,11 @@ Created: 2010-01-12
 		<cfif Len(Trim(ThisTag.GeneratedContent))>
 			<!--- Get SQL from generated content --->
 			<cfset attributes.sql = getDMSQLArray()>
-		<cfelseif StructKeyExists(attributes,"method")>
+		<cfelseif StructKeyExists(attributes,"method") AND isSimpleValue(Attributes.method) AND Len(Trim(Attributes.method))>
 			<!--- Or use a method to get it --->
 			<cfinvoke
 				returnvariable="attributes.sql"
-				component="#ParentData.attributes.DataMgr#"
+				component="#Variables.DataMgr#"
 				method="#attributes.method#"
 				argumentcollection="#attributes#"
 			>

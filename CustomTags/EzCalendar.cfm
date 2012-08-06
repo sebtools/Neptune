@@ -128,6 +128,7 @@
 .EzCalendar_Year {
 	font-size: 22px;
 	line-height: 22px;
+	text-align: right;
 }
 .EzCalendar_Date_Selector_Row {
 	text-align: center; 
