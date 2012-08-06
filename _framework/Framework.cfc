@@ -16,11 +16,13 @@
 	<cfset variables.CFServer = Server.ColdFusion.ProductName>
 	<cfset variables.CFVersion = ListFirst(Server.ColdFusion.ProductVersion)>
 	
+	<cfset variables.dirdelim = CreateObject("java", "java.io.File").separator>
+	
 	<cfset variables.instance = StructNew()>
 	
 	<cfset variables.instance["RootPath"] = arguments.RootPath>
 	<cfset variables.instance["scopes"] = arguments.scopes>
-	<cfset variables.instance["dirdelim"] = CreateObject("java", "java.io.File").separator>
+	<cfset variables.instance["dirdelim"] = variables.dirdelim>
 	<cfset variables.instance["programs"] = StructNew()>
 	<cfset variables.instance["ProgramFilePaths"] = "">
 	<cfset variables.instance["PathServices"] = StructNew()>
@@ -86,6 +88,8 @@
 		<cfset request.Apploader_Args = Application.Framework.Loader.getArgs()>
 	</cfif>
 	
+	<cfset This["getDirectoryList"] = getMyDirectoryList>
+	
 	<cfreturn This>
 </cffunction>
 
@@ -129,7 +133,7 @@
 		<cfset doLoad = true>
 	<cfelse>
 		<!--- <cfdirectory name="qFiles" action="list" directory="#variables.instance.ConfigFolderPath#" filter="#variables.instance.ComponentsFile#"> --->
-		<cfset qFiles = getDirectoryList(directory="#variables.instance.ConfigFolderPath#",filter="#variables.instance.ComponentsFile#")>
+		<cfset qFiles = getMyDirectoryList(directory="#variables.instance.ConfigFolderPath#",filter="#variables.instance.ComponentsFile#")>
 		
 		<cfif qFiles.DateLastModified GT variables.instance.LoaderLoaded>
 			<cfset doLoad = true>
@@ -984,7 +988,7 @@ function getPageController(path) {
 	<cfset path_component = getComponentPath(path_file)>
 	
 	<!---<cfdirectory name="qProgramFile" action="list" directory="#arguments.FilePath#" filter="Program.cfc">--->
-	<cfset qProgramFile = getDirectoryList(directory=arguments.FilePath,filter="Program.cfc",recurse=false,exclude=getExcludeDirs())>
+	<cfset qProgramFile = getMyDirectoryList(directory=arguments.FilePath,filter="Program.cfc",recurse=false,exclude=getExcludeDirs())>
 	
 	<cfset aRegisteredPrograms = XmlSearch(variables.instance.xPrograms,"//program[@path='#path_browser#']")>
 	<cfif ArrayLen(aRegisteredPrograms)>
@@ -1101,7 +1105,7 @@ function getPageController(path) {
 	<cfargument name="ProgramFilePath" type="string" required="true">
 	<cfargument name="ProgramBrowserPath" type="string" required="true">
 	
-	<cfset var qFiles = getDirectoryList(directory=arguments.ProgramFilePath,recurse=true)>
+	<cfset var qFiles = getMyDirectoryList(directory=arguments.ProgramFilePath,recurse=true)>
 	<cfset var ProgramXml = "">
 	<cfset var FileName = "">
 	<cfset var ProgramsFilePath = "#variables.instance.ConfigFolderPath#programs.cfm">
@@ -1162,7 +1166,7 @@ function getPageController(path) {
 	<cfset var axPrograms = 0>
 	
 	<!--- Get program files --->
-	<cfset qProgramFiles = getDirectoryList(directory=variables.instance.RootPath,filter="Program.cfc",recurse=true,exclude=exclude)>
+	<cfset qProgramFiles = getMyDirectoryList(directory=variables.instance.RootPath,filter="Program.cfc",recurse=true,exclude=exclude)>
 	
 	<cfif qProgramFiles.RecordCount>
 		<!--- Attempt to register program files --->
@@ -1199,7 +1203,7 @@ function getPageController(path) {
 	<cfset var xMenu = 0>
 	<cfset var qLinksFile = 0>
 	
-	<cfset qLinksFile = getDirectoryList(directory="#variables.instance.ConfigFolderPath#",filter="programlinks.cfm")>
+	<cfset qLinksFile = getMyDirectoryList(directory="#variables.instance.ConfigFolderPath#",filter="programlinks.cfm")>
 	
 	<cfif
 			qLinksFile.RecordCount
@@ -1387,7 +1391,7 @@ function getPageController(path) {
 		<cfset filter = "#makeCompName(arguments.ProgramName)#.cfc">
 	</cfif>
 	
-	<cfset qFiles = getDirectoryList(directory=arguments.path,filter=filter,recurse=true)>
+	<cfset qFiles = getMyDirectoryList(directory=arguments.path,filter=filter,recurse=true)>
 	
 	<cfloop query="qFiles">
 		<cffile action="read" file="#Directory##Name#" variable="FileContents">
@@ -1622,7 +1626,7 @@ Fixed a bug where the filter wouldn't show dirs.
 @author Raymond Camden (ray@camdenfamily.com)
 @version 2, April 8, 2004
 --->
-<cffunction name="getDirectoryList" output="false" returnType="query">
+<cffunction name="getMyDirectoryList" output="false" returnType="query">
     <cfargument name="directory" type="string" required="true">
     <cfargument name="filter" type="string" required="false" default="">
     <cfargument name="sort" type="string" required="false" default="">
@@ -1633,60 +1637,64 @@ Fixed a bug where the filter wouldn't show dirs.
 	<!--- more vars --->
 	<cfargument name="exclude" type="string" default="">
 	
-	
-	<cfset var delim = variables.instance["dirdelim"]>
-	<cfset var result = 0>
+	<cfset var delim = variables.dirdelim>
 	<cfset var ScriptName = 0>
 	<cfset var isExcluded = false>
 	<cfset var exdir = false>
+	<cfset var qDirs = 0>
+	<cfset var qFiles = 0>
+	<cfset var cols = "attributes,datelastmodified,mode,name,size,type,directory">
 	
 	<cfif Right(arguments.directory,1) NEQ delim>
 		<cfset arguments.directory = "#arguments.directory##delim#">
 	</cfif>
 	
     <cfif NOT StructKeyExists(arguments,"dirInfo")>
-        <cfset arguments.dirInfo = QueryNew("attributes,datelastmodified,mode,name,size,type,directory")>
+        <cfset arguments.dirInfo = QueryNew(cols)>
     </cfif>
-	<cfdirectory name="arguments.thisDir" directory="#arguments.directory#" sort="#sort#">
-	<cfloop query="arguments.thisDir">
-		<cfset ScriptName = "/" & ReplaceNoCase(ReplaceNoCase("#arguments.directory##name#",variables.instance.RootPath,""),"\","/","ALL")>
-		<cfset isExcluded = false>
-		
-		<cfif Len(arguments.exclude) AND type IS "dir">
-			<cfloop list="#arguments.exclude#" index="exdir">
-				<cfif
-						( ListLen(exdir,"/") EQ 1 AND exdir EQ ListFindNoCase("#ScriptName#/",exdir,"/") )
-					OR	( Len(exdir) AND Left(ScriptName,Len(exdir)) EQ exdir )
-					OR	( Len(exdir) AND Left(exdir,Len(ScriptName)) EQ ScriptName )
-					OR	( exdir EQ name )
-				>
-					<cfset isExcluded = true>
+    
+	<cfdirectory name="qFiles" directory="#arguments.directory#" sort="#sort#" filter="#arguments.filter#">
+	
+	<cfif arguments.recurse>
+		<cfdirectory name="qDirs" directory="#arguments.directory#" sort="#sort#">
+		<cfloop query="qDirs">
+			<cfif type IS "dir">
+				<cfif StructKeyExists(variables,"instance") AND StructKeyExists(variables.instance,"RootPath")>
+					<cfset ScriptName = "/" & ReplaceNoCase(ReplaceNoCase("#arguments.directory##name#",variables.instance.RootPath,""),"\","/","ALL")>
 				</cfif>
-			</cfloop>
-		</cfif>
-		<cfif
-				( Len(filter) EQ 0 OR name CONTAINS filter OR type IS "dir" )
-			AND	NOT isExcluded
-		>
-			<cfif Len(filter) EQ 0 OR name CONTAINS filter>
-	            <cfset QueryAddRow(arguments.dirInfo)>
-	            <cfset QuerySetCell(arguments.dirInfo,"attributes",attributes)>
-	            <cfset QuerySetCell(arguments.dirInfo,"datelastmodified",datelastmodified)>
-	            <cfset QuerySetCell(arguments.dirInfo,"mode",mode)>
-	            <cfset QuerySetCell(arguments.dirInfo,"name",name)>
-	            <cfset QuerySetCell(arguments.dirInfo,"size",size)>
-	            <cfset QuerySetCell(arguments.dirInfo,"type",type)>
-	            <cfset QuerySetCell(arguments.dirInfo,"directory",directory)>
+				<cfset isExcluded = false>
+				<cfif Len(arguments.exclude)>
+					<cfloop list="#arguments.exclude#" index="exdir">
+						<cfif
+								( Len(ScriptName) AND ListLen(exdir,"/") EQ 1 AND exdir EQ ListFindNoCase("#ScriptName#/",exdir,"/") )
+							OR	( Len(ScriptName) AND Len(exdir) AND Left(ScriptName,Len(exdir)) EQ exdir )
+							OR	( Len(ScriptName) AND Len(exdir) AND Left(exdir,Len(ScriptName)) EQ ScriptName )
+							OR	( exdir EQ name )
+						>
+							<cfset isExcluded = true>
+						</cfif>
+					</cfloop>
+				</cfif>
+				<cfif NOT isExcluded>
+					<cfset getMyDirectoryList(directory=directory & name,filter=filter,sort=sort,recurse=true,dirInfo=arguments.dirInfo,exclude=exclude)>
+				</cfif>
 			</cfif>
-	        <cfif recurse AND type IS "dir">
-	            <!--- go deep! --->
-	            <cfset getDirectoryList(directory=directory & name,filter=filter,sort=sort,recurse=true,dirInfo=arguments.dirInfo,exclude=exclude)>
-	        </cfif>
-		</cfif>
-    </cfloop>
+		</cfloop>
+	</cfif>
+	<cfoutput query="qFiles">
+		<cfset QueryAddRow(arguments.dirInfo)>
+		<cfset QuerySetCell(arguments.dirInfo,"attributes",attributes)>
+		<cfset QuerySetCell(arguments.dirInfo,"datelastmodified",datelastmodified)>
+		<cfset QuerySetCell(arguments.dirInfo,"mode",mode)>
+		<cfset QuerySetCell(arguments.dirInfo,"name",name)>
+		<cfset QuerySetCell(arguments.dirInfo,"size",size)>
+		<cfset QuerySetCell(arguments.dirInfo,"type",type)>
+		<cfset QuerySetCell(arguments.dirInfo,"directory",arguments.directory)>
+	</cfoutput>
 	
     <cfreturn arguments.dirInfo>
 </cffunction>
+
 <cffunction name="runFiles" output="true">
 	<cfargument name="path" required="true" type="string">
 	<cfargument name="root" required="false" type="string">

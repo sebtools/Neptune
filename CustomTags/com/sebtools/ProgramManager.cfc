@@ -496,8 +496,6 @@
 			<cfinvokeargument name="Subject" value="#arguments.Subject#">
 			<cfinvokeargument name="html" value="#arguments.html#">
 		</cfinvoke>
-	<cfelse>
-		<cfmail to="steve@bryantwebconsulting.com" from="robot@bryantwebconsulting.com" server="mail.bryantwebconsulting.com" type="html" subject="#variables.me.label# Error">#arguments.html#</cfmail>
 	</cfif>
 	
 </cffunction>
