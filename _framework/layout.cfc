@@ -1,5 +1,5 @@
-<!--- 1.0 Beta 2 (Build 24) --->
-<!--- Last Updated: 2011-10-10 --->
+<!--- 1.0 Beta 2 (Build 26) --->
+<!--- Last Updated: 2012-08-05 --->
 <!--- Information: sebtools.com --->
 <cfcomponent>
 
@@ -174,9 +174,17 @@
 	<cfargument name="Page" type="string" required="true">
 	<cfargument name="VariablesScope" type="struct" required="true">
 	
-	<cfset var PathFile = getDirectoryFromPath(getScopeTemplatePath(arguments.VariablesScope))>
+	<cfset var PathFile = "">
 	<cfset var PathRoot = "">
-	<cfset var result = PathFile>
+	<cfset var result = "">
+	
+	<cftry>
+		<cfset PathFile = getDirectoryFromPath(getScopeTemplatePath(arguments.VariablesScope))>
+	<cfcatch>
+		<cfset PathFile = getDirectoryFromPath(ExpandPath(Arguments.Page))>
+	</cfcatch>
+	</cftry>
+	<cfset result = PathFile>
 	
 	<cfif StructKeyExists(variables,"Factory") AND StructKeyExists(variables.Factory,"Config") AND variables.Factory.Config.exists('RootPath')>
 		<cfset PathRoot = variables.Factory.Config.getSetting('RootPath')>

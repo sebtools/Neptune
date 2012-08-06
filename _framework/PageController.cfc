@@ -1,5 +1,5 @@
 <!--- 1.0 Beta 2 (Build 26) --->
-<!--- Last Updated: 2012-01-31 --->
+<!--- Last Updated: 2012-08-05 --->
 <!--- Information: sebtools.com --->
 <cfcomponent displayname="Page Controller" output="false">
 
@@ -62,7 +62,7 @@
 		<cfset temp = LCase(ReplaceNoCase(arguments.Title," ","_","ALL"))>
 		<cfif ReFindNoCase("^\w+$",temp)>
 			<cfset param("URL.#temp#",vartype,0)>
-			<cfif URL[urlvar]>
+			<cfif URL[urlvar] AND NOT URL[temp]>
 				<cfset URL[temp] = URL[urlvar]>
 			</cfif>
 		</cfif>
@@ -70,7 +70,7 @@
 		<cfset temp = LCase(ReplaceNoCase(arguments.Title," ","","ALL"))>
 		<cfif ReFindNoCase("^\w+$",temp)>
 			<cfset param("URL.#temp#",vartype,0)>
-			<cfif URL[urlvar]>
+			<cfif URL[urlvar] AND NOT URL[temp]>
 				<cfset URL[temp] = URL[urlvar]>
 			</cfif>
 		</cfif>

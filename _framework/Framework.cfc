@@ -1,5 +1,5 @@
-<!--- 1.0 Beta 2 (Build 25) --->
-<!--- Last Updated: 2011-11-23 --->
+<!--- 1.0 Beta 2 (Build 26) --->
+<!--- Last Updated: 2012-08-05 --->
 <!--- Information: sebtools.com --->
 <!--- Created by Steve Bryant 2007-06-27 --->
 <cfcomponent output="false">
@@ -80,6 +80,11 @@
 	</cfif>
 	
 	<!---<cfset this.Config.runConfigFiles("#variables.instance.ConfigFolder#config.cfm")>--->
+	
+	<!--- Only way to preserve Loader Arguments state across reload of Loader so that it doesn't force reload of all components --->
+	<cfif StructKeyExists(Application,"Framework") AND StructKeyExists(Application.Framework,"Loader")>
+		<cfset request.Apploader_Args = Application.Framework.Loader.getArgs()>
+	</cfif>
 	
 	<cfreturn This>
 </cffunction>
@@ -1133,6 +1138,18 @@ function getPageController(path) {
 	
 </cffunction>
 
+<cffunction name="getProgramsXml" access="public" returntype="any" output="no">
+	
+	<cfset var ProgramsXml = "">
+	
+	<cfif NOT StructKeyExists(Variables,"xPrograms")>
+		<cffile action="read" file="#variables.instance.ConfigFolderPath#programs.cfm" variable="ProgramsXml">
+		<cfset Variables.xPrograms = XmlParse(ProgramsXml)>
+	</cfif>
+	
+	<cfreturn Variables.xPrograms>
+</cffunction>
+
 <cffunction name="registerAllPrograms" access="public" returntype="boolean" output="no">
 	<cfargument name="overwrite" type="boolean" default="false">
 	
@@ -1140,6 +1157,9 @@ function getPageController(path) {
 	<cfset var exclude = getExcludeDirs()>
 	<cfset var isRegistered = false>
 	<cfset var result = false>
+	<cfset var xPrograms = getProgramsXml()>
+	<cfset var Folder = "">
+	<cfset var axPrograms = 0>
 	
 	<!--- Get program files --->
 	<cfset qProgramFiles = getDirectoryList(directory=variables.instance.RootPath,filter="Program.cfc",recurse=true,exclude=exclude)>
@@ -1147,8 +1167,16 @@ function getPageController(path) {
 	<cfif qProgramFiles.RecordCount>
 		<!--- Attempt to register program files --->
 		<cfloop query="qProgramFiles">
-			<cfset isRegistered = registerProgram(Directory)>
-			<cfset result = (result OR isRegistered)>
+			<cfset Folder = ReplaceNoCase(Directory,variables.instance.RootPath,'')>
+			<cfset Folder = "/" & ListChangeDelims(Folder,"/","\")>
+			<cfif Right(Folder,1) NEQ "/">
+				<cfset Folder = "#Folder#/">
+			</cfif>
+			<cfset axPrograms = XmlSearch(xPrograms,"/site/program[@path='#Folder#']")>
+			<cfif NOT ArrayLen(axPrograms)>
+				<cfset isRegistered = registerProgram(Directory)>
+				<cfset result = (result OR isRegistered)>
+			</cfif>
 		</cfloop>
 	</cfif>
 	

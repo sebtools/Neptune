@@ -1,5 +1,5 @@
-<!--- 1.0 Beta 2 (Build 25) --->
-<!--- Last Updated: 2011-11-23 --->
+<!--- 1.0 Beta 2 (Build 26) --->
+<!--- Last Updated: 2012-08-05 --->
 <!--- Information: sebtools.com --->
 <!--- Created by Steve Bryant 2005-08-19 --->
 <cfcomponent displayname="Component Loader" output="false">
@@ -13,6 +13,10 @@
 	
 	<cfset variables.instance = StructNew()>
 	<cfset variables.args = StructNew()>
+	
+	<cfif StructKeyExists(request,"Apploader_Args") AND isStruct(request.Apploader_Args)>
+		<cfset variables.args = request.Apploader_Args>
+	</cfif>
 	
 	<cfif StructKeyExists(arguments,"Proxy")>
 		<cfset variables.Proxy = arguments.Proxy>
@@ -130,7 +134,9 @@
 					<cfset variables.args[key] = Arguments[key]>
 				</cfcatch>
 				</cftry>
-				<cfset result = ListAppend(result,key)>
+				<cfif isSimpleValue(variables.args[key])>
+					<cfset result = ListAppend(result,key)>
+				</cfif>
 			</cfif>
 		</cfloop>
 	</cfif>
@@ -494,13 +500,18 @@
 				<cfset Application[arguments.returncomp] = variables.Proxy.invokeMethod(component,method,sArgs)>
 			</cfif>
 		<cfelseif Len(Trim(arguments.returncomp))>
-			<cfinvoke
-				returnvariable="Application.#arguments.returncomp#"
-				component="#component#"
-				method="#arguments.method#"
-				argumentCollection="#sArgs#"
-			>
-			</cfinvoke>
+			<!---<cftry>--->
+				<cfinvoke
+					returnvariable="Application.#arguments.returncomp#"
+					component="#component#"
+					method="#arguments.method#"
+					argumentCollection="#sArgs#"
+				>
+				</cfinvoke>
+			<!---<cfcatch>
+				<cfthrow message="#arguments.returncomp#: #CFCATCH.Message#" type="AppLoader">
+			</cfcatch>
+			</cftry>--->
 		</cfif>
 	<cfcatch type="Any">
 		<cfif ReFindNoCase(".*parameter.*function.*required but was not passed in",CFCATCH.Message) AND FindNoCase("init",CFCATCH.Message)>
