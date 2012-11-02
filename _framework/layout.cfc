@@ -38,7 +38,7 @@
 	
 	<cfset sThis = getMetaData(This)>
 	
-	<cfif sThis.name CONTAINS "Admin">
+	<cfif sThis.name CONTAINS "Admin" AND ListLast(variables.CGI.SCRIPT_NAME,".") NEQ "cfc">
 		<cfset importAdminMenu()>
 	</cfif>
 	

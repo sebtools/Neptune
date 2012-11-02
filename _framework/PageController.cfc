@@ -736,7 +736,8 @@
 <cffunction name="hasSecurityService" access="public" returntype="boolean" output="no">
 	
 	<cfset var result = (
-			StructKeyExists(variables.instance,"Framework")
+			StructKeyExists(variables,"instance")
+		AND	StructKeyExists(variables.instance,"Framework")
 		AND	StructKeyExists(variables.instance.Framework,"getSpecialService")
 		AND	StructKeyExists(variables.instance.Framework,"hasSpecialService")
 		AND	variables.instance.Framework.hasSpecialService("Security")
