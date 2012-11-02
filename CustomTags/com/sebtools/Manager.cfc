@@ -1691,6 +1691,20 @@
 			</cfloop>
 		</cfif>
 		
+		<!--- Add help for image sizes --->
+		<cfloop index="ff" from="1" to="#ArrayLen(aFields)#">
+			<cfset xField = aFields[ff]>
+			<cfif
+					StructKeyExists(xField.XmlAttributes,"type")
+				AND	xField.XmlAttributes["type"] EQ "image"
+				AND	( StructKeyExists(xField.XmlAttributes,"MaxWidth") AND Val(xField.XmlAttributes["MaxWidth"]) )
+				AND	( StructKeyExists(xField.XmlAttributes,"MaxHeight") AND Val(xField.XmlAttributes["MaxHeight"]) )
+				AND	NOT ( StructKeyExists(xField.XmlAttributes,"help") AND Len(xField.XmlAttributes["help"]) )
+			>
+				<cfset xField.XmlAttributes["help"] = '( At least #xField.XmlAttributes["MaxWidth"]#px X #xField.XmlAttributes["MaxHeight"]#px )'>
+			</cfif>
+		</cfloop>
+		
 		<!--- Add "IN" filter for pk field --->
 		<cfif
 				StructKeyExists(aTables[tt].XmlAttributes,"pkfield")
@@ -1761,295 +1775,298 @@
 		<cfset table = xTable.XmlAttributes["name"]>
 		<cfset ftable = xField.XmlAttributes["ftable"]>
 		<cfset axFTables = XmlSearch(xDef,"//table[@name='#ftable#']")>
-		<cfset xFTable = axFTables[1]>
-		
-		<cfif NOT StructKeyExists(xField.XmlAttributes,"subcomp")>
-			<cfif StructKeyExists(variables.sMetaData, ftable) AND StructKeyExists(variables.sMetaData[ftable],"methodPlural")>
-				<cfset xField.XmlAttributes["subcomp"] = makeCompName(variables.sMetaData[ftable]["methodPlural"])>
-			<cfelseif StructKeyExists(xFTable.XmlAttributes,"methodPlural")>
-				<cfset xField.XmlAttributes["subcomp"] = makeCompName(xFTable.XmlAttributes["methodPlural"])>
-			</cfif>
-		</cfif>
-		
-		<cfif
-				StructKeyExists(xField.XmlAttributes,"jointype")
-			AND	(
-						xField.XmlAttributes["jointype"] EQ "many"
-					OR	xField.XmlAttributes["jointype"] EQ "list"
-					OR	xField.XmlAttributes["jointype"] EQ "many2many"
-				)
-		>
-			<cfset isMany2Many = ( xField.XmlAttributes["jointype"] EQ "many2many" OR ArrayLen(XmlSearch(xDef,"//table[@name='#ftable#']/field[@ftable='#table#'][@jointype='many' or @jointype='list' or @jointype='many2many']")) )>
-			<cfif NOT StructKeyExists(xField.XmlAttributes,"type")>
-				<cfset xField.XmlAttributes["type"] = "Relation">
-			</cfif>
-			<cfif NOT StructKeyExists(xField.XmlAttributes,"name")>
-				<cfif StructKeyExists(xField.XmlAttributes,"fentity")>
-					<cfset xField.XmlAttributes["name"] = Pluralize(makeCompName(xField.XmlAttributes["fentity"]))>
-				<cfelseif StructKeyExists(variables.sMetaData,ftable)>
-					<cfset xField.XmlAttributes["name"] = makeCompName(variables.sMetaData[ftable]["methodPlural"])>
+		<cfif ArrayLen(axFTables)>
+			
+			<cfset xFTable = axFTables[1]>
+			
+			<cfif NOT StructKeyExists(xField.XmlAttributes,"subcomp")>
+				<cfif StructKeyExists(variables.sMetaData, ftable) AND StructKeyExists(variables.sMetaData[ftable],"methodPlural")>
+					<cfset xField.XmlAttributes["subcomp"] = makeCompName(variables.sMetaData[ftable]["methodPlural"])>
+				<cfelseif StructKeyExists(xFTable.XmlAttributes,"methodPlural")>
+					<cfset xField.XmlAttributes["subcomp"] = makeCompName(xFTable.XmlAttributes["methodPlural"])>
 				</cfif>
-				<cfif table EQ ftable>
-					<cfset xField.XmlAttributes.name = "Related#xField.XmlAttributes.name#">
-				</cfif>
-			</cfif>
-			<cfif NOT StructKeyExists(xField.XmlAttributes,"Label")>
-				<cfif StructKeyExists(variables.sMetaData, ftable) AND StructKeyExists(variables.sMetaData[ftable],"labelPlural")>
-					<cfset xField.XmlAttributes["Label"] = variables.sMetaData[ftable]["labelPlural"]>
-					<cfif table EQ ftable>
-						<cfset xField.XmlAttributes.Label = "Related #xField.XmlAttributes.Label#">
-					</cfif>
-				</cfif>
-			</cfif>
-			<cfif NOT StructKeyExists(xField.XmlAttributes,"OldField")>
-				<cfset xField.XmlAttributes["OldField"] = getPrimaryKeyFields(ftable,xDef)>
-				<cfif ListLen(xField.XmlAttributes["OldField"]) NEQ 1>
-					<!---<cfthrow message="You must provide a field name for joins with #ftable# as no single primary key field could be found." type="Manager">--->
-					<cfset StructDelete(xField.XmlAttributes,"OldField")>
-				</cfif>
-			</cfif>
-			<cfif NOT StructKeyExists(xField.XmlAttributes,"jointable")>
-				<cfset xField.XmlAttributes["jointable"] = getJoinTableName(xDef,table,ftable)>
-			</cfif>
-			<cfset ArrayAppend(xField.XmlChildren,XmlElemNew(xDef,"relation"))>
-			<cfset xField.XmlChildren[1].XmlAttributes["type"] = "list">
-			<cfset xField.XmlChildren[1].XmlAttributes["table"] = ftable>
-			<cfset xField.XmlChildren[1].XmlAttributes["field"] = getPrimaryKeyFields(ftable,xDef)>
-			<cfset xField.XmlChildren[1].XmlAttributes["join-table"] = xField.XmlAttributes["jointable"]>
-			<cfset xField.XmlChildren[1].XmlAttributes["local-table-join-field"] = getPrimaryKeyFields(table,xDef)>
-			<cfset xField.XmlChildren[1].XmlAttributes["join-table-field-local"] = getPrimaryKeyFields(table,xDef)>
-			<cfset xField.XmlChildren[1].XmlAttributes["join-table-field-remote"] = getPrimaryKeyFields(ftable,xDef)>
-			<cfset xField.XmlChildren[1].XmlAttributes["remote-table-join-field"] = getPrimaryKeyFields(ftable,xDef)>
-			<cfif table EQ ftable>
-				<cfset xField.XmlChildren[1].XmlAttributes["join-table-field-remote"] = "Related#getPrimaryKeyFields(ftable,xDef)#">
-				<cfif StructKeyExists(xField.XmlAttributes,"bidirectional") AND isBoolean(xField.XmlAttributes["bidirectional"])>
-					<cfset xField.XmlChildren[1].XmlAttributes["bidirectional"] = xField.XmlAttributes["bidirectional"]>
-				<cfelse>
-					<cfset xField.XmlChildren[1].XmlAttributes["bidirectional"] = true>
-				</cfif>
-			</cfif>
-			<cfif NOT StructKeyExists(xField.XmlAttributes,"listshowfield")>
-				<cfif StructKeyExists(variables.sMetaData, ftable) AND StructKeyExists(variables.sMetaData[ftable],"methodSingular")>
-					<cfset xField.XmlAttributes["listshowfield"] = makeCompName(variables.sMetaData[ftable]["methodSingular"] & "Names")>
-					<cfif table EQ ftable>
-						<cfset xField.XmlAttributes.listshowfield = "Related#xField.XmlAttributes.listshowfield#">
-					</cfif>
-				</cfif>
-			</cfif>
-			<cfif StructKeyExists(xField.XmlAttributes,"listshowfield")>
-				<!--- Add label and has relation fields (if they don't exists) --->
-				<cfif NOT ArrayLen( XmlSearch(xDef,"//table[@name='#table#']/field[@name='#xField.XmlAttributes.listshowfield#']") )>
-					<cfset xLabelField = XmlElemNew(xDef,"field")>
-					<cfset xLabelField.XmlAttributes["name"] = xField.XmlAttributes.listshowfield>
-					<cfset xLabelField.XmlAttributes["label"] = xField.XmlAttributes.label>
-					<cfset ArrayAppend(xLabelField.XmlChildren,XmlElemNew(xDef,"relation"))>
-					<cfset xLabelField.XmlChildren[1].XmlAttributes["type"] = "list">
-					<cfset xLabelField.XmlChildren[1].XmlAttributes["table"] = ftable>
-					<cfset xLabelField.XmlChildren[1].XmlAttributes["field"] = variables.sMetaData[ftable]["labelField"]>
-					<cfset xLabelField.XmlChildren[1].XmlAttributes["join-table"] = xField.XmlAttributes["jointable"]>
-					<cfset xLabelField.XmlChildren[1].XmlAttributes["local-table-join-field"] = getPrimaryKeyFields(table,xDef)>
-					<cfset xLabelField.XmlChildren[1].XmlAttributes["join-table-field-local"] = getPrimaryKeyFields(table,xDef)>
-					<cfset xLabelField.XmlChildren[1].XmlAttributes["join-table-field-remote"] = getPrimaryKeyFields(ftable,xDef)>
-					<cfset xLabelField.XmlChildren[1].XmlAttributes["remote-table-join-field"] = getPrimaryKeyFields(ftable,xDef)>
-					<cfset ArrayAppend(xTable.XmlChildren,xLabelField)>
-				</cfif>
-			</cfif>
-			<!--- Add Num and Has relation fields (if they don't exist) --->
-			<cfif table EQ ftable>
-				<cfset NumField = "NumRelated#xTable.XmlAttributes.methodPlural#">
-				<cfset HasField = "hasRelated#xTable.XmlAttributes.methodPlural#">
-			<cfelse>
-				<cfset NumField = "Num#xTable.XmlAttributes.methodPlural#">
-				<cfset HasField = "has#xTable.XmlAttributes.methodPlural#">
-			</cfif>
-			<cfif NOT ArrayLen(XmlSearch(xFTable,"/field[@name='#NumField#']"))>
-				<cfset xNumField = XmlElemNew(xDef,"field")>
-				<cfset xNumField.XmlAttributes["name"] = NumField>
-				<cfset xNumField.XmlAttributes["label"] = xTable.XmlAttributes.labelPlural>
-				<cfif table EQ ftable>
-					<cfset xNumField.XmlAttributes.label = "Related #xNumField.XmlAttributes.label#">
-				</cfif>
-				<cfset xNumField.XmlAttributes["sebcolumn_type"] = "numeric">
-				<cfset ArrayAppend(xNumField.XmlChildren,XmlElemNew(xDef,"relation"))>
-				<cfset xNumField.XmlChildren[1].XmlAttributes["type"] = "count">
-				<cfset xNumField.XmlChildren[1].XmlAttributes["table"] = xField.XmlAttributes["jointable"]>
-				<cfset xNumField.XmlChildren[1].XmlAttributes["field"] = getPrimaryKeyFields(table,xDef)>
-				<cfset xNumField.XmlChildren[1].XmlAttributes["join-field-local"] = getPrimaryKeyFields(ftable,xDef)>
-				<cfset xNumField.XmlChildren[1].XmlAttributes["join-field-remote"] = getPrimaryKeyFields(ftable,xDef)>
-				<cfif StructKeyExists(xField.XmlAttributes,"onRemoteDelete")>
-					<cfset xNumField.XmlChildren[1].XmlAttributes["onDelete"] = xField.XmlAttributes["onRemoteDelete"]>
-				</cfif>
-				<cfif ListLen(xNumField.XmlChildren[1].XmlAttributes["join-field-local"]) EQ 1>
-					<cfset ArrayAppend(xFTable.XmlChildren,xNumField)>
-				</cfif>
-			</cfif>
-			<cfif NOT ArrayLen(XmlSearch(xFTable,"/field[@name='#HasField#']"))>
-				<cfset xHasField = XmlElemNew(xDef,"field")>
-				<cfset xHasField.XmlAttributes["name"] = HasField>
-				<cfset xHasField.XmlAttributes["label"] = "Has #xTable.XmlAttributes.labelPlural#?">
-				<cfif table EQ ftable>
-					<cfset xHasField.XmlAttributes.label = "Has Child #xNumField.XmlAttributes.label#s?">
-				</cfif>
-				<cfset xHasField.XmlAttributes["sebcolumn_type"] = "yesno">
-				<cfset ArrayAppend(xHasField.XmlChildren,XmlElemNew(xDef,"relation"))>
-				<cfset xHasField.XmlChildren[1].XmlAttributes["type"] = "has">
-				<cfset xHasField.XmlChildren[1].XmlAttributes["field"] = NumField>
-				<cfset ArrayAppend(xFTable.XmlChildren,xHasField)>
-			</cfif>
-		<cfelse>
-			<cfif NOT StructKeyExists(xField.XmlAttributes,"type")>
-				<cfset xField.XmlAttributes["type"] = "fk:integer">
-			</cfif>
-			<cfif NOT StructKeyExists(xField.XmlAttributes,"name")>
-				<cfset xField.XmlAttributes["name"] = getPrimaryKeyFields(ftable,xDef)>
-				<cfif ListLen(xField.XmlAttributes["name"]) NEQ 1>
-					<cfthrow message="You must provide a field name for joins with #ftable# as no single primary key field could be found." type="Manager">
-				</cfif>
-				<cfif table EQ ftable>
-					<cfset xField.XmlAttributes.name = "Parent#xField.XmlAttributes.name#">
-				</cfif>
-			</cfif>
-			<cfif NOT StructKeyExists(xField.XmlAttributes,"Label")>
-				<cfif StructKeyExists(variables.sMetaData, ftable) AND StructKeyExists(variables.sMetaData[ftable],"labelSingular")>
-					<cfset xField.XmlAttributes["Label"] = variables.sMetaData[ftable]["labelSingular"]>
-					<cfif table EQ ftable>
-						<cfset xField.XmlAttributes.Label = "Parent #xField.XmlAttributes.Label#">
-					</cfif>
-				</cfif>
-			</cfif>
-			<cfif NOT StructKeyExists(xField.XmlAttributes,"listshowfield")>
-				<cfif StructKeyExists(variables.sMetaData, ftable) AND StructKeyExists(variables.sMetaData[ftable],"methodSingular")>
-					<cfset xField.XmlAttributes["listshowfield"] = makeCompName(variables.sMetaData[ftable]["methodSingular"])>
-					<cfif table EQ ftable>
-						<cfset xField.XmlAttributes.listshowfield = "Parent#xField.XmlAttributes.listshowfield#">
-					</cfif>
-				</cfif>
-			</cfif>
-			<cfif table EQ ftable AND NOT StructKeyExists(xField.XmlAttributes,"urlvar")>
-				<cfset xField.XmlAttributes["urlvar"] = LCase(makeCompName(variables.sMetaData[ftable]["methodSingular"]))>
 			</cfif>
 			
-			<cfif StructKeyExists(xField.XmlAttributes,"listshowfield")>
-				<!--- Add label and has relation fields (if they don't exists) --->
-				<cfif NOT ArrayLen( XmlSearch(xDef,"//table[@name='#table#']/field[@name='#xField.XmlAttributes.listshowfield#']") )>
-					<cfset xLabelField = XmlElemNew(xDef,"field")>
-					<cfset xLabelField.XmlAttributes["name"] = xField.XmlAttributes.listshowfield>
-					<cfset xLabelField.XmlAttributes["label"] = xField.XmlAttributes.label>
-					<cfset ArrayAppend(xLabelField.XmlChildren,XmlElemNew(xDef,"relation"))>
-					<cfset xLabelField.XmlChildren[1].XmlAttributes["type"] = "label">
-					<cfset xLabelField.XmlChildren[1].XmlAttributes["table"] = ftable>
-					<cfset xLabelField.XmlChildren[1].XmlAttributes["field"] = variables.sMetaData[ftable]["labelField"]>
-					<cfset xLabelField.XmlChildren[1].XmlAttributes["join-field-local"] = xField.XmlAttributes["name"]>
-					<cfset xLabelField.XmlChildren[1].XmlAttributes["join-field-remote"] = getPrimaryKeyFields(ftable,xDef)>
-					<cfif StructKeyExists(xField.XmlAttributes,"onMissing")>
-						<cfset xLabelField.XmlChildren[1].XmlAttributes["onMissing"] = xField.XmlAttributes["onMissing"]>
+			<cfif
+					StructKeyExists(xField.XmlAttributes,"jointype")
+				AND	(
+							xField.XmlAttributes["jointype"] EQ "many"
+						OR	xField.XmlAttributes["jointype"] EQ "list"
+						OR	xField.XmlAttributes["jointype"] EQ "many2many"
+					)
+			>
+				<cfset isMany2Many = ( xField.XmlAttributes["jointype"] EQ "many2many" OR ArrayLen(XmlSearch(xDef,"//table[@name='#ftable#']/field[@ftable='#table#'][@jointype='many' or @jointype='list' or @jointype='many2many']")) )>
+				<cfif NOT StructKeyExists(xField.XmlAttributes,"type")>
+					<cfset xField.XmlAttributes["type"] = "Relation">
+				</cfif>
+				<cfif NOT StructKeyExists(xField.XmlAttributes,"name")>
+					<cfif StructKeyExists(xField.XmlAttributes,"fentity")>
+						<cfset xField.XmlAttributes["name"] = Pluralize(makeCompName(xField.XmlAttributes["fentity"]))>
+					<cfelseif StructKeyExists(variables.sMetaData,ftable)>
+						<cfset xField.XmlAttributes["name"] = makeCompName(variables.sMetaData[ftable]["methodPlural"])>
 					</cfif>
-					<cfif ListLen(xLabelField.XmlChildren[1].XmlAttributes["join-field-remote"]) EQ 1>
+					<cfif table EQ ftable>
+						<cfset xField.XmlAttributes.name = "Related#xField.XmlAttributes.name#">
+					</cfif>
+				</cfif>
+				<cfif NOT StructKeyExists(xField.XmlAttributes,"Label")>
+					<cfif StructKeyExists(variables.sMetaData, ftable) AND StructKeyExists(variables.sMetaData[ftable],"labelPlural")>
+						<cfset xField.XmlAttributes["Label"] = variables.sMetaData[ftable]["labelPlural"]>
+						<cfif table EQ ftable>
+							<cfset xField.XmlAttributes.Label = "Related #xField.XmlAttributes.Label#">
+						</cfif>
+					</cfif>
+				</cfif>
+				<cfif NOT StructKeyExists(xField.XmlAttributes,"OldField")>
+					<cfset xField.XmlAttributes["OldField"] = getPrimaryKeyFields(ftable,xDef)>
+					<cfif ListLen(xField.XmlAttributes["OldField"]) NEQ 1>
+						<!---<cfthrow message="You must provide a field name for joins with #ftable# as no single primary key field could be found." type="Manager">--->
+						<cfset StructDelete(xField.XmlAttributes,"OldField")>
+					</cfif>
+				</cfif>
+				<cfif NOT StructKeyExists(xField.XmlAttributes,"jointable")>
+					<cfset xField.XmlAttributes["jointable"] = getJoinTableName(xDef,table,ftable)>
+				</cfif>
+				<cfset ArrayAppend(xField.XmlChildren,XmlElemNew(xDef,"relation"))>
+				<cfset xField.XmlChildren[1].XmlAttributes["type"] = "list">
+				<cfset xField.XmlChildren[1].XmlAttributes["table"] = ftable>
+				<cfset xField.XmlChildren[1].XmlAttributes["field"] = getPrimaryKeyFields(ftable,xDef)>
+				<cfset xField.XmlChildren[1].XmlAttributes["join-table"] = xField.XmlAttributes["jointable"]>
+				<cfset xField.XmlChildren[1].XmlAttributes["local-table-join-field"] = getPrimaryKeyFields(table,xDef)>
+				<cfset xField.XmlChildren[1].XmlAttributes["join-table-field-local"] = getPrimaryKeyFields(table,xDef)>
+				<cfset xField.XmlChildren[1].XmlAttributes["join-table-field-remote"] = getPrimaryKeyFields(ftable,xDef)>
+				<cfset xField.XmlChildren[1].XmlAttributes["remote-table-join-field"] = getPrimaryKeyFields(ftable,xDef)>
+				<cfif table EQ ftable>
+					<cfset xField.XmlChildren[1].XmlAttributes["join-table-field-remote"] = "Related#getPrimaryKeyFields(ftable,xDef)#">
+					<cfif StructKeyExists(xField.XmlAttributes,"bidirectional") AND isBoolean(xField.XmlAttributes["bidirectional"])>
+						<cfset xField.XmlChildren[1].XmlAttributes["bidirectional"] = xField.XmlAttributes["bidirectional"]>
+					<cfelse>
+						<cfset xField.XmlChildren[1].XmlAttributes["bidirectional"] = true>
+					</cfif>
+				</cfif>
+				<cfif NOT StructKeyExists(xField.XmlAttributes,"listshowfield")>
+					<cfif StructKeyExists(variables.sMetaData, ftable) AND StructKeyExists(variables.sMetaData[ftable],"methodSingular")>
+						<cfset xField.XmlAttributes["listshowfield"] = makeCompName(variables.sMetaData[ftable]["methodSingular"] & "Names")>
+						<cfif table EQ ftable>
+							<cfset xField.XmlAttributes.listshowfield = "Related#xField.XmlAttributes.listshowfield#">
+						</cfif>
+					</cfif>
+				</cfif>
+				<cfif StructKeyExists(xField.XmlAttributes,"listshowfield")>
+					<!--- Add label and has relation fields (if they don't exists) --->
+					<cfif NOT ArrayLen( XmlSearch(xDef,"//table[@name='#table#']/field[@name='#xField.XmlAttributes.listshowfield#']") )>
+						<cfset xLabelField = XmlElemNew(xDef,"field")>
+						<cfset xLabelField.XmlAttributes["name"] = xField.XmlAttributes.listshowfield>
+						<cfset xLabelField.XmlAttributes["label"] = xField.XmlAttributes.label>
+						<cfset ArrayAppend(xLabelField.XmlChildren,XmlElemNew(xDef,"relation"))>
+						<cfset xLabelField.XmlChildren[1].XmlAttributes["type"] = "list">
+						<cfset xLabelField.XmlChildren[1].XmlAttributes["table"] = ftable>
+						<cfset xLabelField.XmlChildren[1].XmlAttributes["field"] = variables.sMetaData[ftable]["labelField"]>
+						<cfset xLabelField.XmlChildren[1].XmlAttributes["join-table"] = xField.XmlAttributes["jointable"]>
+						<cfset xLabelField.XmlChildren[1].XmlAttributes["local-table-join-field"] = getPrimaryKeyFields(table,xDef)>
+						<cfset xLabelField.XmlChildren[1].XmlAttributes["join-table-field-local"] = getPrimaryKeyFields(table,xDef)>
+						<cfset xLabelField.XmlChildren[1].XmlAttributes["join-table-field-remote"] = getPrimaryKeyFields(ftable,xDef)>
+						<cfset xLabelField.XmlChildren[1].XmlAttributes["remote-table-join-field"] = getPrimaryKeyFields(ftable,xDef)>
 						<cfset ArrayAppend(xTable.XmlChildren,xLabelField)>
 					</cfif>
 				</cfif>
-				<cfif NOT ArrayLen( XmlSearch(xDef,"//table[@name='#table#']/field[@name='Has#xField.XmlAttributes.listshowfield#']") )>
+				<!--- Add Num and Has relation fields (if they don't exist) --->
+				<cfif table EQ ftable>
+					<cfset NumField = "NumRelated#xTable.XmlAttributes.methodPlural#">
+					<cfset HasField = "hasRelated#xTable.XmlAttributes.methodPlural#">
+				<cfelse>
+					<cfset NumField = "Num#xTable.XmlAttributes.methodPlural#">
+					<cfset HasField = "has#xTable.XmlAttributes.methodPlural#">
+				</cfif>
+				<cfif NOT ArrayLen(XmlSearch(xFTable,"/field[@name='#NumField#']"))>
+					<cfset xNumField = XmlElemNew(xDef,"field")>
+					<cfset xNumField.XmlAttributes["name"] = NumField>
+					<cfset xNumField.XmlAttributes["label"] = xTable.XmlAttributes.labelPlural>
+					<cfif table EQ ftable>
+						<cfset xNumField.XmlAttributes.label = "Related #xNumField.XmlAttributes.label#">
+					</cfif>
+					<cfset xNumField.XmlAttributes["sebcolumn_type"] = "numeric">
+					<cfset ArrayAppend(xNumField.XmlChildren,XmlElemNew(xDef,"relation"))>
+					<cfset xNumField.XmlChildren[1].XmlAttributes["type"] = "count">
+					<cfset xNumField.XmlChildren[1].XmlAttributes["table"] = xField.XmlAttributes["jointable"]>
+					<cfset xNumField.XmlChildren[1].XmlAttributes["field"] = getPrimaryKeyFields(table,xDef)>
+					<cfset xNumField.XmlChildren[1].XmlAttributes["join-field-local"] = getPrimaryKeyFields(ftable,xDef)>
+					<cfset xNumField.XmlChildren[1].XmlAttributes["join-field-remote"] = getPrimaryKeyFields(ftable,xDef)>
+					<cfif StructKeyExists(xField.XmlAttributes,"onRemoteDelete")>
+						<cfset xNumField.XmlChildren[1].XmlAttributes["onDelete"] = xField.XmlAttributes["onRemoteDelete"]>
+					</cfif>
+					<cfif ListLen(xNumField.XmlChildren[1].XmlAttributes["join-field-local"]) EQ 1>
+						<cfset ArrayAppend(xFTable.XmlChildren,xNumField)>
+					</cfif>
+				</cfif>
+				<cfif NOT ArrayLen(XmlSearch(xFTable,"/field[@name='#HasField#']"))>
 					<cfset xHasField = XmlElemNew(xDef,"field")>
-					<cfset xHasField.XmlAttributes["name"] = "Has#xField.XmlAttributes.listshowfield#">
-					<cfset xHasField.XmlAttributes["label"] = "Has #xField.XmlAttributes.label#?">
+					<cfset xHasField.XmlAttributes["name"] = HasField>
+					<cfset xHasField.XmlAttributes["label"] = "Has #xTable.XmlAttributes.labelPlural#?">
+					<cfif table EQ ftable>
+						<cfset xHasField.XmlAttributes.label = "Has Child #xNumField.XmlAttributes.label#s?">
+					</cfif>
+					<cfset xHasField.XmlAttributes["sebcolumn_type"] = "yesno">
 					<cfset ArrayAppend(xHasField.XmlChildren,XmlElemNew(xDef,"relation"))>
 					<cfset xHasField.XmlChildren[1].XmlAttributes["type"] = "has">
-					<cfset xHasField.XmlChildren[1].XmlAttributes["field"] = xField.XmlAttributes.listshowfield>
-					<cfset ArrayAppend(xTable.XmlChildren,xHasField)>
+					<cfset xHasField.XmlChildren[1].XmlAttributes["field"] = NumField>
+					<cfset ArrayAppend(xFTable.XmlChildren,xHasField)>
+				</cfif>
+			<cfelse>
+				<cfif NOT StructKeyExists(xField.XmlAttributes,"type")>
+					<cfset xField.XmlAttributes["type"] = "fk:integer">
+				</cfif>
+				<cfif NOT StructKeyExists(xField.XmlAttributes,"name")>
+					<cfset xField.XmlAttributes["name"] = getPrimaryKeyFields(ftable,xDef)>
+					<cfif ListLen(xField.XmlAttributes["name"]) NEQ 1>
+						<cfthrow message="You must provide a field name for joins with #ftable# as no single primary key field could be found." type="Manager">
+					</cfif>
+					<cfif table EQ ftable>
+						<cfset xField.XmlAttributes.name = "Parent#xField.XmlAttributes.name#">
+					</cfif>
+				</cfif>
+				<cfif NOT StructKeyExists(xField.XmlAttributes,"Label")>
+					<cfif StructKeyExists(variables.sMetaData, ftable) AND StructKeyExists(variables.sMetaData[ftable],"labelSingular")>
+						<cfset xField.XmlAttributes["Label"] = variables.sMetaData[ftable]["labelSingular"]>
+						<cfif table EQ ftable>
+							<cfset xField.XmlAttributes.Label = "Parent #xField.XmlAttributes.Label#">
+						</cfif>
+					</cfif>
+				</cfif>
+				<cfif NOT StructKeyExists(xField.XmlAttributes,"listshowfield")>
+					<cfif StructKeyExists(variables.sMetaData, ftable) AND StructKeyExists(variables.sMetaData[ftable],"methodSingular")>
+						<cfset xField.XmlAttributes["listshowfield"] = makeCompName(variables.sMetaData[ftable]["methodSingular"])>
+						<cfif table EQ ftable>
+							<cfset xField.XmlAttributes.listshowfield = "Parent#xField.XmlAttributes.listshowfield#">
+						</cfif>
+					</cfif>
+				</cfif>
+				<cfif table EQ ftable AND NOT StructKeyExists(xField.XmlAttributes,"urlvar")>
+					<cfset xField.XmlAttributes["urlvar"] = LCase(makeCompName(variables.sMetaData[ftable]["methodSingular"]))>
+				</cfif>
+				
+				<cfif StructKeyExists(xField.XmlAttributes,"listshowfield")>
+					<!--- Add label and has relation fields (if they don't exists) --->
+					<cfif NOT ArrayLen( XmlSearch(xDef,"//table[@name='#table#']/field[@name='#xField.XmlAttributes.listshowfield#']") )>
+						<cfset xLabelField = XmlElemNew(xDef,"field")>
+						<cfset xLabelField.XmlAttributes["name"] = xField.XmlAttributes.listshowfield>
+						<cfset xLabelField.XmlAttributes["label"] = xField.XmlAttributes.label>
+						<cfset ArrayAppend(xLabelField.XmlChildren,XmlElemNew(xDef,"relation"))>
+						<cfset xLabelField.XmlChildren[1].XmlAttributes["type"] = "label">
+						<cfset xLabelField.XmlChildren[1].XmlAttributes["table"] = ftable>
+						<cfset xLabelField.XmlChildren[1].XmlAttributes["field"] = variables.sMetaData[ftable]["labelField"]>
+						<cfset xLabelField.XmlChildren[1].XmlAttributes["join-field-local"] = xField.XmlAttributes["name"]>
+						<cfset xLabelField.XmlChildren[1].XmlAttributes["join-field-remote"] = getPrimaryKeyFields(ftable,xDef)>
+						<cfif StructKeyExists(xField.XmlAttributes,"onMissing")>
+							<cfset xLabelField.XmlChildren[1].XmlAttributes["onMissing"] = xField.XmlAttributes["onMissing"]>
+						</cfif>
+						<cfif ListLen(xLabelField.XmlChildren[1].XmlAttributes["join-field-remote"]) EQ 1>
+							<cfset ArrayAppend(xTable.XmlChildren,xLabelField)>
+						</cfif>
+					</cfif>
+					<cfif NOT ArrayLen( XmlSearch(xDef,"//table[@name='#table#']/field[@name='Has#xField.XmlAttributes.listshowfield#']") )>
+						<cfset xHasField = XmlElemNew(xDef,"field")>
+						<cfset xHasField.XmlAttributes["name"] = "Has#xField.XmlAttributes.listshowfield#">
+						<cfset xHasField.XmlAttributes["label"] = "Has #xField.XmlAttributes.label#?">
+						<cfset ArrayAppend(xHasField.XmlChildren,XmlElemNew(xDef,"relation"))>
+						<cfset xHasField.XmlChildren[1].XmlAttributes["type"] = "has">
+						<cfset xHasField.XmlChildren[1].XmlAttributes["field"] = xField.XmlAttributes.listshowfield>
+						<cfset ArrayAppend(xTable.XmlChildren,xHasField)>
+					</cfif>
+				</cfif>
+				
+				<!--- Add Num and Has relation field to ftable (if they don't exist) --->
+				<cfif table EQ ftable>
+					<cfset NumField = "NumChild#xTable.XmlAttributes.methodPlural#">
+					<cfset HasField = "hasChild#xTable.XmlAttributes.methodPlural#">
+				<cfelse>
+					<cfset NumField = "Num#xTable.XmlAttributes.methodPlural#">
+					<cfset HasField = "has#xTable.XmlAttributes.methodPlural#">
+				</cfif>
+				<cfif NOT ArrayLen(XmlSearch(xFTable,"/field[@name='#NumField#']"))>
+					<cfset xNumField = XmlElemNew(xDef,"field")>
+					<cfset xNumField.XmlAttributes["name"] = NumField>
+					<cfset xNumField.XmlAttributes["label"] = xTable.XmlAttributes.labelPlural>
+					<cfif table EQ ftable>
+						<cfset xNumField.XmlAttributes.label = "Child #xNumField.XmlAttributes.label#">
+					</cfif>
+					<cfset xNumField.XmlAttributes["sebcolumn_type"] = "numeric">
+					<cfset ArrayAppend(xNumField.XmlChildren,XmlElemNew(xDef,"relation"))>
+					<cfset xNumField.XmlChildren[1].XmlAttributes["type"] = "count">
+					<cfset xNumField.XmlChildren[1].XmlAttributes["table"] = table>
+					<cfset xNumField.XmlChildren[1].XmlAttributes["field"] = getPrimaryKeyFields(ftable,xDef)>
+					<cfset xNumField.XmlChildren[1].XmlAttributes["join-field-local"] = getPrimaryKeyFields(ftable,xDef)>
+					<cfset xNumField.XmlChildren[1].XmlAttributes["join-field-remote"] = xField.XmlAttributes["name"]>
+					<cfif StructKeyExists(xField.XmlAttributes,"onRemoteDelete")>
+						<cfset xNumField.XmlChildren[1].XmlAttributes["onDelete"] = xField.XmlAttributes["onRemoteDelete"]>
+					</cfif>
+					<cfif ListLen(xNumField.XmlChildren[1].XmlAttributes["join-field-local"]) EQ 1>
+						<cfset ArrayAppend(xFTable.XmlChildren,xNumField)>
+					</cfif>
+				</cfif>
+				<cfif NOT ArrayLen(XmlSearch(xFTable,"/field[@name='#HasField#']"))>
+					<cfset xHasField = XmlElemNew(xDef,"field")>
+					<cfset xHasField.XmlAttributes["name"] = HasField>
+					<cfset xHasField.XmlAttributes["label"] = "Has #xTable.XmlAttributes.labelPlural#?">
+					<cfif table EQ ftable>
+						<cfset xHasField.XmlAttributes.label = "Has Child #xNumField.XmlAttributes.label#s?">
+					</cfif>
+					<cfset xHasField.XmlAttributes["sebcolumn_type"] = "yesno">
+					<cfset ArrayAppend(xHasField.XmlChildren,XmlElemNew(xDef,"relation"))>
+					<cfset xHasField.XmlChildren[1].XmlAttributes["type"] = "has">
+					<cfset xHasField.XmlChildren[1].XmlAttributes["field"] = NumField>
+					<cfset ArrayAppend(xFTable.XmlChildren,xHasField)>
 				</cfif>
 			</cfif>
 			
-			<!--- Add Num and Has relation field to ftable (if they don't exist) --->
-			<cfif table EQ ftable>
-				<cfset NumField = "NumChild#xTable.XmlAttributes.methodPlural#">
-				<cfset HasField = "hasChild#xTable.XmlAttributes.methodPlural#">
-			<cfelse>
-				<cfset NumField = "Num#xTable.XmlAttributes.methodPlural#">
-				<cfset HasField = "has#xTable.XmlAttributes.methodPlural#">
+			<cfif StructKeyExists(variables.sMetaData, ftable)>
+				<cfif NOT StructKeyExists(variables.sMetaData[ftable],"childtables")>
+					<cfset variables.sMetaData[ftable]["childtables"] = "">
+				</cfif>
+				<cfif NOT ListFindNoCase(variables.sMetaData[ftable]["childtables"],table)>
+					<cfset variables.sMetaData[ftable]["childtables"] = ListAppend(variables.sMetaData[ftable]["childtables"],table)>
+				</cfif>
 			</cfif>
-			<cfif NOT ArrayLen(XmlSearch(xFTable,"/field[@name='#NumField#']"))>
-				<cfset xNumField = XmlElemNew(xDef,"field")>
-				<cfset xNumField.XmlAttributes["name"] = NumField>
-				<cfset xNumField.XmlAttributes["label"] = xTable.XmlAttributes.labelPlural>
+			
+			<!--- Add list fields if indicated --->
+			<!---<cfif StructKeyExists(xField.XmlAttributes,"withListFields") AND xField.XmlAttributes["withListFields"] IS true>
+				<cfset ListValueFieldName = xTable.XmlAttributes.methodPlural>
+				<cfset ListNamesFieldName = "#xTable.XmlAttributes.SingularPlural#Names">
 				<cfif table EQ ftable>
-					<cfset xNumField.XmlAttributes.label = "Child #xNumField.XmlAttributes.label#">
+					<cfset ListValueFieldName = "Child#ListValueFieldName#">
+					<cfset ListNamesFieldName = "Child#ListNamesFieldName#">
 				</cfif>
-				<cfset xNumField.XmlAttributes["sebcolumn_type"] = "numeric">
-				<cfset ArrayAppend(xNumField.XmlChildren,XmlElemNew(xDef,"relation"))>
-				<cfset xNumField.XmlChildren[1].XmlAttributes["type"] = "count">
-				<cfset xNumField.XmlChildren[1].XmlAttributes["table"] = table>
-				<cfset xNumField.XmlChildren[1].XmlAttributes["field"] = getPrimaryKeyFields(ftable,xDef)>
-				<cfset xNumField.XmlChildren[1].XmlAttributes["join-field-local"] = getPrimaryKeyFields(ftable,xDef)>
-				<cfset xNumField.XmlChildren[1].XmlAttributes["join-field-remote"] = xField.XmlAttributes["name"]>
-				<cfif StructKeyExists(xField.XmlAttributes,"onRemoteDelete")>
-					<cfset xNumField.XmlChildren[1].XmlAttributes["onDelete"] = xField.XmlAttributes["onRemoteDelete"]>
+				<cfif NOT ArrayLen(XmlSearch(xFTable,"//field[@name='#ListValueFieldName#']"))>
+					<cfset xListField = XmlElemNew(xDef,"field")>
+					<cfset xListField.XmlAttributes["name"] = ListValueFieldName>
+					<cfset xListField.XmlAttributes["label"] = xListField.XmlAttributes.labelPlural>
+					<cfif table EQ ftable>
+						<cfset xListField.XmlAttributes.label = "Child #xListField.XmlAttributes.label#">
+					</cfif>
+					<cfset ArrayAppend(xListField.XmlChildren,XmlElemNew(xDef,"relation"))>
+					<cfset xListField.XmlChildren[1].XmlAttributes["type"] = "list">
+					<cfset xListField.XmlChildren[1].XmlAttributes["table"] = ftable>
+					<cfset xListField.XmlChildren[1].XmlAttributes["field"] = getPrimaryKeyFields(ftable,xDef)>
+					<cfset xListField.XmlChildren[1].XmlAttributes["join-field-local"] = getPrimaryKeyFields(ftable,xDef)>
+					<cfset xListField.XmlChildren[1].XmlAttributes["join-field-remote"] = xField.XmlAttributes["name"]>
+					<cfset ArrayAppend(xFTable.XmlChildren,xListField)>
 				</cfif>
-				<cfif ListLen(xNumField.XmlChildren[1].XmlAttributes["join-field-local"]) EQ 1>
-					<cfset ArrayAppend(xFTable.XmlChildren,xNumField)>
+				<cfif NOT ArrayLen(XmlSearch(xFTable,"//field[@name='#ListNamesFieldName#']"))>
+					<cfset xListNamesField = XmlElemNew(xDef,"field")>
+					<cfset xListField.XmlAttributes["name"] = ListNamesFieldName>
+					<cfset xListNamesField.XmlAttributes["label"] = xListField.XmlAttributes.labelPlural>
+					<cfif table EQ ftable>
+						<cfset xListNamesField.XmlAttributes.label = "Child #xListNamesField.XmlAttributes.label#">
+					</cfif>
+					<cfset ArrayAppend(xListNamesField.XmlChildren,XmlElemNew(xDef,"relation"))>
+					<cfset xListNamesField.XmlChildren[1].XmlAttributes["type"] = "list">
+					<cfset xListNamesField.XmlChildren[1].XmlAttributes["field"] = variables.sMetaData[ftable]["labelField"]>
+					<cfset xListNamesField.XmlChildren[1].XmlAttributes["join-field-local"] = getPrimaryKeyFields(ftable,xDef)>
+					<cfset xListNamesField.XmlChildren[1].XmlAttributes["join-field-remote"] = xField.XmlAttributes["name"]>
+					<cfset ArrayAppend(xFTable.XmlChildren,xListNamesField)>
 				</cfif>
-			</cfif>
-			<cfif NOT ArrayLen(XmlSearch(xFTable,"/field[@name='#HasField#']"))>
-				<cfset xHasField = XmlElemNew(xDef,"field")>
-				<cfset xHasField.XmlAttributes["name"] = HasField>
-				<cfset xHasField.XmlAttributes["label"] = "Has #xTable.XmlAttributes.labelPlural#?">
-				<cfif table EQ ftable>
-					<cfset xHasField.XmlAttributes.label = "Has Child #xNumField.XmlAttributes.label#s?">
-				</cfif>
-				<cfset xHasField.XmlAttributes["sebcolumn_type"] = "yesno">
-				<cfset ArrayAppend(xHasField.XmlChildren,XmlElemNew(xDef,"relation"))>
-				<cfset xHasField.XmlChildren[1].XmlAttributes["type"] = "has">
-				<cfset xHasField.XmlChildren[1].XmlAttributes["field"] = NumField>
-				<cfset ArrayAppend(xFTable.XmlChildren,xHasField)>
-			</cfif>
+			</cfif>--->
 		</cfif>
-		
-		<cfif StructKeyExists(variables.sMetaData, ftable)>
-			<cfif NOT StructKeyExists(variables.sMetaData[ftable],"childtables")>
-				<cfset variables.sMetaData[ftable]["childtables"] = "">
-			</cfif>
-			<cfif NOT ListFindNoCase(variables.sMetaData[ftable]["childtables"],table)>
-				<cfset variables.sMetaData[ftable]["childtables"] = ListAppend(variables.sMetaData[ftable]["childtables"],table)>
-			</cfif>
-		</cfif>
-		
-		<!--- Add list fields if indicated --->
-		<!---<cfif StructKeyExists(xField.XmlAttributes,"withListFields") AND xField.XmlAttributes["withListFields"] IS true>
-			<cfset ListValueFieldName = xTable.XmlAttributes.methodPlural>
-			<cfset ListNamesFieldName = "#xTable.XmlAttributes.SingularPlural#Names">
-			<cfif table EQ ftable>
-				<cfset ListValueFieldName = "Child#ListValueFieldName#">
-				<cfset ListNamesFieldName = "Child#ListNamesFieldName#">
-			</cfif>
-			<cfif NOT ArrayLen(XmlSearch(xFTable,"//field[@name='#ListValueFieldName#']"))>
-				<cfset xListField = XmlElemNew(xDef,"field")>
-				<cfset xListField.XmlAttributes["name"] = ListValueFieldName>
-				<cfset xListField.XmlAttributes["label"] = xListField.XmlAttributes.labelPlural>
-				<cfif table EQ ftable>
-					<cfset xListField.XmlAttributes.label = "Child #xListField.XmlAttributes.label#">
-				</cfif>
-				<cfset ArrayAppend(xListField.XmlChildren,XmlElemNew(xDef,"relation"))>
-				<cfset xListField.XmlChildren[1].XmlAttributes["type"] = "list">
-				<cfset xListField.XmlChildren[1].XmlAttributes["table"] = ftable>
-				<cfset xListField.XmlChildren[1].XmlAttributes["field"] = getPrimaryKeyFields(ftable,xDef)>
-				<cfset xListField.XmlChildren[1].XmlAttributes["join-field-local"] = getPrimaryKeyFields(ftable,xDef)>
-				<cfset xListField.XmlChildren[1].XmlAttributes["join-field-remote"] = xField.XmlAttributes["name"]>
-				<cfset ArrayAppend(xFTable.XmlChildren,xListField)>
-			</cfif>
-			<cfif NOT ArrayLen(XmlSearch(xFTable,"//field[@name='#ListNamesFieldName#']"))>
-				<cfset xListNamesField = XmlElemNew(xDef,"field")>
-				<cfset xListField.XmlAttributes["name"] = ListNamesFieldName>
-				<cfset xListNamesField.XmlAttributes["label"] = xListField.XmlAttributes.labelPlural>
-				<cfif table EQ ftable>
-					<cfset xListNamesField.XmlAttributes.label = "Child #xListNamesField.XmlAttributes.label#">
-				</cfif>
-				<cfset ArrayAppend(xListNamesField.XmlChildren,XmlElemNew(xDef,"relation"))>
-				<cfset xListNamesField.XmlChildren[1].XmlAttributes["type"] = "list">
-				<cfset xListNamesField.XmlChildren[1].XmlAttributes["field"] = variables.sMetaData[ftable]["labelField"]>
-				<cfset xListNamesField.XmlChildren[1].XmlAttributes["join-field-local"] = getPrimaryKeyFields(ftable,xDef)>
-				<cfset xListNamesField.XmlChildren[1].XmlAttributes["join-field-remote"] = xField.XmlAttributes["name"]>
-				<cfset ArrayAppend(xFTable.XmlChildren,xListNamesField)>
-			</cfif>
-		</cfif>--->
 	</cfloop>
 	
 	<cfreturn xDef>

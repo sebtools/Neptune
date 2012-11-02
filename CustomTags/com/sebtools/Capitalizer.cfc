@@ -37,6 +37,7 @@
 				<cfset result = ListAppend(result,word," ")>
 			</cfif>
 		</cfloop>
+		<cfset result = ReReplace(result,"'S\b","'s","ALL")>
 	<cfelse>
 		<cfset result = arguments.string>
 	</cfif>

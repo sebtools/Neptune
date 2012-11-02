@@ -1497,7 +1497,7 @@
 				<cfset ArrayAppend(sqlarray,getFieldWhereSQL(tablename=arguments.tablename,field=fields[ii].ColumnName,value=in[fields[ii].ColumnName],tablealias=arguments.tablealias))>
 			<cfelseif StructKeyExists(in,fields[ii].ColumnName) AND isSimpleValue(in[fields[ii].ColumnName]) AND NOT Len(Trim(in[fields[ii].ColumnName]))>
 				<cfset ArrayAppend(sqlarray,"#joiner#		#escape(arguments.tablealias & '.' & fields[ii].ColumnName)# IS NULL")>
-			<cfelseif StructKeyExists(fields[ii],"Special") AND fields[ii].Special EQ "DeletionMark">
+			<cfelseif StructKeyExists(fields[ii],"Special") AND fields[ii].Special EQ "DeletionMark" AND NOT ( StructKeyExists(Arguments,"WithDeletedRecords") AND Arguments.WithDeletedRecords IS true )>
 				<!--- Make sure not to get records that have been logically deleted --->
 				<cfif fields[ii].CF_DataType EQ "CF_SQL_BIT">
 					<cfset ArrayAppend(sqlarray,"#joiner#		(#escape(arguments.tablealias & '.' & fields[ii].ColumnName)# = #getBooleanSqlValue(0)# OR #escape(arguments.tablealias & '.' & fields[ii].ColumnName)# IS NULL)")>

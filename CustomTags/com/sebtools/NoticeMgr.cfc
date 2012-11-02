@@ -147,7 +147,10 @@
 
 <cffunction name="getNotices" access="public" returntype="query" output="no" hint="I get all of the notices.">
 	<cfargument name="fieldlist" type="string" default="">
-	<cfreturn variables.DataMgr.getRecords(tablename="emlNotices",fieldlist=Arguments.fieldlist)>
+	
+	<cfset Arguments.tablename = "emlNotices">
+	
+	<cfreturn variables.DataMgr.getRecords(ArgumentCollection=Arguments)>
 </cffunction>
 
 <cffunction name="loadNotices" access="public" returntype="any" output="no">
