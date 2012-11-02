@@ -1888,7 +1888,7 @@ if ( #attributes.objname#['#thisName#'] ) {#attributes.objname#['#thisName#'].de
 #attributes.objname#['#thisName#'].locked = true;</cfif><cfif arrFields[thisField].type EQ "text" AND StructKeyExists(arrFields[thisField],"regex") AND Len(arrFields[thisField].regex)>
 if ( navigator.appName != 'Microsoft Internet Explorer' ) {
 	reFilter_#arrFields[thisField].id# = new RegExp("#JSStringFormat(arrFields[thisField].regex)#");<cfif StructKeyExists(arrFields[thisField],"stripregex") AND Len(Trim(arrFields[thisField].stripregex))>
-	reStrip_#arrFields[thisField].id# = new RegExp("#JSStringFormat(arrFields[thisField].stripregex)#");
+	reStrip_#arrFields[thisField].id# = new RegExp("#JSStringFormat(arrFields[thisField].stripregex)#",'g');
 	#attributes.objname#['#thisName#'].validateExp("!reFilter_#arrFields[thisField].id#.test(document.getElementById('#arrFields[thisField].id#').value.replace(reStrip_#arrFields[thisField].id#,''))",'#arrFields[thisField].label# must be formatted correctly');<cfelse>
 	#attributes.objname#['#thisName#'].validateExp("!reFilter_#arrFields[thisField].id#.test(document.getElementById('#arrFields[thisField].id#').value)",'#arrFields[thisField].label# must be formatted correctly');</cfif>
 }</cfif><cfif Len(arrFields[thisField].qformmethods)><cfloop index="thisqFormMethod" list="#arrFields[thisField].qformmethods#" delimiters=";"><cfif Len(thisqFormMethod)>
