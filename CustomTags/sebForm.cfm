@@ -1173,6 +1173,7 @@ if ( isDefined("ThisTag.subforms") ) {
 							<cfset sForm[thisName] = "">
 						<cfelse>
 							<cfset sForm[thisName] = arrFields[thisField].value>
+							<cfset StructDelete(sForm,thisName)>
 						</cfif>
 					</cfif>
 					<!--- /If form contains uploaded file --->

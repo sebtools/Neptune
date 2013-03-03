@@ -100,6 +100,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 	ThisTag.atts.other = false;
 	ThisTag.atts.requireother = false;
 	ThisTag.atts.otherlabel = "Other";
+	ThisTag.atts.otherfieldlabel = "Other";
 	ThisTag.atts.DefaultValueOther = "";
 	ThisTag.atts.isEditable = ParentAtts.isEditable;
 	ThisTag.atts.minimize = ParentAtts.minimize;
@@ -414,8 +415,8 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 	if ( NOT StructKeyExists(attributes,"OtherField") ) {
 		attributes.OtherField = "#attributes.fieldname#_other";
 	}
-	if ( StructKeyExists(attributes,"setValueOther") AND Len(attributes.setvalue) ) {
-		attributes.ValueOther = Trim(attributes.ValueOther);
+	if ( StructKeyExists(attributes,"setValueOther") AND Len(attributes.setvalueother) ) {
+		attributes.ValueOther = Trim(attributes.setValueOther);
 	} else {
 		if ( Len(attributes.fieldname) AND StructKeyExists(attributes,"OtherField") AND Len(attributes.OtherField) ) {
 			if ( ParentAtts.qFormData.RecordCount ) {
@@ -772,7 +773,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 			ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].value = "SebFormOtherValue";
 			ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].display = attributes.otherlabel;
 			ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].title = attributes.otherlabel;
-			ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = ( Len(attributes.ValueOther) GT 0 );
+			ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = false;
 			ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].other = true;
 			</cfscript>
 		</cfif>
@@ -790,15 +791,30 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 			</cfif>
 		</cfif>
 		<cfscript>
+		hasSubOtherChecked = false;
 		for (i=1; i lte ArrayLen(ThisTag.qSubFields); i=i+1) {
 			if ( ListFindNoCase(attributes.value, ThisTag.qSubFields[i].value)  ) {
 				ThisTag.qSubFields[i].checked = true;
+				if ( StructKeyExists(ThisTag.qSubFields[i],"other") AND ThisTag.qSubFields[i].other IS true ) {
+					hasSubOtherChecked = true;
+				}
 			}
 			if ( StructKeyExists(ThisTag.qSubFields[i],"other") AND ThisTag.qSubFields[i].other IS true ) {
 				attributes.hasOtherOption = true;
 				attributes.numOtherOptions = attributes.numOtherOptions + 1;
 				ParentAtts.hasOtherFields = true;
 			}
+		}
+		//If field has "other" field and "other" data is provided, added "other" field must be the one checked
+		i = ArrayLen(ThisTag.qSubFields);
+		if (
+				attributes.other IS true
+			AND	StructKeyExists(ThisTag.qSubFields[i],"other")
+			AND	ThisTag.qSubFields[i].other IS true
+			AND	Len(attributes.ValueOther) GT 0
+			AND	NOT hasSubOtherChecked
+		) {
+			ThisTag.qSubFields[i].checked = true;
 		}
 		</cfscript>
 		<cfif attributes.minimize IS true>
@@ -898,7 +914,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 			</cfif></cfloop></ul></cfsavecontent>
 		<cfelse>
 			<cfsavecontent variable="input"><fieldset class="checkbox<cfif StructKeyExists(attributes,"class") AND Len(attributes.class)> #attributes.class#</cfif>" id="#attributes.id#_set"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt]) AND thisHtmlAtt neq "size" AND thisHtmlAtt neq "class"> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>><cfloop index="thisSubField" from="1" to="#ArrayLen(ThisTag.qsubfields)#" step="1">
-			<cfset thisID = "#attributes.id#_#thisSubField#"><input type="checkbox" id="#thisID#" name="#attributes.fieldname#" value="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].value)#"<cfif ThisTag.qsubfields[thisSubField].checked> checked="checked"</cfif><cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"other") AND ThisTag.qsubfields[thisSubField].other IS true> class="sebform-option-other"</cfif>/> <label id="lbl-#thisID#" for="#thisID#"<cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"title")> title="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].title)#"</cfif>>#ThisTag.qsubfields[thisSubField].display#</label><cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"other") AND ThisTag.qsubfields[thisSubField].other IS true AND attributes.numOtherOptions EQ 1> <input name="#attributes.OtherField#" id="#attributes.id#-other" value="#attributes.ValueOther#" size="10" onclick="document.getElementById('#thisID#').checked = true;" /></cfif><br/></cfloop><cfif attributes.numOtherOptions GT 1><div id="#attributes.id#-otherdiv"><label for="#attributes.id#-other">Other:</label> <input name="#attributes.OtherField#" id="#attributes.id#-other" value="#attributes.ValueOther#" size="10" /><br /></div></cfif></fieldset></cfsavecontent>
+			<cfset thisID = "#attributes.id#_#thisSubField#"><input type="checkbox" id="#thisID#" name="#attributes.fieldname#" value="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].value)#"<cfif ThisTag.qsubfields[thisSubField].checked> checked="checked"</cfif><cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"other") AND ThisTag.qsubfields[thisSubField].other IS true> class="sebform-option-other"</cfif>/> <label id="lbl-#thisID#" for="#thisID#"<cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"title")> title="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].title)#"</cfif>>#ThisTag.qsubfields[thisSubField].display#</label><cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"other") AND ThisTag.qsubfields[thisSubField].other IS true AND attributes.numOtherOptions EQ 1> <input name="#attributes.OtherField#" id="#attributes.id#-other" value="#attributes.ValueOther#" size="10" onclick="document.getElementById('#thisID#').checked = true;" /></cfif><br/></cfloop><cfif attributes.numOtherOptions GT 1><div id="#attributes.id#-otherdiv"><label for="#attributes.id#-other">#attributes.OtherFieldLabel#:</label> <input name="#attributes.OtherField#" id="#attributes.id#-other" value="#attributes.ValueOther#" size="10" /><br /></div></cfif></fieldset></cfsavecontent>
 		</cfif>
 	</cfcase>
 	
@@ -990,7 +1006,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 			</cfif></cfloop></ul></cfsavecontent>
 		<cfelse>
 			<cfsavecontent variable="input"><!-- #HTMLEditFormat(attributes.value)# --><fieldset class="radio" id="#attributes.id#_set"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt]) AND thisHtmlAtt neq "size"> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>><cfloop index="thisSubField" from="1" to="#ArrayLen(ThisTag.qsubfields)#" step="1">
-			<cfset thisID = "#attributes.id#_#thisSubField#"><input type="radio" id="#thisID#" name="#attributes.fieldname#" value="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].value)#"<cfif ThisTag.qsubfields[thisSubField].checked> checked="checked"</cfif><cfif ThisTag.qsubfields[thisSubField].other IS true> class="sebform-option-other"</cfif>/> <label id="lbl-#thisID#" for="#thisID#"<cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"title")> title="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].title)#"</cfif>>#ThisTag.qsubfields[thisSubField].display#</label><cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"other") AND ThisTag.qsubfields[thisSubField].other IS true AND attributes.numOtherOptions EQ 1> <input name="#attributes.OtherField#" id="#attributes.id#-other" value="#attributes.ValueOther#" size="10" onclick="document.getElementById('#thisID#').checked = true;" /></cfif><br/></cfloop><cfif attributes.numOtherOptions GT 1><div id="#attributes.id#-otherdiv"><label for="#attributes.id#-other">Other:</label> <input name="#attributes.OtherField#" id="#attributes.id#-other" value="#attributes.ValueOther#" size="10" /></div><br/></cfif></fieldset></cfsavecontent>
+			<cfset thisID = "#attributes.id#_#thisSubField#"><input type="radio" id="#thisID#" name="#attributes.fieldname#" value="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].value)#"<cfif ThisTag.qsubfields[thisSubField].checked> checked="checked"</cfif><cfif ThisTag.qsubfields[thisSubField].other IS true> class="sebform-option-other"</cfif>/> <label id="lbl-#thisID#" for="#thisID#"<cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"title")> title="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].title)#"</cfif>>#ThisTag.qsubfields[thisSubField].display#</label><cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"other") AND ThisTag.qsubfields[thisSubField].other IS true AND attributes.numOtherOptions EQ 1> <input name="#attributes.OtherField#" id="#attributes.id#-other" value="#attributes.ValueOther#" size="10" onclick="document.getElementById('#thisID#').checked = true;" /></cfif><br/></cfloop><cfif attributes.numOtherOptions GT 1><div id="#attributes.id#-otherdiv"><label for="#attributes.id#-other">#attributes.OtherFieldLabel#:</label> <input name="#attributes.OtherField#" id="#attributes.id#-other" value="#attributes.ValueOther#" size="10" /></div><br/></cfif></fieldset></cfsavecontent>
 		</cfif>
 	</cfcase>
 	
