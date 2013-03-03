@@ -1,0 +1,6 @@
+svn: This client is too old to work with working copy 'C:\inetpub\wwwroot\mxunit'.  You need
+to get a newer Subversion client, or to downgrade this working copy.
+See http://subversion.tigris.org/faq.html#working-copy-format-change
+for details.
+<?xml version="1.0"?>
+<log>
