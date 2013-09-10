@@ -8,7 +8,7 @@
 	<cfargument name="reload" type="boolean" default="false">
 	
 	<cfif arguments.reload OR NOT ( StructKeyExists(request.cf_PageController,"isPageControllerLoaded") AND request.cf_PageController.isPageControllerLoaded )>
-		<cfset arguments.vars.Controller = getPageController(arguments.path)>
+		<cfset arguments.vars.Controller = getPageController(path=arguments.path,Caller=arguments.vars)>
 		<cfset arguments.vars.PageController = arguments.vars.Controller>
 		<cfif StructKeyExists(arguments.vars.Controller,"loadData")>
 			<cfset StructAppend(arguments.vars,arguments.vars.Controller.loadData(arguments.vars))>

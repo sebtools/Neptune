@@ -12,21 +12,21 @@
 	
 	<cfset variables.instance = Arguments>
 	
-	<cfif StructKeyExists(arguments,"path") AND StructKeyExists(arguments,"path")>
-		<cfinvoke method="setScriptName">
-			<cfinvokeargument name="ScriptName" value="#arguments.path#">
-			<cfif StructKeyExists(arguments,"Framework")>
-				<cfinvokeargument name="Framework" value="#arguments.Framework#">
-			</cfif>
-		</cfinvoke>
-	</cfif>
-	
-	<!---<cfif NOT ( StructKeyExists(arguments,"check") AND arguments.check EQ false )>
-		<cfset checkAccess()>
-	</cfif>--->
-	
 	<cfif StructKeyExists(arguments,"Caller")>
-		<cfset StructAppend(Caller,loadData())>
+		<cfif StructKeyExists(arguments,"path") AND StructKeyExists(arguments,"path")>
+			<cfinvoke method="setScriptName">
+				<cfinvokeargument name="ScriptName" value="#arguments.path#">
+				<cfif StructKeyExists(arguments,"Framework")>
+					<cfinvokeargument name="Framework" value="#arguments.Framework#">
+				</cfif>
+			</cfinvoke>
+		</cfif>
+		
+		<!---<cfif NOT ( StructKeyExists(arguments,"check") AND arguments.check EQ false )>
+			<cfset checkAccess()>
+		</cfif>--->
+	
+		<!---<cfset StructAppend(Arguments.Caller,loadData(VariablesScope=Arguments.Caller))>--->
 	</cfif>
 	
 	<cfreturn This>

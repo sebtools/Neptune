@@ -262,7 +262,7 @@
 	<cfset var sData = 0>
 	
 	<cfif arguments.reload OR NOT ( StructKeyExists(request.cf_PageController,"isPageControllerLoaded") AND request.cf_PageController.isPageControllerLoaded )>
-		<cfset arguments.vars.Controller = getPageController(arguments.path)>
+		<cfset arguments.vars.Controller = getPageController(path=arguments.path,Caller=Arguments.vars)>
 		<cfset arguments.vars.PageController = arguments.vars.Controller>
 		
 		<cfif StructKeyExists(arguments.vars.Controller,"loadData")>
@@ -290,16 +290,7 @@
 function getPageController(path) {
 	
 	var ControllerFilePath = "";
-	var ControllerBrowserPath = "";
-	var oPageController = 0;
-	var oService = 0;
-	var CompPath = path;
 	var RootPath = variables.instance.RootPath;
-	var check = true;
-	
-	if ( ArrayLen(arguments) GTE 2 AND arguments[2] IS false ) {
-		check = false;
-	}
 	
 	//Copy path to ControllerFilePath
 	ControllerFilePath = arguments.path;
@@ -311,7 +302,7 @@ function getPageController(path) {
 	ControllerFilePath = "#ControllerFilePath#.cfc";
 	
 	//Make sure ControllerFilePath is a valid file path
-	if ( NOT FileExists(ControllerFilePath) ) {
+	if ( NOT isValidFilePath(ControllerFilePath) ) {
 		if ( Left(ControllerFilePath,1) EQ "/" ) {
 			ControllerFilePath = ReplaceNoCase(ControllerFilePath,"/",RootPath,"ONE");
 		} else {
@@ -322,7 +313,13 @@ function getPageController(path) {
 		}
 	}
 	
-	if ( FileExists(ControllerFilePath) ) {
+	return FileExists(ControllerFilePath);
+}
+function getPageControllerCompPath(path) {
+	var CompPath = path;
+	var RootPath = variables.instance.RootPath;
+	
+	if ( hasPageController(path) ) {
 		if ( Left(CompPath,Len(RootPath)) EQ RootPath ) {
 			CompPath = ReplaceNoCase(CompPath,RootPath,"");
 		}
@@ -338,22 +335,32 @@ function getPageController(path) {
 		CompPath = "_config.PageController";
 	}
 	
+	return CompPath;
+}
+function getPageController(path) {
+	
+	var oPageController = 0;
+	var CompPath = path;
+	var check = true;
+	var sArgs = StructNew();
+	
+	if ( ArrayLen(arguments) GTE 2 AND isSimpleValue(arguments[2]) AND arguments[2] IS false ) {
+		check = false;
+	}
+	
+	CompPath = getPageControllerCompPath(path);
+	
 	oPageController = CreateObject("component",CompPath);
+	sArgs["path"] = getBrowserPath(path);
+	sArgs["Framework"] = This;
+	sArgs["check"] = check;
+	if ( StructKeyExists(Arguments,"Caller") ) {
+		sArgs["Caller"] = Arguments.Caller;
+	}
 	if ( StructKeyExists(oPageController,"init") ) {
-		oPageController = oPageController.init(path=getBrowserPath(path),Framework=This,check=check);
+		oPageController = oPageController.init(ArgumentCollection=sArgs);
 	}
-	/*
-	if ( FileExists(ControllerFilePath) ) {
-		oPageController = CreateObject("component",CompPath);
-	} else {
-		oPageController = CreateObject("component","_config.PageController");
-		oService = getService(getBrowserPath(path));
-		if ( isDefined("oService") ) {
-			oPageController.setScriptName(getBrowserPath(path));
-			oPageController.setInherits(oService);
-		}
-	}
-	*/
+	
 	return oPageController;
 }
 </cfscript>
@@ -1059,7 +1066,7 @@ function getPageController(path) {
 			
 			<!--- If program has a _public folder, copy files from it into site root --->
 			<cfif DirectoryExists("#path_file#_public")>
-				<cfset directoryCopy("#path_file#_public",variables.instance["RootPath"],"skip")>
+				<cfset This.directoryCopy("#path_file#_public",variables.instance["RootPath"],"skip")>
 			</cfif>
 			
 			<cfset registerConfig("#path_file#Program.cfc",name,variables.instance["programs"][name])>
@@ -1452,7 +1459,7 @@ function getPageController(path) {
 				<cfset oSecurity = getSpecialService('Security')>
 				
 				<cfif StructKeyExists(oSecurity,"addPermissions")>
-					<cfinvoke component="#oSecurity#" method="addPermissions" permissions="#Arguments.Permissions#">
+					<cfinvoke component="#oSecurity#" method="addPermissions" permissions="#Arguments.Permissions#" onExists="update">
 					</cfinvoke>
 					<cfset isAdded = true>
 				</cfif>
