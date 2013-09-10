@@ -13,9 +13,42 @@
 	<cfreturn This>
 </cffunction>
 
-<cffunction name="addContentBlock" access="public" returntype="any" output="no" hint="I add the given setting if it doesn't yet exist.">
+<cffunction name="addComponent" access="public" returntype="any" output="no" hint="I add the given content block if it doesn't yet exist.">
+	<cfargument name="ComponentRef" type="any" required="true">
+	<cfargument name="ComponentName" type="string" required="true">
 	
-	<cfset var qCheck = getContentBlocks(ContentBlockName=Arguments.ContentBlockName,ExcludeComponent=Arguments.Component,fieldlist="ContentBlockID,Component")>
+	<cfset Arguments.ComponentRef["ContentBlocks"] = This>
+	<cfset Arguments.ComponentRef["ContentBlocksCompName"] = Arguments.ComponentName>
+	<cfset Arguments.ComponentRef["addContentBlock"] = addContentBlockThis>
+	
+</cffunction>
+
+<cffunction name="addContentBlockThis" access="public" returntype="any" output="no">
+	<cfset Arguments["Component"] = This.ContentBlocksCompName>
+	
+	<cfset This.ContentBlocks.addContentBlock(ArgumentCollection=Arguments)>
+	
+</cffunction>
+
+<cffunction name="addContentBlock" access="public" returntype="any" output="no" hint="I add the given content block if it doesn't yet exist.">
+	
+	<cfset var qCheck = 0>
+	
+	<!--- Friendlier argument names --->
+	<cfif StructKeyExists(Arguments,"Name") AND NOT StructKeyExists(Arguments,"ContentBlockName")>
+		<cfset Arguments.ContentBlockName = Arguments.Name>
+		<cfset StructDelete(Arguments,"Name")>
+	</cfif>
+	<cfif StructKeyExists(Arguments,"Text") AND NOT StructKeyExists(Arguments,"ContentBlockText")>
+		<cfset Arguments.ContentBlockText = Arguments.Text>
+		<cfset StructDelete(Arguments,"Text")>
+	</cfif>
+	<cfif StructKeyExists(Arguments,"html") AND NOT StructKeyExists(Arguments,"isHTML") AND isBoolean(Arguments.html)>
+		<cfset Arguments.isHTML = Arguments.html>
+		<cfset StructDelete(Arguments,"html")>
+	</cfif>
+	
+	<cfset qCheck = getContentBlocks(ContentBlockName=Arguments.ContentBlockName,ExcludeComponent=Arguments.Component,fieldlist="ContentBlockID,Component")>
 	
 	<cfif qCheck.RecordCount AND Len(Variables.Manager.DataMgr.getDatasource())>
 		<cfset throwError(Message="A content block of this name is already being used by another component (""#qCheck.Component#"").",ErrorCode="NameConflict")>
@@ -25,7 +58,7 @@
 	
 	<!---
 	Only take action if this doesn't already exists for this component.
-	(we don't want to update because the admin may have change the notice from the default settings)
+	(we don't want to update because the admin may have change the text from the default)
 	--->
 	<cfif NOT hasContentBlocks(ContentBlockName=Arguments.ContentBlockName,Component=Arguments.Component)>
 		<cfset saveContentBlock(ArgumentCollection=arguments)>
@@ -257,7 +290,7 @@
 <cffunction name="xml" access="public" output="yes">
 <tables prefix="#variables.prefix#">
 	<table entity="Content Block" universal="true" Specials="CreationDate,LastUpdateDate">
-		<field name="Component" label="Component" type="text" Langth="120" help="A unique identifier for the component or program using this setting" />
+		<field name="Component" label="Component" type="text" Langth="120" help="A unique identifier for the component or program using this content block." urlvar="component" />
 		<field name="isHTML" label="HTML?" type="boolean" default="false" />
 		<field name="ContentBlockText" label="Text" type="memo" />
 		<field name="ContentBlockBrief" label="Brief" type="text" Length="150" />
