@@ -221,7 +221,7 @@
 	<cfif Len(MissingFields)>
 		<cfset ServiceFields = Variables.oService.getFieldList()>
 		<cfloop list="#Arguments.fields#" index="Field">
-			<cfif NOT ListFindNoCase(ServiceFields,Field)>
+			<cfif ListFindNoCase(MissingFields,Field) AND NOT ListFindNoCase(ServiceFields,Field)>
 				<cfset MissingFields = ListDeleteAt(MissingFields,ListFindNoCase(MissingFields,Field))> 
 			</cfif>
 		</cfloop>
