@@ -248,71 +248,119 @@
 	
 	<cfset var aResults = ArrayNew(1)>
 	<cfset var task = "">
-	<cfset var qTask = 0>
-	<cfset var qCheckRun = 0>
-	<cfset var sIntervals = getIntervals()>
-	<cfset var adjustedtime = DateAdd("n",10,arguments.runtime)><!--- Tasks run every 15 minutes at most and we need a margin of error for date checks. --->
 	
 	<cfset loadAbandonedTasks()>
 	
 	<!--- Look at each task --->
 	<cfloop collection="#variables.tasks#" item="task">
-		<cfset qTask = getTaskNameRecord(task)>
-		<!--- If hours are specified, make sure current time is in that list of hours --->
-		<cfif qTask.rerun IS true>
+		<cfif isRunnableTask(task,arguments.runtime)>
 			<cfset ArrayAppend(aResults,variables.tasks[task])>
-		<cfelseif
-				1 EQ 1
-			AND	(
-						NOT ( StructKeyExists(variables.tasks[task],"hours") AND Len(variables.tasks[task].hours) )
-					OR	ListFindNoCase(variables.tasks[task].hours,Hour(arguments.runtime))
-				)
-			AND	(
-						NOT ( StructKeyExists(variables.tasks[task],"weekdays") AND Len(variables.tasks[task].weekdays) )
-					OR	ListFindNoCase(variables.tasks[task].weekdays,DayofWeekAsString(DayOfWeek(arguments.runtime))) )
-		>
-			<!--- See if the task has already been run within its interval --->
-			<cfquery name="qCheckRun" datasource="#variables.datasource#">
-			SELECT	#variables.DataMgr.getMaxRowsPrefix(1)# ActionID
-			FROM	schActions
-			WHERE	TaskID = <cfqueryparam value="#Val(qTask.TaskID)#" cfsqltype="CF_SQL_INTEGER">
-			<!--- If the interval is numeric, check by the number of seconds --->
-			<cfif isNumeric(variables.tasks[task].interval) AND variables.tasks[task].interval GT 0>
-				<cfset adjustedtime = DateAdd("s",Int(variables.tasks[task].interval/10),arguments.runtime)>
-				AND	DateRun > #CreateODBCDateTime(DateAdd("s", -Int(variables.tasks[task].interval), adjustedtime))#--numeric
-			<!--- If a key exists for the interval, use that --->
-			<cfelseif StructKeyExists(sIntervals,variables.tasks[task].interval)>
-				<!--- If the key value is numeric, check by the number of seconds --->
-				<cfif sIntervals[variables.tasks[task].interval] GT 0>
-				<cfset adjustedtime = DateAdd("s",Int(sIntervals[variables.tasks[task].interval]/10),arguments.runtime)>
-				AND	DateRun > #CreateODBCDateTime(DateAdd("s", -Int(sIntervals[variables.tasks[task].interval]), adjustedtime))#--converted numeric
-				<!--- If the key value is "daily", check by one day --->
-				<cfelseif variables.tasks[task].interval EQ "daily">
-				<cfset adjustedtime = DateAdd("n",55,arguments.runtime)>
-				AND	DateRun > #CreateODBCDateTime(DateAdd("d", -1, adjustedtime))#--daily
-				<!--- If the key value is "weekly", check by one week --->
-				<cfelseif variables.tasks[task].interval EQ "weekly">
-				<cfset adjustedtime = DateAdd("h",12,arguments.runtime)>
-				AND	DateRun > #CreateODBCDateTime(DateAdd("ww", -1, adjustedtime))#--weekly
-				<!--- If the key value is "monthly", check by one month --->
-				<cfelseif variables.tasks[task].interval EQ "monthly">
-				<cfset adjustedtime = DateAdd("h",12,arguments.runtime)>
-				AND	DateRun > #CreateODBCDateTime(DateAdd("m", -1, adjustedtime))#--monthly
-				</cfif>
-			<cfelse>
-				AND	DateRun > #CreateODBCDateTime(DateAdd("s", -3600, adjustedtime))#--default
-			</cfif>
-			ORDER BY ActionID DESC
-			#variables.DataMgr.getMaxRowsSuffix(1)#
-			</cfquery>
-			<!--- If the task hasn't been run within the interval, run it --->
-			<cfif NOT qCheckRun.RecordCount>
-				<cfset ArrayAppend(aResults,variables.tasks[task])>
-			</cfif>
 		</cfif>
 	</cfloop>
 	
 	<cfreturn aResults>
+</cffunction>
+
+<cffunction name="getIntervalFromDate" access="public" returntype="date" output="false" hint="I return the date since which a task would have been run to be within the current interval defined for it.">
+	<cfargument name="Name" type="string" required="yes">
+	<cfargument name="runtime" type="date" default="#now()#">
+	
+	<cfset var sIntervals = getIntervals()>
+	<cfset var adjustedtime = DateAdd("n",10,arguments.runtime)><!--- Tasks run every 15 minutes at most and we need a margin of error for date checks. --->
+	<cfset var result = now()>
+	<cfset var task = Arguments.Name>
+	
+	<cfscript>
+	// If the interval is numeric, check by the number of seconds
+	if ( isNumeric(variables.tasks[task].interval) AND variables.tasks[task].interval GT 0 ) {
+		adjustedtime = DateAdd("s",Int(variables.tasks[task].interval/10),arguments.runtime);
+		result = DateAdd("s", -Int(variables.tasks[task].interval), adjustedtime);
+	// If a key exists for the interval, use that
+	} else if ( StructKeyExists(sIntervals,variables.tasks[task].interval) ) {
+		// If the key value is numeric, check by the number of seconds
+		if ( sIntervals[variables.tasks[task].interval] GT 0 ) {
+			adjustedtime = DateAdd("s",Int(sIntervals[variables.tasks[task].interval]/10),arguments.runtime);
+			result = DateAdd("s", -Int(sIntervals[variables.tasks[task].interval]), adjustedtime);
+		// If the key value is "daily", check by one day
+		} else if ( variables.tasks[task].interval EQ "daily" ) {
+			adjustedtime = DateAdd("n",55,arguments.runtime);
+			result = DateAdd("d", -1, adjustedtime);
+		// If the key value is "weekly", check by one week
+		} else if ( variables.tasks[task].interval EQ "weekly" ) {
+			adjustedtime = DateAdd("h",12,arguments.runtime);
+			result = DateAdd("ww", -1, adjustedtime);
+		// If the key value is "monthly", check by one month
+		} else if ( variables.tasks[task].interval EQ "monthly" ) {
+			adjustedtime = DateAdd("h",12,arguments.runtime);
+			result = DateAdd("m", -1, adjustedtime);
+		}
+	} else {
+		result = DateAdd("s", -3600, adjustedtime);
+	}
+	</cfscript>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="hasTaskRunWithinInterval" access="public" returntype="boolean" output="false" hint="I check to see if the given task has already run within the period of the interval defined for it.">
+	<cfargument name="Name" type="string" required="yes">
+	<cfargument name="runtime" type="date" default="#now()#">
+	
+	<cfset var result = false>
+	<cfset var qCheckRun = 0>
+	<cfset var sIntervals = getIntervals()>
+	<cfset var adjustedtime = DateAdd("n",10,arguments.runtime)><!--- Tasks run every 15 minutes at most and we need a margin of error for date checks. --->
+	<cfset var task = Arguments.Name>
+	<cfset var qTask = getTaskNameRecord(task)>
+
+	<cfif Len(variables.datasource)>
+		<!--- See if the task has already been run within its interval --->
+		<cfquery name="qCheckRun" datasource="#variables.datasource#">
+		SELECT	#variables.DataMgr.getMaxRowsPrefix(1)# ActionID
+		FROM	schActions
+		WHERE	TaskID = <cfqueryparam value="#Val(qTask.TaskID)#" cfsqltype="CF_SQL_INTEGER">
+			AND	DateRun > #CreateODBCDateTime(getIntervalFromDate(task,Arguments.runtime))#--#variables.tasks[task].interval#
+		ORDER BY ActionID DESC
+		#variables.DataMgr.getMaxRowsSuffix(1)#
+		</cfquery>
+
+		<cfif qCheckRun.RecordCount>
+			<cfset result = true>
+		</cfif>
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="isRunnableTask" access="public" returntype="boolean" output="false">
+	<cfargument name="Name" type="string" required="yes">
+	<cfargument name="runtime" type="date" default="#now()#">
+	
+	<cfset var result = false>
+	<cfset var task = Arguments.Name>
+	<cfset var qTask = getTaskNameRecord(task)>
+	
+	<!--- If hours are specified, make sure current time is in that list of hours --->
+	<cfif qTask.rerun IS true>
+		<cfset result = true>
+	<cfelseif
+			1 EQ 1
+		AND	(
+					NOT ( StructKeyExists(variables.tasks[task],"hours") AND Len(variables.tasks[task].hours) )
+				OR	ListFindNoCase(variables.tasks[task].hours,Hour(arguments.runtime))
+			)
+		AND	(
+					NOT ( StructKeyExists(variables.tasks[task],"weekdays") AND Len(variables.tasks[task].weekdays) )
+				OR	ListFindNoCase(variables.tasks[task].weekdays,DayofWeekAsString(DayOfWeek(arguments.runtime)))
+			)
+	>
+		<!--- task is valid at given time - has it already been run? --->
+		<cfif NOT hasTaskRunWithinInterval(Arguments.Name,Arguments.runtime)>
+			<cfset result = true>
+		</cfif>
+	</cfif>
+	
+	<cfreturn result>	
 </cffunction>
 
 <cffunction name="notifyComponent" access="public" returntype="void" output="false">
