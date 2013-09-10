@@ -46,6 +46,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 	ThisTag.atts.type = "";
 	ThisTag.atts.id = "";
 	ThisTag.atts.length = "";
+	ThisTag.atts.multiple = false;
 	ThisTag.atts.dbfield = "";
 	ThisTag.atts.dbdatatype = "";
 	ThisTag.atts.cfdatatype = "";
