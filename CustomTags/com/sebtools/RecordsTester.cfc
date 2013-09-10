@@ -28,7 +28,7 @@
 	
 </cffunction>
 
-<cffunction name="assertRecent" access="public" returntype="void" output="no" hint="I assert that email can be tested using isEmailTestable().">
+<cffunction name="assertRecent" access="public" returntype="void" output="no" hint="I assert that given date is recent, as defined by the arguments provided.">
 	<cfargument name="date" type="date" required="true">
 	<cfargument name="message" type="string" default="">
 	<cfargument name="range" type="numeric" default="3">
@@ -108,24 +108,42 @@
 	<cfargument name="comp" type="any" required="yes">
 	<cfargument name="data" type="struct" required="no">
 	
-	<cfset var aFields = arguments.comp.getFieldsArray()>
+	<cfset var aFields = Arguments.comp.getFieldsArray()>
 	<cfset var sResult = StructNew()>
 	<cfset var ii = 0>
-	<cfset var sArgs = StructCopy(arguments)>
+	<cfset var sArgs = StructCopy(Arguments)>
 	<cfset var skiptypes = "DeletionMark,Sorter,DeletionDate,UUID">
 
 	<!--- Create test data --->
 	<cfloop index="ii" from="1" to="#ArrayLen(aFields)#" step="1">
 		<cfif
-				StructKeyExists(aFields[ii],"datatype")
-			AND	ListFirst(aFields[ii].type,":") NEQ "pk"
-			AND	ListFirst(aFields[ii].type,":") NEQ "fk"
-			AND	ListFirst(aFields[ii].type,":") NEQ "fk"
-			AND	NOT ListFindNoCase(skiptypes,aFields[ii].type)
-			AND	NOT ( StructKeyExists(aFields[ii],"Special") AND ListFindNoCase(skiptypes,aFields[ii].Special) )
-			AND	NOT ( StructKeyExists(aFields[ii],"test") AND aFields[ii].test IS false )
+				StructKeyExists(aFields[ii],"name")
+			AND	NOT ( StructKeyExists(arguments,"data") AND StructKeyExists(arguments.data,aFields[ii]["name"]) )
 		>
-			<cfset sResult[aFields[ii]["name"]] = getRandomFieldValue(aFields[ii])>
+			<cfif
+					StructKeyExists(aFields[ii],"datatype")
+				AND	ListFirst(aFields[ii].type,":") NEQ "pk"
+				AND	ListFirst(aFields[ii].type,":") NEQ "fk"
+				AND	ListFirst(aFields[ii].type,":") NEQ "fk"
+				AND	NOT ListFindNoCase(skiptypes,aFields[ii].type)
+				AND	NOT ( StructKeyExists(aFields[ii],"Special") AND ListFindNoCase(skiptypes,aFields[ii].Special) )
+				AND	NOT ( StructKeyExists(aFields[ii],"test") AND aFields[ii].test IS false )
+			>
+				<cfset sResult[aFields[ii]["name"]] = getRandomFieldValue(aFields[ii])>
+			<cfelseif
+					StructKeyExists(aFields[ii],"fentity")
+				AND	StructKeyExists(Arguments.comp,"Parent")
+				AND	StructKeyExists(Arguments.comp,"Manager")
+				AND	StructKeyExists(Arguments.comp.Manager,"pluralize")
+				AND	StructKeyExists(Arguments.comp.Parent,Arguments.comp.Manager.pluralize(aFields[ii].fentity))
+				AND	isObject(Arguments.comp.Parent[Arguments.comp.Manager.pluralize(aFields[ii].fentity)])
+			>
+				<cfif StructKeyExists(aFields[ii],"jointype") AND aFields[ii].jointype CONTAINS "many">
+					<cfset sResult[aFields[ii]["name"]] = getRandomPrimaryKeyValue(Arguments.comp.Parent[Arguments.comp.Manager.pluralize(aFields[ii].fentity)],true)>
+				<cfelse>
+					<cfset sResult[aFields[ii]["name"]] = getRandomPrimaryKeyValue(Arguments.comp.Parent[Arguments.comp.Manager.pluralize(aFields[ii].fentity)],false)>
+				</cfif>
+			</cfif>
 		</cfif>
 	</cfloop>
 	
@@ -164,6 +182,29 @@
 	<cfif StructKeyExists(sField,"type") AND sField.type EQ "email">
 		<cfset result = "#result##email_suffix#">
 	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="getRandomPrimaryKeyValue" access="public" returntype="string" output="no">
+	<cfargument name="comp" type="any" required="yes">
+	<cfargument name="multi" type="boolean" default="false">
+	
+	<cfset var keys = Arguments.comp.getPrimaryKeyValues()>
+	<cfset var result = "">
+	<cfset var times = 1>
+	<cfset var ii = 0>
+	
+	<cfif Arguments.multi>
+		<cfset times = RandRange(1,Min(50,ListLen(keys)))>
+	</cfif>
+	
+	<cfloop index="ii" from="1" to="#times#">
+		<cfset result = ListAppend(
+			result,
+			ListGetAt(keys,RandRange(1,ListLen(keys)))
+		)>
+	</cfloop>
 	
 	<cfreturn result>
 </cffunction>
@@ -214,8 +255,11 @@
 			StructKeyExists(variables,"DataMgr")
 		AND	StructKeyExists(variables,"Mailer")
 		AND	variables.DataMgr.getDatabase() NEQ "Sim"
-		AND	variables.Mailer.getIsLogging()
 	)>
+	
+	<cfif NOT variables.Mailer.getIsLogging()>
+		<cfset Variables.Mailer.startLogging(Variables.DataMgr)>
+	</cfif>
 	
 	<cfreturn result>
 </cffunction>
@@ -489,6 +533,10 @@ function isListInList(l1,l2) {
 	</cfif>
 </cffunction>
 
+<cffunction name="stub" access="public" returntype="voi" output="no">
+	<cfset fail("No test written yet.")>
+</cffunction>
+
 <cffunction name="getTestRecord" access="public" returntype="query" output="no">
 	<cfargument name="comp" type="any" required="yes">
 	<cfargument name="data" type="struct" required="no">
@@ -522,6 +570,110 @@ function isListInList(l1,l2) {
 		returnvariable="result"
 		component="#arguments.comp#"
 		method="#sCompMeta.method_save#"
+		argumentCollection="#sData#"
+	>
+	</cfinvoke>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="loadTestRecords" access="public" returntype="string" output="no">
+	<cfargument name="comp" type="any" required="yes">
+	<cfargument name="records" type="numeric" required="no">
+	<cfargument name="data" type="struct" required="no">
+	
+	<cfset var result = "">
+	
+	<cfset Arguments = convertTestRecordsArgs(ArgumentCollection=Arguments)>
+	
+	<cfset result = Arguments.comp.getPrimaryKeyValues(ArgumentCollection=Arguments.data,MaxRows=Arguments.records)>
+	<cfset Arguments.records = Arguments.records - ListLen(result)>
+	
+	<cfif Arguments.records GT 0>
+		<cfset result = ListAppend(result,saveTestRecords(ArgumentCollection=Arguments))>
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="convertTestRecordsArgs" access="public" returntype="struct" output="no">
+	<cfargument name="comp" type="any" required="yes">
+	<cfargument name="records" type="numeric" required="no">
+	<cfargument name="data" type="struct" required="no">
+	
+	<!--- Handle if data is passed in to records slot or if arguments are reversed --->
+	<cfif
+			StructKeyExists(Arguments,"records")
+		AND	isStruct(Arguments.records)
+		AND	(
+					NOT StructKeyExists(Arguments,"data")
+				OR	isNumeric(Arguments.data)
+		)
+	>
+		<cfif StructKeyExists(Arguments,"data")>
+			<cfset Arguments.temp = Arguments.data>
+		</cfif>
+		<cfset Arguments.data = Arguments.records>
+		<cfif StructKeyExists(Arguments,"temp")>
+			<cfset Arguments.records = Arguments.temp>
+			<cfset StructDelete(Arguments,"temp")>
+		</cfif>
+	</cfif>
+	
+	<cfif
+		NOT (
+				StructKeyExists(Arguments,"records")
+			AND	isSimpleValue(Arguments.records)
+			AND	Val(Arguments.records)
+		)
+	>
+		<cfset Arguments.records = 0>
+	</cfif>
+	
+	<cfif NOT ( StructKeyExists(Arguments,"data") AND isStruct(Arguments.data) )>
+		<cfset Arguments.data = StructNew()>
+	</cfif>
+	
+	<cfreturn Arguments>
+</cffunction>
+
+<cffunction name="saveTestRecords" access="public" returntype="string" output="no">
+	<cfargument name="comp" type="any" required="yes">
+	<cfargument name="records" type="any" required="no">
+	<cfargument name="data" type="struct" required="no">
+	
+	<cfset var ii = 0>
+	<cfset var result = "">
+	
+	<cfset Arguments = convertTestRecordsArgs(ArgumentCollection=Arguments)>
+	
+	<cfif NOT Val(Arguments.records)>
+		<cfset Arguments.records = RandRange(10,40)>
+	</cfif>
+	
+	<cfif StructKeyExists(Arguments,"data") AND NOT isStruct(Arguments.data)>
+		<cfset StructDelete(Arguments,"data")>
+	</cfif>
+	
+	<cfloop index="ii" from="1" to="#Arguments.records#">
+		<cfset result = ListAppend(result,saveTestRecord(ArgumentCollection=Arguments))>
+	</cfloop>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="saveTestRecordOnly" access="public" returntype="string" output="no">
+	<cfargument name="comp" type="any" required="yes">
+	<cfargument name="data" type="struct" required="no">
+	
+	<cfset var sCompMeta = arguments.comp.getMetaStruct()>
+	<cfset var sData = getRandomData(argumentCollection=arguments)>
+	<cfset var result = 0>
+	
+	<cfinvoke
+		returnvariable="result"
+		component="#arguments.comp#"
+		method="saveRecordOnly"
 		argumentCollection="#sData#"
 	>
 	</cfinvoke>
