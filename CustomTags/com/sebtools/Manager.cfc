@@ -880,6 +880,7 @@
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="data" type="struct" default="#StructNew()#">
 	<cfargument name="CopyChildren" type="boolean" required="no">
+	<cfargument name="CopyFiles" type="boolean" default="true">
 	
 	<cfset var in = Duplicate(arguments.data)>
 	<cfset var aFileFields = getFileFields(tablename=arguments.tablename)>
@@ -905,7 +906,7 @@
 	<cfset StructAppend(in,sRecord,"no")>
 	
 	<!--- Copy any associated files --->
-	<cfif ArrayLen(aFileFields)>
+	<cfif ArrayLen(aFileFields) AND arguments.CopyFiles>
 		<cfloop index="ii" from="1" to="#ArrayLen(aFileFields)#" step="1">
 			<!--- If the file name is passed in (with a new value) then action has already been taken against it --->
 			<cfif
