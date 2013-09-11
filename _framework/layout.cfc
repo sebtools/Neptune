@@ -16,8 +16,6 @@
 	<cfargument name="CGI" type="struct" required="yes">
 	<cfargument name="Factory" type="any" required="no">
 	
-	<cfset var sThis = 0>
-	 
 	<cfset variables.CGI = arguments.CGI>
 	<cfif StructKeyExists(arguments,"Factory")>
 		<cfset variables.Factory = arguments.Factory>
@@ -36,9 +34,9 @@
 	<cfset variables.me.FileName = variables.FileName>
 	<cfset variables.me.DomainName = variables.DomainName>
 	
-	<cfset sThis = getMetaData(This)>
+	<cfset Variables.sThis = getMetaData(This)>
 	
-	<cfif sThis.name CONTAINS "Admin" AND ListLast(variables.CGI.SCRIPT_NAME,".") NEQ "cfc">
+	<cfif Variables.sThis.name CONTAINS "Admin" AND ListLast(variables.CGI.SCRIPT_NAME,".") NEQ "cfc">
 		<cfset importAdminMenu()>
 	</cfif>
 	
