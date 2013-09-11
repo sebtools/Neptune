@@ -547,6 +547,14 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 		}
 	}
 	
+	if ( NOT (StructKeyExists(attributes,"showtopopt") AND isBoolean(attributes.showtopopt) ) ) {
+		if ( attributes.multiple IS true ) {
+			attributes.showtopopt = false;
+		} else {
+			attributes.showtopopt = true;
+		}
+	}
+	
 	ParentData["fieldlist"] = ListAppend(ParentData["fieldlist"],attributes.fieldname);
 	</cfscript>
 	<!--- Make sure not to update a password field if is unchanged (based on Hash) --->
@@ -1018,7 +1026,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 	<cfcase value="select">
 		<cfif attributes.isEditable NEQ false>
 		<cfsavecontent variable="input">
-<select name="#attributes.fieldname#"<cfif StructKeyExists(attributes,"multiple") AND attributes.multiple IS true> multiple</cfif><cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>><option value="#attributes.topoptvalue#"><cfif Len(Trim(attributes.topopt))>#attributes.topopt#<cfelse>&nbsp;</cfif></option><cfloop index="thisSubField" from="1" to="#ArrayLen(ThisTag.qsubfields)#" step="1">
+<select name="#attributes.fieldname#"<cfif StructKeyExists(attributes,"multiple") AND attributes.multiple IS true> multiple</cfif><cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>><cfif attributes.showtopopt><option value="#attributes.topoptvalue#"><cfif Len(Trim(attributes.topopt))>#attributes.topopt#<cfelse>&nbsp;</cfif></option></cfif><cfloop index="thisSubField" from="1" to="#ArrayLen(ThisTag.qsubfields)#" step="1">
 	<option value="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].value)#"<cfif ThisTag.qsubfields[thisSubField].checked> selected="selected"</cfif><cfif ThisTag.qsubfields[thisSubField].other IS true> class="sebform-option-other"</cfif>><cfif Len(Trim(ThisTag.qsubfields[thisSubField].display))>#ThisTag.qsubfields[thisSubField].display#<cfelse>&nbsp;</cfif></option></cfloop>
 </select><cfif attributes.hasOtherOption> <input name="#attributes.OtherField#" id="#attributes.id#-other" class="sebfield-select-other" value="#attributes.ValueOther#" size="10" /></cfif><cfif Len(attributes.addlink)> <a href="#attributes.addlink#" id="#attributes.id#-addlink">add new #LCase(attributes.label)#</a></cfif><cfif Len(attributes.link)> <a href="#attributes.link#" id="#attributes.id#-link"><cfif Len(attributes.linktext)>#attributes.linktext#<cfelse>#attributes.link#</cfif></a></cfif>
 </cfsavecontent>
