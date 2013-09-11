@@ -1173,6 +1173,9 @@ ha#attributes.id#.generate();
 		<cfelse>
 			<cfsavecontent variable="input"></cfsavecontent>
 			<cftry>
+				<cfif attributes.type EQ "fckeditor" AND StructKeyExists(attributes,"ckeditor")>
+					<cfset attributes.type = "CKeditor">
+				</cfif>
 				<cfinclude template="sebField_#attributes.type#.cfm">
 				<cfcatch>
 					<cfif CFCATCH.Message CONTAINS "Could not find the included template sebField_#attributes.type#.cfm">

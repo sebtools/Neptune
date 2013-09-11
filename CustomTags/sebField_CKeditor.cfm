@@ -1,3 +1,23 @@
+<!--- 
+Site Configuration Instructions
+
+1.	Copy the ckeditor folder (including the FileManager plugin) to the site's library folder.
+	This must be the same folder as configured in sebField's librarypath attribute.
+2.	Add a ckeditor attribute to sebField in the site's config.cfm file (or equivalent).
+	E.g. request.cftags.cf_sebField.ckeditor = StructNew().
+3.	If the folder for file upload using CKEditor FileManager is NOT in the webroot for the site:
+		Set request.cftags.cf_sebField.ckeditor.ServerRoot = false in the site's config file. The default value is true.
+		Set request.cftags.cf_sebField.ckeditor.FileRoot as a full file path in the config file.
+		E.g. request.cftags.cf_sebField.ckeditor.FileRoot = "/home/timd/git/okmrc/www/f/fckeditor/".
+		Set request.cftags.cf_sebField.ckeditor.RelPath = the path for outside webroot folders in the config file.
+		E.g. request.cftags.cf_sebField.ckeditor.RelPath = "/file.cfm?file=ckeditor/". The default value is false.
+4.	If the folder for file upload using CKEditor FileManager IS in the site's webroot, use a webroot path for FileRoot.
+		E.g. request.cftags.cf_sebField.ckeditor.FileRoot = "userfiles/ckeditor/". The default value is "f/fckeditor/".
+5.	Note that you could also pass a struct to the ckeditor attribute in sebField to customize file upload location for
+	an individual form. This could allow outside the root uploads for privacy sensitive forms and inside the root
+	uploads for standard CMS-type uploads. Some sites may be using both type with FCKEditor already, so be careful
+	to take this into consideration when configuring a site.
+ --->
 <cfparam name="attributes.width" type="string" default="520">
 <cfparam name="attributes.height" type="numeric" default="700">
 
@@ -7,15 +27,32 @@
 <cfparam name="attributes.toolbarset" type="string" default="">
 <cfparam name="attributes.toolbar" type="string" default="#attributes.toolbarset#">
 <cfset instanceToolbar = "#jsStringFormat(attributes.toolbar)#">
+<cfif NOT StructKeyExists(attributes,"ckeditor")>
+	<cfset attributes["ckeditor"] = StructNew()>
+</cfif>
+<cfif NOT StructKeyExists(attributes.ckeditor,"ServerRoot")>
+	<cfset attributes.ckeditor["ServerRoot"] = true>
+</cfif>
+<cfif NOT StructKeyExists(attributes.ckeditor,"FileRoot")>
+	<cfif attributes.ckeditor["ServerRoot"]>
+		<cfset attributes.ckeditor["FileRoot"] = "/f/fckeditor/">
+	<cfelse>
+		<cfset attributes.ckeditor["FileRoot"] = "f/fckeditor/">
+	</cfif>
+</cfif>
+<cfif NOT StructKeyExists(attributes.ckeditor,"RelPath")>
+	<cfset attributes.ckeditor["RelPath"] = false>
+</cfif>
+<cfset attributes.ckeditor["FileRoot"] = Replace(attributes.ckeditor["FileRoot"],"\","/","all")>
 
-<cfif NOT len(trim(attributes.urlpath))>
+<!--- <cfif NOT len(trim(attributes.urlpath))>
 	<cfset attributes.urlpath = "/f/fckeditor/">
 </cfif>
 <cfif isDefined("Application")>
 	<cflock scope="Application" type="exclusive" timeout="20">
 		<cfset Application.userFilesPath = attributes.urlpath>
 	</cflock>
-</cfif>
+</cfif> --->
 <cfif isDefined("Application") AND StructKeyExists(Application,"SessionMgr")>
 	<cfset Application.SessionMgr.setValue("CKeditor",true)>
 <cfelseif isDefined("Session")>
@@ -26,15 +63,15 @@
 
 
 <cfparam name="attributes.CKURL" type="string" default="#ParentAtts.librarypath#ckeditor">
-<cfparam name="attributes.FileBrowserUploadURLBase" type="string" default="#attributes.CKURL#/filemanager/connectors/cfm/filemanager.cfm?mode=add">
+<!--- <cfparam name="attributes.FileBrowserUploadURLBase" type="string" default="#attributes.CKURL#/filemanager/connectors/cfm/filemanager.cfm?mode=add"> --->
 
-<cfparam name="attributes.FileBrowserBrowseURL" type="string" default="#attributes.CKURL#/filemanager/index.html">
-<cfparam name="attributes.FileBrowserImageBrowseURL" type="string" default="#attributes.FileBrowserBrowseURL#?type=Images&currentFolder=/Image/">
+<cfparam name="attributes.FileBrowserBrowseURL" type="string" default="#attributes.CKURL#/filemanager/index.html?fileroot=#attributes.ckeditor.FileRoot#&serverroot=#attributes.ckeditor.ServerRoot#&relpath=#URLEncodedFormat(attributes.ckeditor.RelPath)#">
+<!--- <cfparam name="attributes.FileBrowserImageBrowseURL" type="string" default="#attributes.FileBrowserBrowseURL#?type=Images&currentFolder=/Image/">
 <cfparam name="attributes.FileBrowserFlashBrowseURL" type="string" default="#attributes.FileBrowserBrowseURL#?type=Flash&currentFolder=/Flash/">
 
 <cfparam name="attributes.FileBrowserUploadURL" type="string" default="#attributes.FileBrowserUploadURLBase#&type=Files&currentFolder=/File/">
 <cfparam name="attributes.FileBrowserImageUploadURL" type="string" default="#attributes.FileBrowserUploadURLBase#&type=Images&currentFolder=/Image/">
-<cfparam name="attributes.FileBrowserFlashUploadURL" type="string" default="#attributes.FileBrowserUploadURLBase#&type=Flash&currentFolder=/Flash/">
+<cfparam name="attributes.FileBrowserFlashUploadURL" type="string" default="#attributes.FileBrowserUploadURLBase#&type=Flash&currentFolder=/Flash/"> --->
 
 <cfparam name="attributes.FileBrowserWindowWidth" type="string" default="840">
 <cfparam name="attributes.FileBrowserWindowHeight" type="string" default="555">
@@ -135,11 +172,11 @@ if (window.CKEDITOR) {
 					toolbar:						#instanceToolbar#,
 					width:							#attributes.Width#,
 					filebrowserBrowseUrl:			"#jsStringFormat(attributes.FileBrowserBrowseURL)#",
-					filebrowserUploadUrl:			"#jsStringFormat(attributes.FileBrowserUploadURL)#",
-					filebrowserImageBrowseUrl:		"#jsStringFormat(attributes.FileBrowserImageBrowseURL)#",
-					filebrowserImageUploadUrl:		"#jsStringFormat(attributes.FileBrowserImageUploadURL)#",
-					filebrowserFlashBrowseUrl:		"#jsStringFormat(attributes.FileBrowserFlashBrowseURL)#",
-					filebrowserFlashUploadUrl:		"#jsStringFormat(attributes.FileBrowserFlashUploadURL)#",
+					<!--- //filebrowserUploadUrl:			"#jsStringFormat(attributes.FileBrowserUploadURL)#",
+					//filebrowserImageBrowseUrl:		"#jsStringFormat(attributes.FileBrowserImageBrowseURL)#",
+					//filebrowserImageUploadUrl:		"#jsStringFormat(attributes.FileBrowserImageUploadURL)#",
+					//filebrowserFlashBrowseUrl:		"#jsStringFormat(attributes.FileBrowserFlashBrowseURL)#",
+					//filebrowserFlashUploadUrl:		"#jsStringFormat(attributes.FileBrowserFlashUploadURL)#", --->
 					filebrowserWindowWidth: 		"#jsStringFormat(attributes.FileBrowserWindowWidth)#",
 					filebrowserWindowHeight:		"#jsStringFormat(attributes.FileBrowserWindowHeight)#",
 					extraPlugins:					"#jsStringFormat(attributes.ExtraPlugins)#",
