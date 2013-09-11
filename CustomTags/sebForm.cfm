@@ -1321,7 +1321,13 @@ if ( isDefined("ThisTag.subforms") ) {
 	<cftry>
 		<!---  If validation passes, add/edit data --->
 		<cfif TagInfo.isValid>
-			<cfif isDefined("attributes.CFC_Component") AND isDefined("attributes.CFC_Method")>
+			<cfif
+					StructKeyExists(Attributes,"CFC_Component")
+				AND	StructKeyExists(Attributes,"CFC_Method")
+				AND	Len(Attributes.CFC_Method)
+				AND	isObject(Attributes.CFC_Component)
+				AND	StructKeyExists(Attributes.CFC_Component,Attributes.CFC_Method)
+			>
 				<cfset argCollection = Duplicate(sForm)>
 				<!--- Handle Groups --->
 				<cfif isDefined("ThisTag.aGroups")>
@@ -1450,7 +1456,7 @@ if ( isDefined("ThisTag.subforms") ) {
 					<!--- Perform CFC Methods for sub forms --->
 					<cfif isDefined("ThisTag.subforms")>
 						<cfloop index="i" from="1" to="#ArrayLen(ThisTag.subforms)#" step="1">
-							<cfif StructKeyExists(ThisTag.subforms[i],"CFC_Method") AND StructKeyExists(ThisTag.subforms[i],"aSubFormData") AND ArrayLen(ThisTag.subforms[i].aSubFormData)>
+							<cfif StructKeyExists(ThisTag.subforms[i],"CFC_Method") AND Len(ThisTag.subforms[i].CFC_Method) AND StructKeyExists(ThisTag.subforms[i],"aSubFormData") AND ArrayLen(ThisTag.subforms[i].aSubFormData)>
 								<cfloop index="j" from="1" to="#ArrayLen(ThisTag.subforms[i].aSubFormData)#" step="1">
 									<cfset argCollection = Duplicate(ThisTag.subforms[i].aSubFormData[j])>
 									<cfif StructKeyExists(ThisTag.subforms[i],"fkfield")>
