@@ -22,9 +22,14 @@ setMappings(getDirectoryFromPath(sSuper.Path));
 	</cfif>
 </cffunction>
 
-<cfif ListLast(CGI.SCRIPT_NAME,".") NEQ "cfc">
 <cffunction name="onRequest"><cfinclude template="#arguments[1]#"></cffunction>
-</cfif>
+
+<cfscript>
+if( ListLast(CGI.SCRIPT_NAME, ".") is "cfc" ) {
+	StructDelete(THIS, "onRequest");
+	StructDelete(VARIABLES, "onRequest");
+}
+</cfscript>
 
 <cffunction name="setMappings" access="public">
 	<cfargument name="FrameworkDir" type="string" required="yes">
