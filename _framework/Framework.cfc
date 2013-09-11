@@ -1087,7 +1087,7 @@ function getPageController(path) {
 			<!--- If program has a _instructions folder, copy files into root _instructions folder --->
 			<cfif DirectoryExists("#path_file#_instructions")>
 				<cfset makeInstructionsFolder()>
-				<cfset directoryCopy("#path_file#_instructions","#variables.instance.RootPath#_instructions","skip")>
+				<cfset This.directoryCopy("#path_file#_instructions","#variables.instance.RootPath#_instructions","skip")>
 			</cfif>
 			
 			<cfset registerProgramXml(name,path_file,path_browser)>
@@ -1616,7 +1616,7 @@ function makeCompName(str) {
 				<cfthrow message="#arguments.destination##dirDelim##name# already exists">
 			</cfif>
 		<cfelseif contents.type EQ "dir" AND name NEQ ".svn">
-			<cfset directoryCopy(arguments.source & dirDelim & name, arguments.destination & dirDelim &  name, arguments.nameConflict) />
+			<cfset This.directoryCopy(arguments.source & dirDelim & name, arguments.destination & dirDelim &  name, arguments.nameConflict) />
 		</cfif>
 	</cfloop>
 </cffunction>
