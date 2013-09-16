@@ -558,6 +558,28 @@ function isListInList(l1,l2) {
 	<cfreturn qRecord>
 </cffunction>
 
+<cffunction name="getTestRecords" access="public" returntype="query" output="no">
+	<cfargument name="comp" type="any" required="yes">
+	<cfargument name="records" type="numeric" required="no">
+	<cfargument name="data" type="struct" required="no">
+	<cfargument name="fieldlist" type="string" default="">
+	
+	<cfset var sCompMeta = Arguments.comp.getMetaStruct()>
+	<cfset var ids = saveTestRecords(argumentCollection=Arguments)>
+	<cfset var qRecords = 0>
+	
+	<cfinvoke
+		returnvariable="qRecords"
+		component="#arguments.comp#"
+		method="#sCompMeta.method_gets#"
+	>
+		<cfinvokeargument name="#LCase(sCompMeta.arg_sort)#" value="#ids#">
+		<cfinvokeargument name="fieldlist" value="#Arguments.fieldlist#">
+	</cfinvoke>
+	
+	<cfreturn qRecords>
+</cffunction>
+
 <cffunction name="saveTestRecord" access="public" returntype="string" output="no">
 	<cfargument name="comp" type="any" required="yes">
 	<cfargument name="data" type="struct" required="no">
