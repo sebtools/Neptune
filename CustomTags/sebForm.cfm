@@ -1479,6 +1479,10 @@ if ( isDefined("ThisTag.subforms") ) {
 						<cfset attributes.forward = ReplaceNoCase(attributes.forward, "{result}", CFC_Result, "ALL")>
 						<cfset attributes.Message_Completion = ReplaceNoCase(attributes.Message_Completion, "{result}", CFC_Result, "ALL")>
 					</cfif>
+					<!--- Ability to return variable to page. %%Need to add to docs --->
+					<cfif isDefined("CFC_Result") AND StructKeyExists(Attributes,"CFC_ReturnVar") AND isSimpleValue(Attributes.CFC_ReturnVar) AND Len(Trim(Attributes.CFC_ReturnVar))>
+						<cfset Caller[Attributes.CFC_ReturnVar] = CFC_Result>
+					</cfif>
 				</cfif>
 			<cfelse>
 				<!--- If datasource has a value, then update the database --->
