@@ -124,6 +124,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 	setDefaultAtt("isDeletable","");
 	setDefaultAtt("isEditable","");
 	setDefaultAtt("minimize","true");
+	setDefaultAtt("isSubmitting","false");
 	
 	Referrer = CGI.HTTP_REFERER;
 	
@@ -611,8 +612,12 @@ if ( isDefined("ThisTag.subforms") ) {
 </cfif>
 <cfset Caller[attributes.returnvar]["sebFields"] = ThisTag.qfields>
 
-<!--- || HANDLE FORM SUBMISSION || --->
 <cfif isDefined("sForm.sebformsubmit") AND sForm.sebformsubmit EQ Hash(attributes.formname)>
+	<cfset Attributes.isSubmitting = true>
+</cfif>
+
+<!--- || HANDLE FORM SUBMISSION || --->
+<cfif Attributes.isSubmitting EQ true>
 	<!--- sebformsubmit only exists to determine form submission, so it is needed after this point --->
 	
 	<!--- Scrub other options --->
