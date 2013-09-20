@@ -1326,7 +1326,6 @@ if ( isDefined("ThisTag.subforms") ) {
 				AND	StructKeyExists(Attributes,"CFC_Method")
 				AND	Len(Attributes.CFC_Method)
 				AND	isObject(Attributes.CFC_Component)
-				AND	StructKeyExists(Attributes.CFC_Component,Attributes.CFC_Method)
 			>
 				<cfset argCollection = Duplicate(sForm)>
 				<!--- Handle Groups --->
