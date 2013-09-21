@@ -612,6 +612,18 @@ if ( isDefined("ThisTag.subforms") ) {
 </cfif>
 <cfset Caller[attributes.returnvar]["sebFields"] = ThisTag.qfields>
 
+<cfif Attributes.isSubmitting EQ true AND NOT StructCount(sForm)>
+	<cfloop index="ii" from="1" to="#ArrayLen(ThisTag.qFields)#">
+		<cfif
+				StructKeyExists(ThisTag.qFields[ii],"name")
+			AND	StructKeyExists(ThisTag.qFields[ii],"defaultValue")
+			AND	Len(ThisTag.qFields[ii].defaultValue)
+		>
+			<cfset sForm[ThisTag.qFields[ii].name] = ThisTag.qFields[ii].defaultValue>
+		</cfif>
+	</cfloop>
+</cfif>
+
 <cfif isDefined("sForm.sebformsubmit") AND sForm.sebformsubmit EQ Hash(attributes.formname)>
 	<cfset Attributes.isSubmitting = true>
 </cfif>
