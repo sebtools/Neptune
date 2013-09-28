@@ -1,0 +1,1 @@
+call git.cmd --git-dir=%1 --work-tree=%2 %3 %~4
