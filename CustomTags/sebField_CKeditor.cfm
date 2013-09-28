@@ -13,13 +13,15 @@ Site Configuration Instructions
 		Set request.cftags.cf_sebField.ckeditor.RelPath = the path for outside webroot folders in the config file.
 		E.g. request.cftags.cf_sebField.ckeditor.RelPath = "/file.cfm?file=ckeditor/". The default value is false.
 5.	If the folder for file upload using CKEditor FileManager IS in the site's webroot, use a webroot path for FileRoot.
-		E.g. request.cftags.cf_sebField.ckeditor.FileRoot = "userfiles/ckeditor/". The default value is "f/fckeditor/".
+		E.g. request.cftags.cf_sebField.ckeditor.FileRoot = "userfiles/ckeditor/". The default value is "/f/fckeditor/".
 6.	Note that you could also pass a struct to the ckeditor attribute in sebField to customize file upload location for
 	an individual form. This could allow outside the root uploads for privacy sensitive forms and inside the root
 	uploads for standard CMS-type uploads. Some sites may be using both type with FCKEditor already, so be careful
 	to take this into consideration when configuring a site.
 7.	Add a ckeditor.cfm to the webroot. That file must have both an isCKAuthorized function stored in Application scope, and configCKEditor
 	stored in Application scope. See okmrc.org for good examples.
+8.	Make admin layout doctype HTML for IE 10. This will also require that the css for the admin must default all td elements to text-align: left.
+	IE 10 defaults all td elements to text-align: center when doctype is HTML.
  --->
 <cfparam name="attributes.width" type="string" default="520">
 <cfparam name="attributes.height" type="numeric" default="700">
@@ -37,7 +39,7 @@ Site Configuration Instructions
 	<cfset attributes.ckeditor["ServerRoot"] = true>
 </cfif>
 <cfif NOT StructKeyExists(attributes.ckeditor,"FileRoot")>
-	<cfset attributes.ckeditor["FileRoot"] = "f/fckeditor/">
+	<cfset attributes.ckeditor["FileRoot"] = "/f/fckeditor/">
 </cfif>
 <cfif NOT StructKeyExists(attributes.ckeditor,"RelPath")>
 	<cfset attributes.ckeditor["RelPath"] = false>
