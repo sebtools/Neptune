@@ -1740,4 +1740,19 @@ Fixed a bug where the filter wouldn't show dirs.
 	
 </cffunction>
 
+<cffunction name="isValidFilePath" access="private" returntype="boolean">
+	<cfargument name="path" type="string" required="true">
+	
+	<cfset var result = false>
+	
+	<cftry>
+		<cfset result = FileExists(Arguments.path)>
+	<cfcatch>
+		<cfset result = false>
+	</cfcatch>
+	</cftry>
+	
+	<cfreturn result>
+</cffunction>
+
 </cfcomponent>
