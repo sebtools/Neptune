@@ -13,7 +13,7 @@ Site Configuration Instructions
 		Set request.cftags.cf_sebField.ckeditor.RelPath = the path for outside webroot folders in the config file.
 		E.g. request.cftags.cf_sebField.ckeditor.RelPath = "/file.cfm?file=ckeditor/". The default value is false.
 5.	If the folder for file upload using CKEditor FileManager IS in the site's webroot, use a webroot path for FileRoot.
-		E.g. request.cftags.cf_sebField.ckeditor.FileRoot = "userfiles/ckeditor/". The default value is "/f/fckeditor/".
+		E.g. request.cftags.cf_sebField.ckeditor.FileRoot = "/userfiles/ckeditor/". The default value is "/f/fckeditor/".
 6.	Note that you could also pass a struct to the ckeditor attribute in sebField to customize file upload location for
 	an individual form. This could allow outside the root uploads for privacy sensitive forms and inside the root
 	uploads for standard CMS-type uploads. Some sites may be using both type with FCKEditor already, so be careful
@@ -27,11 +27,12 @@ Site Configuration Instructions
 <cfparam name="attributes.height" type="numeric" default="700">
 
 <cfparam name="attributes.EnterMode" type="string" default="CKEDITOR.ENTER_P">
+<cfparam name="attributes.CKStyles" type="string" default="">
 
 <!--- Provided for easy swap with sebField_FCKEditor --->
 <cfparam name="attributes.toolbarset" type="string" default="">
-<cfparam name="attributes.toolbar" type="string" default="#attributes.toolbarset#">
-<cfset instanceToolbar = "#jsStringFormat(attributes.toolbar)#">
+<cfparam name="attributes.toolbarGroups" type="string" default="#attributes.toolbarset#">
+<cfset instanceToolbarGroups = "#jsStringFormat(attributes.toolbarGroups)#">
 <cfif NOT StructKeyExists(attributes,"ckeditor")>
 	<cfset attributes["ckeditor"] = StructNew()>
 </cfif>
@@ -99,27 +100,30 @@ Site Configuration Instructions
 </cfif>
 
 <!--- Default toolbar --->
-<cfif len(trim(attributes.toolbar)) EQ 0>
+<cfif len(trim(attributes.toolbarGroups)) EQ 0>
 <script type="text/javascript">
-	var instanceToolbar = [
-		["Source"],
-		["Cut","Copy","Paste","PasteText","PasteFromWord","-"],
-		["Undo","Redo","-","Find","Replace","-","SelectAll","RemoveFormat"],
-		["Image","Flash","Table","HorizontalRule","SpecialChar","PageBreak"],
-		"/",
-		["Styles","Format"],
-		["Bold","Italic","Strike"],
-		["NumberedList","BulletedList","-","Outdent","Indent","Blockquote"],
-		["Link","Unlink","Anchor"],
-		["Maximize"]
+	var instanceToolbarGroups = [
+		{ name: 'document', groups: [ 'mode' ] },
+		{ name: 'clipboard', groups: [ 'clipboard', 'undo' ] },
+		{ name: 'editing', groups: [ 'find', 'selection', 'spellchecker' ] },
+		'/',
+		{ name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ] },
+		{ name: 'paragraph', groups: [ 'list', 'indent', 'blocks', 'align', 'bidi' ] },
+		{ name: 'links' },
+		{ name: 'insert' },
+		'/',
+		{ name: 'styles' },
+		{ name: 'colors' },
+		{ name: 'tools' },
+		{ name: 'others' }
 	];
 </script>
 <cfelse>
 <script type="text/javascript">
-	var instanceToolbar = [#attributes.toolbar#];
+	var instanceToolbarGroups = [#attributes.toolbarGroups#];
 </script>
 </cfif>
-<cfset instanceToolbar = "instanceToolbar">
+<cfset instanceToolbarGroups = "instanceToolbarGroups">
 
 <!--- textarea control --->
 <textarea id="#attributes.id#" name="#attributes.fieldname#">#attributes.value#</textarea>
@@ -170,14 +174,10 @@ if (window.CKEDITOR) {
 					contentsCss:					"#jsStringFormat(attributes.ContentCSS)#",
 					customConfig:					"",
 					height:							#attributes.Height#,
-					toolbar:						#instanceToolbar#,
+					toolbarGroups:					#instanceToolbarGroups#,
 					width:							#attributes.Width#,
+					stylesSet:						"#jsStringFormat(attributes.CKStyles)#",
 					filebrowserBrowseUrl:			"#jsStringFormat(attributes.FileBrowserBrowseURL)#",
-					<!--- //filebrowserUploadUrl:			"#jsStringFormat(attributes.FileBrowserUploadURL)#",
-					//filebrowserImageBrowseUrl:		"#jsStringFormat(attributes.FileBrowserImageBrowseURL)#",
-					//filebrowserImageUploadUrl:		"#jsStringFormat(attributes.FileBrowserImageUploadURL)#",
-					//filebrowserFlashBrowseUrl:		"#jsStringFormat(attributes.FileBrowserFlashBrowseURL)#",
-					//filebrowserFlashUploadUrl:		"#jsStringFormat(attributes.FileBrowserFlashUploadURL)#", --->
 					filebrowserWindowWidth: 		"#jsStringFormat(attributes.FileBrowserWindowWidth)#",
 					filebrowserWindowHeight:		"#jsStringFormat(attributes.FileBrowserWindowHeight)#",
 					extraPlugins:					"#jsStringFormat(attributes.ExtraPlugins)#",
