@@ -826,7 +826,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 			ThisTag.qSubFields[i].checked = true;
 		}
 		</cfscript>
-		<cfif attributes.minimize IS true>
+		<cfif attributes.minimize IS true AND NOT Len(attributes.addlink)>
 			<cfif NOT ArrayLen(ThisTag.qSubFields)>
 				<cfset attributes.type = "none">
 			<cfelseif attributes.required AND ArrayLen(ThisTag.qSubFields) EQ 1 AND ThisTag.qSubFields[1].other NEQ true>
