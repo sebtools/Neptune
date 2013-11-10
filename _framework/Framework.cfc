@@ -21,11 +21,13 @@
 	<cfset variables.instance = StructNew()>
 	
 	<cfset variables.instance["RootPath"] = arguments.RootPath>
+	<cfset variables.instance["Hash"] = Hash(arguments.RootPath)>
 	<cfset variables.instance["scopes"] = arguments.scopes>
 	<cfset variables.instance["dirdelim"] = variables.dirdelim>
 	<cfset variables.instance["programs"] = StructNew()>
 	<cfset variables.instance["ProgramFilePaths"] = "">
 	<cfset variables.instance["PathServices"] = StructNew()>
+	<cfset variables.instance["NoPathServices"] = StructNew()>
 	<cfif StructKeyExists(arguments,"Proxy")>
 		<cfset variables.instance["Proxy"] = arguments.Proxy>
 	</cfif>
@@ -227,10 +229,6 @@
 	
 	<!--- Component Creation --->
 	<!---<cftry>--->
-		<cfinvoke component="#this.Loader#" method="load">
-			<cfinvokeargument name="refresh" value="#arguments.refresh#">
-			<cfinvokeargument name="ChangedSettings" value="#ChangedSettings#">
-		</cfinvoke>
 		<!---<cfcatch>
 			<cfset registerAllPrograms(true)>
 			<cfinvoke component="#this.Loader#" method="load">
@@ -240,7 +238,13 @@
 	</cftry>--->
 	<cfif doLoad OR arguments.refresh NEQ false OR Len(ChangedSettings)>
 		
-		<cfset variables.instance["PathServices"] = StructNew()> 
+		<cfinvoke component="#this.Loader#" method="load">
+			<cfinvokeargument name="refresh" value="#arguments.refresh#">
+			<!---<cfinvokeargument name="ChangedSettings" value="#ChangedSettings#">--->
+		</cfinvoke>
+		
+		<cfset variables.instance["PathServices"] = StructNew()>
+		<cfset variables.instance["NoPathServices"] = StructNew()> 
 		
 		<cfif This.Loader.hasSpecialService("Security")>
 			<cfset variables.oSecurity = This.Loader.getSpecialService("Security")>
@@ -287,7 +291,7 @@
 <cffunction name="da"><cfdump var="#arguments[1]#"><cfabort></cffunction>
 
 <cfscript>
-function getPageController(path) {
+function hasPageController(path) {
 	
 	var ControllerFilePath = "";
 	var RootPath = variables.instance.RootPath;
@@ -439,9 +443,13 @@ function getPageController(path) {
 	<cfset var ii = 0>
 	<cfset var PageURL = "">
 	<cfset var selected = 0>
+	<cfset var isInPermissions = 0>
+	<cfset var isInPageAccess = 0>
 	
 	<cfloop index="ff" from="#ArrayLen(aResults)#" to="1" step="-1">
-		<cfif hasPermissions(aResults[ff].permissions) AND hasPageAccess(aResults[ff].Link)>
+		<cfset isInPermissions = hasPermissions(aResults[ff].permissions)>
+		<cfset isInPageAccess = hasPageAccess(aResults[ff].Link)>
+		<cfif isInPermissions AND isInPageAccess>
 			<cfloop index="ii" from="#ArrayLen(aResults[ff].items)#" to="1" step="-1">
 				<cfset PageURL = aResults[ff].items[ii].Link>
 				<cfif NOT PageURL CONTAINS "/">
@@ -520,11 +528,17 @@ function getPageController(path) {
 	<cfif Right(Arguments.path,1) EQ "/">
 		<cfset Arguments.path = "#Arguments.path#index.cfm">
 	</cfif>
-	
 	<!---<cfset URL = QueryString2Struct(ListRest(arguments.path,"?"))>--->
-	<cfset oPageController = getPageController(ListFirst(Arguments.path,"?"),false)>
+	<cfset Arguments.path = ListFirst(Arguments.path,"?")>
 	
-	<cfif StructKeyExists(oPageController,"hasAccess")>
+	<cfif hasPageController(Arguments.path)>
+		<cfset oPageController = getPageController(Arguments.path,false)>
+		
+		<cfif StructKeyExists(oPageController,"hasAccess")>
+			<cfset result = oPageController.hasAccess()>
+		</cfif>
+	<cfelse>
+		<cfset oPageController = CreateObject("component","_config.PageController")>
 		<cfset result = oPageController.hasAccess()>
 	</cfif>
 	
@@ -724,8 +738,19 @@ function getPageController(path) {
 	<cfset var key = "#dir#:#FileLabel#">
 	
 	<cflock name="Framework_PathServices" timeout="120" throwontimeout="yes">
-		<cfif NOT ( StructKeyExists(variables.instance.PathServices,key) AND isObject(variables.instance.PathServices[key]) )>
-			<cfset variables.instance.PathServices[key] = getServiceFromDirAndLabel(dir,FileLabel)>
+		<cfif
+				NOT	StructKeyExists(variables.instance.NoPathServices,key)
+			AND	NOT (
+							StructKeyExists(variables.instance.PathServices,key)
+						AND	isObject(variables.instance.PathServices[key])
+					)
+		>
+			<cflock name="#variables.instance.Hash#_#key#" timeout="20" throwontimeout="no">
+				<cfset variables.instance.PathServices[key] = getServiceFromDirAndLabel(dir,FileLabel)>
+				<cfif NOT StructkeyExists(variables.instance.PathServices,key)>
+					<cfset variables.instance.NoPathServices[key] = false>
+				</cfif>
+			</cflock>
 		</cfif>
 		
 		<cfif ( StructKeyExists(variables.instance.PathServices,key) AND isObject(variables.instance.PathServices[key]) )>
