@@ -298,6 +298,23 @@
 	<cfreturn result>
 </cffunction>
 
+<cffunction name="getRegExCaseMatches" access="public" returntype="array" output="no" hint="I return an array of the given regular expression is matches in the given string.">
+	<cfargument name="string" type="string" require="true">
+	<cfargument name="regex" type="string" require="true">
+	
+	<cfset var aResults = ArrayNew(1)>
+	<cfset var sFind = REFind(arguments.regex, arguments.string,1,true)>
+	
+	<cfscript>
+	while ( sFind.pos[1] GT 0 ) {
+		ArrayAppend(aResults, Mid(Arguments.string,sFind.pos[1],sFind.len[1]));
+		sFind = REFind(arguments.regex, arguments.string, sFind.pos[1]+1,true);
+	}
+	</cfscript>
+	
+	<cfreturn aResults>
+</cffunction>
+
 <cffunction name="numRegExCaseMatches" access="public" returntype="numeric" output="no" hint="I return the number of times the given regular expression is matched in the given string.">
 	<cfargument name="string" type="string" require="true">
 	<cfargument name="regex" type="string" require="true">
