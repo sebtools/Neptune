@@ -1,5 +1,31 @@
 ﻿<cfparam name="Attributes.location" type="string" default="#getDirectoryFromPath(getBaseTemplatePath())#">
+<cfparam name="Attributes.environment" type="string" default="unknown">
+<cfparam name="Attributes.domain" type="string" default="">
 <cfparam name="Attributes.action" type="string" default="pull">
+
+<cfset environments = "local,development,production">
+
+<cfif NOT ListFindNocase(environments,Attributes.environment)>
+	<cfset Attributes.environment = "unknown">
+</cfif>
+
+<cfset isGuessedEnvironment = false>
+
+<!--- Guess at the environment --->
+<cfif Len(Trim(Attributes.domain)) AND Attributes.environment EQ "unknown">
+	<cfset prefix = ListFirst(Attributes.domain,".")>
+	<cfset suffix = ListLast(Attributes.domain,".")>
+	<cfif prefix EQ "www">
+		<cfset Attributes.environment = "production">
+		<cfset isGuessedEnvironment = true>
+	<cfelseif prefix EQ "local" OR suffix EQ "local">
+		<cfset Attributes.environment = "local">
+		<cfset isGuessedEnvironment = true>
+	<cfelseif prefix EQ "test" OR prefix EQ "test">
+		<cfset Attributes.environment = "development">
+		<cfset isGuessedEnvironment = true>
+	</cfif>
+</cfif>
 
 <cfscript>
 folder = GetDirectoryFromPath(Attributes.location);
@@ -33,5 +59,5 @@ foundGit = false;
 <cfinvoke component="#oGit#" method="#Attributes.action#">
 
 <cfoutput>
-Git #HTMLEditFormat(Attributes.action)# performed.
+Git #HTMLEditFormat(Attributes.action)# performed (in #Attributes.environment# environment).
 </cfoutput>
