@@ -14,9 +14,13 @@
 
 <cffunction name="pull" access="remote" returntype="any" output="no">
 	
-	<cfset checkActiveBranch()>
-	
-	<cfset oGit.pull()>
+	<cfif Arguments.environment EQ "production">
+		<cfset checkActiveBranch()>
+		
+		<cfset oGit.pull()>
+	<cfelse>
+		<cfset oGit.pull("origin " & Variables.oGit.branch(active=true))>
+	</cfif>
 	
 </cffunction>
 

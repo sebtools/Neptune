@@ -56,7 +56,7 @@ foundGit = false;
 
 <cfset oGit = CreateObject("component","git.git").init(folder)>
 
-<cfinvoke component="#oGit#" method="#Attributes.action#">
+<cfinvoke component="#oGit#" method="#Attributes.action#" environment="#Attributes.environment#">
 
 <cfoutput>
 Git #HTMLEditFormat(Attributes.action)# performed (in #Attributes.environment# environment).

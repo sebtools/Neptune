@@ -43,7 +43,7 @@
 	<cfargument name="returntype" type="string" default="string">
 	
 	<cfscript>
-	var oRuntime = CreateObject("java", "java.lang.Runtime").getRuntime();
+	var oRuntime = 0;
 	var ExecName = "#getDirectoryFromPath(getCurrentTemplatePath())#git.bat";
 	var ExecArgs = "#Variables.path_git# #Variables.path_work# #Arguments.Command#";
 	var ExecString = "";
@@ -51,9 +51,11 @@
 	var process = 0;
 	var exitCode = 0;
 	var result = 0;
+	var finished = false;
+	var tries = 0;
 	
 	if ( Len(Trim(Arguments.Args)) ) {
-		ExecArgs = "#ExecArgs# #chr(34)##Arguments.Args##chr(34)#";
+		ExecArgs = "#ExecArgs# #Arguments.Args#";
 	}
 	
 	ExecString = "#ExecName# #ExecArgs#";
@@ -63,8 +65,22 @@
 		<cfexecute name="#ExecName#" arguments="#ExecArgs#" variable="result"></cfexecute>
 	<cfelse>
 		<cfscript>
+		oRuntime = CreateObject("java", "java.lang.Runtime").getRuntime();
 		process = oRuntime.exec(ExecString);
-		exitCode = process.waitFor();
+		while( !finished ) {
+			try {
+				//do stuff like readin input and all
+				exitCode = process.exitValue(); //proc is your child process
+				finished = true;
+			} catch(java.lang.IllegalThreadStateException e){
+				tries = tries + 1;
+				if ( tries LTE 10 ) {
+					sleep(60);
+				} else {
+					finished = true;
+				}
+			}
+		}
 		result = convertInputStream(process.getInputStream(),Arguments.returntype);
 		</cfscript>
 	</cfif>
