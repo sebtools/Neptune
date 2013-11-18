@@ -12,6 +12,19 @@
 	<cfreturn This>
 </cffunction>
 
+<cffunction name="branch" access="public" returntype="string" output="no">
+	
+	<cfreturn getActiveBranch()>
+</cffunction>
+
+<cffunction name="switch" access="public" returntype="string" output="no">
+	
+	<cfset oGit.checkout(Arguments.branch)>
+	<cfset pull(environment=Arguments.environment)>
+	
+	<cfreturn getActiveBranch()>
+</cffunction>
+
 <cffunction name="pull" access="remote" returntype="any" output="no">
 	
 	<cfif Arguments.environment EQ "production">
@@ -26,15 +39,15 @@
 
 <cffunction name="checkActiveBranch" access="private" returntype="string" output="no">
 	
-	<cfset var ActiveBranch = "">
-	
-	<cfif Len(Variables.MainBranch)>
-		<cfset ActiveBranch = Variables.oGit.branch(active=true)>
-		<cfif Variables.MainBranch NEQ ActiveBranch>
-			<cfthrow message="#Variables.MainBranch# branch is not currently active.">
-		</cfif>
+	<cfif Len(Variables.MainBranch) AND Variables.MainBranch NEQ getActiveBranch()>
+		<cfthrow message="#Variables.MainBranch# branch is not currently active.">
 	</cfif>
 	
+</cffunction>
+
+<cffunction name="getActiveBranch" access="private" returntype="string" output="no">
+	
+	<cfreturn Variables.oGit.branch(active=true)>
 </cffunction>
 
 <cffunction name="getMainBranch" access="private" returntype="string" output="no">

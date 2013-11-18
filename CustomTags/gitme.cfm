@@ -30,7 +30,10 @@
 <cfscript>
 folder = GetDirectoryFromPath(Attributes.location);
 delim = Right(folder,1);
-AvailableActions = "pull";
+AvailableActions = "pull,branch";
+if ( Attributes.environment EQ "local" OR Attributes.environment EQ "test" AND NOT isGuessedEnvironment ) {
+	AvailableActions = ListAppend(AvailableActions,"switch");
+}
 
 attempts = 0;
 foundGit = false;
@@ -56,8 +59,12 @@ foundGit = false;
 
 <cfset oGit = CreateObject("component","git.git").init(folder)>
 
-<cfinvoke component="#oGit#" method="#Attributes.action#" environment="#Attributes.environment#">
+<cfinvoke component="#oGit#" method="#Attributes.action#" environment="#Attributes.environment#" returnvariable="result" argumentCollection="#Attributes#">
 
 <cfoutput>
-Git #HTMLEditFormat(Attributes.action)# performed (in #Attributes.environment# environment).
+	<cfif isDefined("result") AND isSimpleValue(result) AND Len(Trim(result))>
+		#Trim(result)#
+	<cfelse>
+		Git #HTMLEditFormat(Attributes.action)# performed (in #Attributes.environment# environment).
+	</cfif>
 </cfoutput>

@@ -62,7 +62,7 @@
 	</cfscript>
 	
 	<cfif Arguments.Command EQ "pull">
-		<cfexecute name="#ExecName#" arguments="#ExecArgs#" variable="result"></cfexecute>
+		<cfexecute name="#ExecName#" arguments="#ExecArgs#" timeout="120"></cfexecute>
 	<cfelse>
 		<cfscript>
 		oRuntime = CreateObject("java", "java.lang.Runtime").getRuntime();
