@@ -31,7 +31,7 @@
 folder = GetDirectoryFromPath(Attributes.location);
 delim = Right(folder,1);
 AvailableActions = "pull,branch";
-if ( Attributes.environment EQ "local" OR Attributes.environment EQ "test" AND NOT isGuessedEnvironment ) {
+if ( Attributes.environment EQ "local" OR Attributes.environment EQ "development" AND NOT isGuessedEnvironment ) {
 	AvailableActions = ListAppend(AvailableActions,"switch");
 }
 
