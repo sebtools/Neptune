@@ -160,6 +160,6 @@
 #TitleOutput#</cfif><cfif Len(attributes.HTMLAbove) AND NOT StructKeyExists(request,"CF_Template_HTMLAbove")>
 
 #attributes.HTMLAbove#<cfset request.CF_Template_HTMLAbove = true></cfif>
-</cfoutput></cfcase><cfcase value="end"><cfoutput><cfif Len(attributes.HTMLBelow)>#attributes.HTMLBelow#
+</cfoutput></cfcase><cfcase value="end"><cfoutput><cfif Len(attributes.HTMLBelow) AND NOT StructKeyExists(request,"CF_Template_HTMLBelow")>#attributes.HTMLBelow#<cfset request.CF_Template_HTMLBelow = true>
 </cfif>
 #layout.end()#</cfoutput></cfcase></cfswitch>
