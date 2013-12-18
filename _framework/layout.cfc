@@ -33,6 +33,7 @@
 	<cfset variables.me = StructNew()>
 	<cfset variables.me.FileName = variables.FileName>
 	<cfset variables.me.DomainName = variables.DomainName>
+	<cfset variables.me.IncludeLayout = "layout">
 	
 	<cfset Variables.sThis = getMetaData(This)>
 	
@@ -74,7 +75,7 @@
 	The layout component has built-in empty head/body/end methods.
 	Any other output methods should be added to the site's layout.cfc with no output as well.
 	--->
-	<cfset var layout = switchLayout("layout")>
+	<cfset var layout = switchLayout(variables.me.IncludeLayout)>
 	<cfset var result = "">
 	<cfset var TemplateHead = "">
 	<cfset var sHeadMatch = 0>
