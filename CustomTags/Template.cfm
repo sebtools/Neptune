@@ -149,7 +149,17 @@
 	</cfloop>
 	
 </cfif>
-</cfsilent><cfswitch expression="#ThisTag.ExecutionMode#"><cfcase value="start"><cfoutput>
+</cfsilent>
+<!--- A hack for PDF support --->
+<cfif ThisTag.ExecutionMode EQ "End" AND StructKeyExists(Attributes,"use") AND Attributes.use EQ "PDF">
+<cfheader name="Content-Disposition" value="attachment;filename=#ReplaceNoCase(ListLast(CGI.SCRIPT_NAME), ".cfm", ".pdf")#">
+<cfcontent type="application/pdf" reset="Yes">
+<cfdocument format="PDF" pagetype="letter">
+<cfoutput>#ThisTag.GeneratedContent#</cfoutput>
+</cfdocument>
+<cfabort>
+</cfif>
+<cfswitch expression="#ThisTag.ExecutionMode#"><cfcase value="start"><cfoutput>
 #layout.head(title=attributes.title)#<cfif NOT isExcel><cfif StructCount(sMetaTags)><cfloop collection="#sMetaTags#" item="tag">
 	<meta name="#LCase(tag)#" content="#HTMLEditFormat(sMetaTags[tag])#" /></cfloop></cfif><cfif Len(attributes.files_css)><cfloop index="path" list="#attributes.files_css#">
 	<link rel="stylesheet" href="#path#" type="text/css" media="all"/></cfloop></cfif><cfif Len(attributes.head_css)>
