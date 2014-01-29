@@ -94,6 +94,7 @@ Site Configuration Instructions
 
 <cfsavecontent variable="input"><cfoutput>
 <script type="text/javascript" src="#ParentAtts.librarypath#ckeditor/ckeditor.js"></script>
+<script type="text/javascript" src="#ParentAtts.librarypath#ckeditor/config.js"></script>
 <cfif structKeyExists(attributes,"ServerPreviewURL")
 	AND len(trim(attributes.ServerPreviewURL)) GT 0>
 	<input type="hidden" id="server-preview-url" value="#attributes.ServerPreviewURL#">
@@ -172,7 +173,8 @@ if (window.CKEDITOR) {
 
 				var oEditor = CKEDITOR.replace("#jsStringFormat(attributes.fieldname)#",{
 					contentsCss:					"#jsStringFormat(attributes.ContentCSS)#",
-					customConfig:					"",
+					//customConfig:					"",
+					allowedContent:					true,
 					height:							#attributes.Height#,
 					toolbarGroups:					#instanceToolbarGroups#,
 					width:							#attributes.Width#,
