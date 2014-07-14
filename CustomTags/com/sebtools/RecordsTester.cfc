@@ -195,16 +195,18 @@
 	<cfset var times = 1>
 	<cfset var ii = 0>
 	
-	<cfif Arguments.multi>
-		<cfset times = RandRange(1,Min(50,ListLen(keys)))>
+	<cfif ListLen(keys)>
+		<cfif Arguments.multi>
+			<cfset times = RandRange(1,Min(50,ListLen(keys)))>
+		</cfif>
+		
+		<cfloop index="ii" from="1" to="#times#">
+			<cfset result = ListAppend(
+				result,
+				ListGetAt(keys,RandRange(1,ListLen(keys)))
+			)>
+		</cfloop>
 	</cfif>
-	
-	<cfloop index="ii" from="1" to="#times#">
-		<cfset result = ListAppend(
-			result,
-			ListGetAt(keys,RandRange(1,ListLen(keys)))
-		)>
-	</cfloop>
 	
 	<cfreturn result>
 </cffunction>
