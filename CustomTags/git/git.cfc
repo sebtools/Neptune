@@ -22,9 +22,9 @@
 	<cfset var result = oGit.log("-1")>
 	<cfset var sCommit = StructNew()>
 	
-	<cfset sCommit["id"] = Trim(ReplaceNoCase(REGet(result,"commit\s*[\w\d]+")[1],"commit",""))>
-	<cfset sCommit["Author"] = Trim(ReplaceNoCase(REGet(result,"Author:([^\r\n])*")[1],"Author:",""))>
-	<cfset sCommit["Date"] = Trim(ReplaceNoCase(REGet(result,"Date:([^\r\n])*")[1],"Date:",""))>
+	<cfset sCommit["id"] = Trim(ReplaceNoCase(REGetFirst(result,"commit\s*[\w\d]+"),"commit",""))>
+	<cfset sCommit["Author"] = Trim(ReplaceNoCase(REGetFirst(result,"Author:([^\r\n])*"),"Author:",""))>
+	<cfset sCommit["Date"] = Trim(ReplaceNoCase(REGetFirst(result,"Date:([^\r\n])*"),"Date:",""))>
 	
 	<cfset result = ReReplaceNoCase(result,"\s{2,}"," ","ALL")>
 	<cfset result = ReplaceNoCase(result,"commit #sCommit.id#","")>
@@ -125,6 +125,16 @@ function REGet(str,regex) {
         test = REFind(regex,str,oldpos,1);
         pos = test.pos[1];
     }
+    return results;
+}
+function REGetFirst(str,regex) {
+    var aResults = REGet(str,regex);
+    var result = "";
+    
+    if ( ArrayLen(aResults) ) {
+    	results = aResults[1];
+    }
+    
     return results;
 }
 </cfscript>
