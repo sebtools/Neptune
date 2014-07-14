@@ -65,6 +65,8 @@ foundGit = false;
 	<cfif isDefined("result") AND isSimpleValue(result) AND Len(Trim(result))>
 		#Trim(result)#
 	<cfelse>
-		Git #HTMLEditFormat(Attributes.action)# performed (in #Attributes.environment# environment).
+		<p>Git #HTMLEditFormat(Attributes.action)# performed (in #Attributes.environment# environment).</p>
+		<p><b>Last Commit:</b></p>
+		<pre>#oGit.showLast()#</pre>
 	</cfif>
 </cfoutput>

@@ -17,6 +17,32 @@
 	<cfreturn getActiveBranch()>
 </cffunction>
 
+<cffunction name="getLast" access="public" returntype="any" output="yes">
+	
+	<cfset var result = oGit.log("-1")>
+	<cfset var sCommit = StructNew()>
+	
+	<cfset sCommit["id"] = Trim(ReplaceNoCase(REGet(result,"commit\s*[\w\d]+")[1],"commit",""))>
+	<cfset sCommit["Author"] = Trim(ReplaceNoCase(REGet(result,"Author:([^\r\n])*")[1],"Author:",""))>
+	<cfset sCommit["Date"] = Trim(ReplaceNoCase(REGet(result,"Date:([^\r\n])*")[1],"Date:",""))>
+	
+	<cfset result = ReReplaceNoCase(result,"\s{2,}"," ","ALL")>
+	<cfset result = ReplaceNoCase(result,"commit #sCommit.id#","")>
+	<cfset result = ReplaceNoCase(result,"Author: #sCommit.Author#","")>
+	<cfset result = ReplaceNoCase(result,"Date: #sCommit.Date#","")>
+	
+	<cfset sCommit["Message"] = Trim(result)>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="showLast" access="remote" returntype="any" output="no">
+	
+	<cfset var result = oGit.log("-1")>
+	
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="switch" access="public" returntype="string" output="no">
 	
 	<cfset oGit.checkout(Arguments.branch)>
@@ -76,5 +102,31 @@
 	
 	<cfreturn "">
 </cffunction>
+
+<cfscript>
+/**
+ * Returns all the matches of a regex from a string.
+ * Bug fix by  Ruben Pueyo (ruben.pueyo@soltecgroup.com)
+ * 
+ * @param str      The string to search. (Required)
+ * @param regex      The regular expression to search for. (Required)
+ * @return Returns an array. 
+ * @author Raymond Camden (ruben.pueyo@soltecgroup.comray@camdenfamily.com) 
+ * @version 2, June 6, 2003 
+ */
+function REGet(str,regex) {
+    var results = arrayNew(1);
+    var test = REFind(regex,str,1,1);
+    var pos = test.pos[1];
+    var oldpos = 1;
+    while(pos gt 0) {
+        arrayAppend(results,mid(str,pos,test.len[1]));
+        oldpos = pos+test.len[1];
+        test = REFind(regex,str,oldpos,1);
+        pos = test.pos[1];
+    }
+    return results;
+}
+</cfscript>
 
 </cfcomponent>
