@@ -13,7 +13,37 @@
 	<cfreturn This>
 </cffunction>
 
-<cffunction name="populate" access="public" returntype="any" output="no" hint="I add the given setting if it doesn't yet exist.">
+<cffunction name="FindSettings" access="public" returntype="any" output="no" hint="I find a list of all valid settings within the given string.">
+	<cfargument name="string" type="string" required="true">
+	<cfargument name="return" type="string" default="name" hint="Possible Values: id,name,query">
+	
+	<cfset var qSettings = 0>
+	<cfset var result = "">
+	
+	<cfif ReFindNoCase("\[.*\]",Arguments.string)>
+		<cfset qSettings = getSettings(fieldlist="SettingID,SettingName")>
+		<cfoutput query="qSettings">
+			<cfif FindNoCase("[#SettingName#]",Arguments.string)>
+				<cfif Arguments.return EQ "name">
+					<cfset result = ListAppend(result,SettingName)>
+				<cfelse>
+					<cfset result = ListAppend(result,SettingID)>
+				</cfif>
+			</cfif>
+		</cfoutput>
+		
+		<cfif Arguments.return EQ "query">
+			<cfset result = getSettings(Settings=result,fieldlist="SettingID,SettingName,SettingLabel,type,ValueText,Help")>
+		</cfif>
+		
+	<cfelseif Arguments.return EQ "query">
+		<cfset result = QueryNew("SettingID,SettingName,SettingLabel,type,ValueText,Help")>
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="populate" access="public" returntype="any" output="no" hint="I populate the values of any valid settings within the given string.">
 	<cfargument name="string" type="string" required="true">
 	
 	<cfset var qSettings = 0>
@@ -60,6 +90,21 @@
 	
 	<cfif StructKeyExists(Arguments,"SettingID") AND Len(Arguments.SettingID) AND NOT isNumeric(Arguments.SettingID)>
 		<cfset qSettings = getSettings(SettingNames=Arguments.SettingID,fieldlist="SettingID,SettingName,SettingLabel,type,ValueText,Help")>
+	</cfif>
+	
+	<cfif StructKeyExists(Arguments,"Settings") AND Len(Arguments.Settings)>
+		<cfset qSettings = getSettings(Settings=Arguments.SettingID,fieldlist="SettingID,SettingName,SettingLabel,type,ValueText,Help")>
+	</cfif>
+	
+	<cfif StructKeyExists(Arguments,"string") AND Len(Arguments.string)>
+		<cfset qSettings = FindSettings(Arguments.string,"query")>
+	</cfif>
+	
+	<cfif StructKeyExists(Arguments,"query") AND isQuery(Arguments.query)>
+		<cfset qSettings = getSettings(Settings=Arguments.SettingID,fieldlist="SettingID,SettingName,SettingLabel,type,ValueText,Help")>
+	</cfif>
+	
+	<cfif isQuery(qSettings)>
 		<cfset aResults = ArrayNew(1)>
 		
 		<cfoutput query="qSettings">
@@ -163,24 +208,32 @@
 
 <cffunction name="saveSetting" access="public" returntype="any" output="no">
 	
-	<cfset var qSettings = 0>
 	<cfset var result = 0>
 	
 	<cfif isMultiEdit(ArgumentCollection=Arguments)>
-		<cfset qSettings = getSettings(fieldlist="SettingID,SettingName")>
-		<cfoutput query="qSettings">
-			<cfif StructKeyExists(Arguments,"#qSettings['SettingName'][CurrentRow]#")>
-				<cfset saveRecord(SettingID=qSettings['SettingID'][CurrentRow],Value=Arguments["#qSettings['SettingName'][CurrentRow]#"])>
-			</cfif>
-		</cfoutput>
+		<cfset saveSettings(ArgumentCollection=Arguments)>
 	<cfelse>
 		<cfset result = saveRecord(ArgumentCollection=Arguments)>
+		<cfset resetCache()>
 	</cfif>
-	
-	<cfset resetCache()>
 	
 	<cfreturn result>
 </cffunction>
+
+<cffunction name="saveSettings" access="public" returntype="void" output="no">
+	
+	<cfset var qSettings = getSettings(fieldlist="SettingID,SettingName")>
+	
+	<cfoutput query="qSettings">
+		<cfif StructKeyExists(Arguments,"#qSettings['SettingName'][CurrentRow]#")>
+			<cfset saveRecord(SettingID=qSettings['SettingID'][CurrentRow],Value=Arguments["#qSettings['SettingName'][CurrentRow]#"])>
+		</cfif>
+	</cfoutput>
+	
+	<cfset resetCache()>
+	
+</cffunction>
+
 <cffunction name="validateSetting" access="public" returntype="struct" output="no">
 	
 	<cfset Arguments = validateSettingType(ArgumentCollection=Arguments)>
