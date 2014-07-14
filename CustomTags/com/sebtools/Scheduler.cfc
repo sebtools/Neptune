@@ -167,57 +167,59 @@
 	<cfset var TimeMarkBegin = 0>
 	<cfset var TimeMarkEnd = 0>
 	
-	<cfif StructKeyExists(variables.sRunningTasks,arguments.name)>
-		<cfreturn false>
-	</cfif>
+	<cfif qTask.RecordCount>
+		<cfif StructKeyExists(variables.sRunningTasks,arguments.name)>
+			<cfreturn false>
+		</cfif>
+		
+		<cfset variables.sRunningTasks[arguments.Name] = now()>
+		
+		<cfset sTaskUpdate["TaskID"] = qTask.TaskID>
+		<cfset sTaskUpdate["rerun"] = 0>
+		<cfset variables.DataMgr.updateRecord("schTasks",sTaskUpdate)>
 	
-	<cfset variables.sRunningTasks[arguments.Name] = now()>
-	
-	<cfset sTaskUpdate["TaskID"] = qTask.TaskID>
-	<cfset sTaskUpdate["rerun"] = 0>
-	<cfset variables.DataMgr.updateRecord("schTasks",sTaskUpdate)>
-
-	<cfset sAction["TaskID"] = qTask.TaskID>
-	<cfset sAction["ActionID"] = variables.DataMgr.insertRecord("schActions",sAction,"insert")>
-	
-	<cfloop collection="#variables.tasks[arguments.Name]#" item="key">
-		<cfset sTask[key] = variables.tasks[arguments.Name][key]>
-	</cfloop>
-	
-	<cfif arguments.remove>
-		<cfset removeTask(arguments.Name)>
-	</cfif>
-	
-	<cfset TimeMarkBegin = getTickCount()>
-	<cftry>
-		<cfinvoke returnvariable="sAction.ReturnVar" component="#sTask.Component#" method="#sTask.MethodName#">
-			<cfif StructKeyExists(sTask,"args")>
-				<cfinvokeargument name="argumentcollection" value="#sTask.args#">
-			</cfif>
-		</cfinvoke>
-		<cfset TimeMarkEnd = getTickCount()>
-		<cfset sAction.Success = true>
-	<cfcatch>
-		<cfset StructDelete(variables.sRunningTasks,arguments.Name)>
-		<cfset sAction.Success = false>
-		<cfset TimeMarkEnd = getTickCount()>
+		<cfset sAction["TaskID"] = qTask.TaskID>
+		<cfset sAction["ActionID"] = variables.DataMgr.insertRecord("schActions",sAction,"insert")>
+		
+		<cfloop collection="#variables.tasks[arguments.Name]#" item="key">
+			<cfset sTask[key] = variables.tasks[arguments.Name][key]>
+		</cfloop>
+		
+		<cfif arguments.remove>
+			<cfset removeTask(arguments.Name)>
+		</cfif>
+		
+		<cfset TimeMarkBegin = getTickCount()>
+		<cftry>
+			<cfinvoke returnvariable="sAction.ReturnVar" component="#sTask.Component#" method="#sTask.MethodName#">
+				<cfif StructKeyExists(sTask,"args")>
+					<cfinvokeargument name="argumentcollection" value="#sTask.args#">
+				</cfif>
+			</cfinvoke>
+			<cfset TimeMarkEnd = getTickCount()>
+			<cfset sAction.Success = true>
+		<cfcatch>
+			<cfset StructDelete(variables.sRunningTasks,arguments.Name)>
+			<cfset sAction.Success = false>
+			<cfset TimeMarkEnd = getTickCount()>
+			<cfset sAction.Seconds = GetSecondsDiff(TimeMarkBegin,TimeMarkEnd)>
+			<cfset sAction.ErrorMessage = CFCATCH.Message>
+			<cfset sAction.ErrorDetail = CFCATCH.Detail>
+			<cfset sAction.DateRunEnd = now()>
+			<cfset sAction = variables.DataMgr.truncate("schActions",sAction)>
+			<cfset variables.DataMgr.updateRecord("schActions",sAction)>
+			<cfrethrow>
+		</cfcatch>
+		</cftry>
+		
 		<cfset sAction.Seconds = GetSecondsDiff(TimeMarkBegin,TimeMarkEnd)>
-		<cfset sAction.ErrorMessage = CFCATCH.Message>
-		<cfset sAction.ErrorDetail = CFCATCH.Detail>
+		
 		<cfset sAction.DateRunEnd = now()>
 		<cfset sAction = variables.DataMgr.truncate("schActions",sAction)>
 		<cfset variables.DataMgr.updateRecord("schActions",sAction)>
-		<cfrethrow>
-	</cfcatch>
-	</cftry>
-	
-	<cfset sAction.Seconds = GetSecondsDiff(TimeMarkBegin,TimeMarkEnd)>
-	
-	<cfset sAction.DateRunEnd = now()>
-	<cfset sAction = variables.DataMgr.truncate("schActions",sAction)>
-	<cfset variables.DataMgr.updateRecord("schActions",sAction)>
-	
-	<cfset StructDelete(variables.sRunningTasks,arguments.Name)>
+		
+		<cfset StructDelete(variables.sRunningTasks,arguments.Name)>
+	</cfif>
 	
 </cffunction>
 
