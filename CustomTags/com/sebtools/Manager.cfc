@@ -821,7 +821,7 @@
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="data" type="struct" default="#StructNew()#">
 	
-	<cfset var in = makeNamedPKArgs(arguments.tablename,arguments.data,"removeRecord")>
+	<cfset var in = limitPKArgs(arguments.tablename,makeNamedPKArgs(arguments.tablename,arguments.data,"removeRecord"))>
 	<cfset var aFileFields = getFileFields(tablename=arguments.tablename)>
 	<cfset var ii = 0>
 	<cfset var qRecord = getRecord(tablename=arguments.tablename,data=in)>
@@ -1297,6 +1297,26 @@
 	</cfif>
 	
 	<cfreturn result>
+</cffunction>
+
+<cffunction name="limitPKArgs" access="public" returntype="struct" output="no">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="data" type="struct" required="yes">
+	
+	<cfset var pkfields = variables.DataMgr.getPKFields(arguments.tablename)>
+	<cfset var ii = 0>
+	<cfset var sPKArgs = StructNew()>
+	<cfset var pkfield = "">
+	
+	<!--- Remove non-PK columns from struct --->
+	<cfloop index="ii" from="1" to="#ArrayLen(pkfields)#" step="1">
+		<cfset pkfield = pkfields[ii].ColumnName>
+		<cfif StructKeyExists(arguments.data,pkfield)>
+			<cfset sPKArgs[pkfield] = arguments.data[pkfield]>
+		</cfif>
+	</cfloop>
+	
+	<cfreturn sPKArgs>
 </cffunction>
 
 <cffunction name="makeNamedPKArgs" access="public" returntype="struct" output="no">
