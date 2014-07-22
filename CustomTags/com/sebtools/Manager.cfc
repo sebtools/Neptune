@@ -1,5 +1,5 @@
 <!--- 1.0 Beta 3 (Build 36) --->
-<!--- Last Updated: 2012-01-31 --->
+<!--- Last Updated: 2014-07-21 --->
 <!--- Information: http://www.bryantwebconsulting.com/docs/com-sebtools/manager.cfm?version=Build%2012 ---><cfcomponent output="false">
 
 <cffunction name="init" access="public" returntype="any" output="no">
@@ -77,6 +77,23 @@
 
 <cffunction name="getRootURL" access="public" returntype="string" output="no">
 	<cfreturn variables.RootURL>
+</cffunction>
+
+<cffunction name="getTypes" access="public" returntype="any" output="no">
+	<cfargument name="type" type="string" required="true">
+	<cfargument name="transformer" type="string" required="false">
+	
+	<cfset var axResults = ArrayNew(1)>
+	
+	<cfif Len(Trim(Arguments.type)) AND ListFindNoCase(Variables.TypeNames,Arguments.type)>
+		<cfif StructKeyExists(Arguments,"transformer") AND Len(Trim(arguments.transformer))>
+			<cfset axResults = XmlSearch(xTypes,"//type[@lcase_name='#LCase(Arguments.type)#']/transform[@lcase_name='#LCase(arguments.transformer)#']")>
+		<cfelse>
+			<cfset axResults = XmlSearch(xTypes,"//type[@lcase_name='#LCase(Arguments.type)#']")>
+		</cfif>
+	</cfif>
+	
+	<cfreturn axResults>
 </cffunction>
 
 <cffunction name="getTypesXml" access="public" returntype="any" output="no">
@@ -488,14 +505,13 @@
 	<cfargument name="transformer" type="string" default="">
 	
 	<cfset var sField = arguments.field>
-	<cfset var xTypes = variables.xTypes>
 	<cfset var aType = 0>
 	<cfset var att = "">
 	<cfset var isListField = false>
 	
 	<!--- If a transformer is present, adjust accordingly. --->
 	<cfif Len(arguments.transformer) AND StructKeyExists(sField,"type")>
-		<cfset aType = XmlSearch(xTypes,"//type[@lcase_name='#LCase(sField.type)#']/transform[@lcase_name='#LCase(arguments.transformer)#']")>
+		<cfset aType = getTypes(sField.type,arguments.transformer)>
 		<cfif ArrayLen(aType)>
 			<!--- Set all attributes --->
 			<cfloop collection="#aType[1].XmlAttributes#" item="att">
@@ -507,7 +523,7 @@
 					<cfset sField[att] = aType[1].XmlAttributes[att]>
 				</cfif>
 			</cfloop>
-			<cfset aType = XmlSearch(xTypes,"//type[@lcase_name='#LCase(sField.type)#']")>
+			<cfset aType = getTypes(sField.type)>
 			<!--- Set all attributes --->
 			<cfif ArrayLen(aType)>
 				<cfloop collection="#aType[1].XmlAttributes#" item="att">
@@ -524,8 +540,8 @@
 			<cfset sField = StructNew()>
 		</cfif>
 	<cfelse>
-		<cfif StructKeyExists(sField,"type")>
-			<cfset aType = XmlSearch(xTypes,"//type[@lcase_name='#LCase(sField.type)#']")>
+		<cfif StructKeyExists(sField,"type") AND Len(Trim(sField.type))>
+			<cfset aType = getTypes(sField.type)>
 			<!--- Set all attributes --->
 			<cfif ArrayLen(aType)>
 				<cfloop collection="#aType[1].XmlAttributes#" item="att">
@@ -2267,7 +2283,7 @@
 		<cfset xField = axFields[ff]>
 		<cfset xTable = xField.XmlParent>
 		<cfset table = xTable.XmlAttributes["name"]>
-		<cfset axTypes = XmlSearch(variables.xTypes,"//type[@lcase_name='#LCase(xField.XmlAttributes.type)#']")>
+		<cfset axTypes = getTypes(xField.XmlAttributes.type)>
 		<cfif ArrayLen(axTypes) EQ 1>
 			<cfset xType = axTypes[1]>
 			<cfif StructKeyExists(xType.XmlAttributes,"defaultFieldName")>
