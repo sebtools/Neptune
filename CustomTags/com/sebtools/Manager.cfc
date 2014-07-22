@@ -67,6 +67,7 @@
 	<cfset variables.TypeNames = ArrayToList(GetValueArray(variables.xTypes,"//type/@name"))>
 	
 	<cfset variables.sSecurityPermissions = StructNew()>
+	<cfset variables.sTypesData = StructNew()>
 	
 	<cfreturn this>
 </cffunction>
@@ -83,13 +84,23 @@
 	<cfargument name="type" type="string" required="true">
 	<cfargument name="transformer" type="string" required="false">
 	
-	<cfset var axTypes = getTypes(ArgumentCollection=Arguments)>
+	<cfset var axTypes = 0>
+	<cfset var key = makeTypeDataKey(ArgumentCollection=Arguments)>
+	<cfset var result = 0>
 	
-	<cfif ArrayLen(axTypes) EQ 1>
-		<cfreturn axTypes[1].XmlAttributes>
+	<cfif StructKeyExists(sTypesData,key)>
+		<cfset result = sTypesData[key]>
 	<cfelse>
-		<cfreturn StructNew()>
+		<cfset axTypes = getTypes(ArgumentCollection=Arguments)>
+		<cfif ArrayLen(axTypes) EQ 1>
+			<cfset result = axTypes[1].XmlAttributes>
+			<cfset sTypesData[key] = result>
+		<cfelse>
+			<cfset result = StructNew()>
+		</cfif>
 	</cfif>
+	
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="getTypes" access="public" returntype="any" output="no">
@@ -2835,6 +2846,19 @@
 	</cfloop>
 	
 	<cfreturn sFields>
+</cffunction>
+
+<cffunction name="makeTypeDataKey" access="private" returntype="string" output="no">
+	<cfargument name="type" type="string" required="true">
+	<cfargument name="transformer" type="string" required="false">
+	
+	<cfset var result = Arguments.type>
+	
+	<cfif StructKeyExists(Arguments,"transformer") AND Len(Trim(Arguments.transformer))>
+		<cfset result = ListAppend(result,Arguments.transformer,":")>
+	</cfif>
+	
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="manageTableFieldSorts" access="private" returntype="any" output="false" hint="">
