@@ -79,6 +79,19 @@
 	<cfreturn variables.RootURL>
 </cffunction>
 
+<cffunction name="getTypeData" access="public" returntype="any" output="no">
+	<cfargument name="type" type="string" required="true">
+	<cfargument name="transformer" type="string" required="false">
+	
+	<cfset var axTypes = getTypes(ArgumentCollection=Arguments)>
+	
+	<cfif ArrayLen(axTypes) EQ 1>
+		<cfreturn axTypes[1].XmlAttributes>
+	<cfelse>
+		<cfreturn StructNew()>
+	</cfif>
+</cffunction>
+
 <cffunction name="getTypes" access="public" returntype="any" output="no">
 	<cfargument name="type" type="string" required="true">
 	<cfargument name="transformer" type="string" required="false">
@@ -505,34 +518,34 @@
 	<cfargument name="transformer" type="string" default="">
 	
 	<cfset var sField = arguments.field>
-	<cfset var aType = 0>
+	<cfset var sType = 0>
 	<cfset var att = "">
 	<cfset var isListField = false>
 	
 	<!--- If a transformer is present, adjust accordingly. --->
 	<cfif Len(arguments.transformer) AND StructKeyExists(sField,"type")>
-		<cfset aType = getTypes(sField.type,arguments.transformer)>
-		<cfif ArrayLen(aType)>
+		<cfset sType = getTypeData(sField.type,arguments.transformer)>
+		<cfif StructCount(sType)>
 			<!--- Set all attributes --->
-			<cfloop collection="#aType[1].XmlAttributes#" item="att">
+			<cfloop collection="#sType#" item="att">
 				<cfif
 						att NEQ "name"
 					AND	NOT ( Len(att) GT Len("lcase_") AND Left(att,Len("lcase_")) EQ "lcase_" )
 					AND	NOT ( StructKeyExists(sField,att) AND Len(sField[att]) AND att NEQ "type" )
 				>
-					<cfset sField[att] = aType[1].XmlAttributes[att]>
+					<cfset sField[att] = sType[att]>
 				</cfif>
 			</cfloop>
-			<cfset aType = getTypes(sField.type)>
+			<cfset sType = getTypeData(sField.type)>
 			<!--- Set all attributes --->
-			<cfif ArrayLen(aType)>
-				<cfloop collection="#aType[1].XmlAttributes#" item="att">
+			<cfif StructCount(sType)>
+				<cfloop collection="#sType#" item="att">
 					<cfif
 							att NEQ "name"
 						AND	NOT ( Len(att) GT Len("lcase_") AND Left(att,Len("lcase_")) EQ "lcase_" )
 						AND	NOT ( StructKeyExists(sField,att) AND Len(sField[att]) )
 					>
-						<cfset sField[att] = aType[1].XmlAttributes[att]>
+						<cfset sField[att] = sType[att]>
 					</cfif>
 				</cfloop>
 			</cfif>
@@ -541,16 +554,16 @@
 		</cfif>
 	<cfelse>
 		<cfif StructKeyExists(sField,"type") AND Len(Trim(sField.type))>
-			<cfset aType = getTypes(sField.type)>
+			<cfset sType = getTypeData(sField.type)>
 			<!--- Set all attributes --->
-			<cfif ArrayLen(aType)>
-				<cfloop collection="#aType[1].XmlAttributes#" item="att">
+			<cfif StructCount(sType)>
+				<cfloop collection="#sType#" item="att">
 					<cfif
 							att NEQ "name"
 						AND	NOT ( Len(att) GT Len("lcase_") AND Left(att,Len("lcase_")) EQ "lcase_" )
 						AND	NOT ( StructKeyExists(sField,att) AND Len(sField[att]) )
 					>
-						<cfset sField[att] = aType[1].XmlAttributes[att]>
+						<cfset sField[att] = sType[att]>
 					</cfif>
 				</cfloop>
 			</cfif>
@@ -2276,18 +2289,16 @@
 	<cfset var xTable = 0>
 	<cfset var ff = 0>
 	<cfset var table = "">
-	<cfset var axTypes = 0>
-	<cfset var xType = 0>
+	<cfset var sType = 0>
 	
 	<cfloop index="ff" from="1" to="#ArrayLen(axFields)#">
 		<cfset xField = axFields[ff]>
 		<cfset xTable = xField.XmlParent>
 		<cfset table = xTable.XmlAttributes["name"]>
-		<cfset axTypes = getTypes(xField.XmlAttributes.type)>
-		<cfif ArrayLen(axTypes) EQ 1>
-			<cfset xType = axTypes[1]>
-			<cfif StructKeyExists(xType.XmlAttributes,"defaultFieldName")>
-				<cfset xField.XmlAttributes["name"] = xType.XmlAttributes["defaultFieldName"]>
+		<cfset sType = getTypeData(xField.XmlAttributes.type)>
+		<cfif StructCount(sType)>
+			<cfif StructKeyExists(sType,"defaultFieldName")>
+				<cfset xField.XmlAttributes["name"] = sType["defaultFieldName"]>
 			<cfelse>
 				<cfif StructKeyExists(xTable.XmlAttributes,"entity")>
 					<cfset xField.XmlAttributes["name"] = makeCompName(xTable.XmlAttributes["entity"]) & xField.XmlAttributes["type"]>
@@ -2299,8 +2310,8 @@
 					<cfset xField.XmlAttributes["name"] = xField.XmlAttributes["type"]>
 				</cfif>
 			</cfif>
-			<cfif StructKeyExists(xType.XmlAttributes,"defaultFieldLabel") AND NOT StructKeyExists(xField.XmlAttributes,"label")>
-				<cfset xField.XmlAttributes["label"] = xType.XmlAttributes["defaultFieldLabel"]>
+			<cfif StructKeyExists(sType,"defaultFieldLabel") AND NOT StructKeyExists(xField.XmlAttributes,"label")>
+				<cfset xField.XmlAttributes["label"] = sType["defaultFieldLabel"]>
 			</cfif>
 		</cfif>
 	</cfloop>
