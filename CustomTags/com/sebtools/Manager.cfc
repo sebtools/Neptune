@@ -2734,11 +2734,6 @@
 			<transform name="sebColumn" type="html" />
 			<transform name="DataMgr" CF_DataType="CF_SQL_LONGVARCHAR" />
 		</type>
-		<type name="HTML" datatype="text">
-			<transform name="sebField" type="#variables.wysiwyg#" />
-			<transform name="sebColumn" type="html" />
-			<transform name="DataMgr" CF_DataType="CF_SQL_LONGVARCHAR" />
-		</type>
 		<type name="email" datatype="text" Length="120">
 			<transform name="sebField" type="email" />
 			<transform name="sebColumn" type="text" />
