@@ -38,7 +38,6 @@
 			This[key] = arguments[key];
 		}
 	}
-	
 	variables.DataMgr = variables.Manager.DataMgr;
 	variables.FileMgr = variables.Manager.FileMgr;
 	variables.datasource = variables.DataMgr.getDatasource();
@@ -422,10 +421,16 @@
 <cffunction name="loadComponentArguments" access="private" returntype="any" output="no" hint="I return the arguments to be passed to each component.">
 	
 	<cfset var sArgs = StructNew()>
+	<cfset var key = "">
 	
 	<cfset sArgs["Manager"] = variables.Manager>
 	<cfset sArgs["Parent"] = This>
 	<cfset sArgs[variables.me.name] = This>
+	<cfloop collection="#This#" item="key">
+		<cfif isObject(This[key])>
+			<cfset sArgs[key] = This[key]>
+		</cfif>
+	</cfloop>
 	
 	<cfreturn sArgs>
 </cffunction>
