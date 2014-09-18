@@ -62,6 +62,7 @@
 	<cfset variables.UUID = CreateUUID()>
 	
 	<cfset getTypesXml()>
+	<cfset loadTypesStruct()>
 	
 	<cfset variables.FileTypes = ArrayToList(GetValueArray(variables.xTypes,"//type[@lcase_isfiletype='true']/@name"))>
 	<cfset variables.TypeNames = ArrayToList(GetValueArray(variables.xTypes,"//type/@name"))>
@@ -88,8 +89,10 @@
 	<cfset var key = makeTypeDataKey(ArgumentCollection=Arguments)>
 	<cfset var result = 0>
 	
-	<cfif StructKeyExists(sTypesData,key)>
-		<cfset result = sTypesData[key]>
+	<cfif StructKeyExists(Variables.sTypes,key)>
+		<cfset result = Variables.sTypes[key]>
+	<cfelseif StructKeyExists(Variables.sTypesData,key)>
+		<cfset result = Variables.sTypesData[key]>
 	<cfelse>
 		<cfset axTypes = getTypes(ArgumentCollection=Arguments)>
 		<cfif ArrayLen(axTypes) EQ 1>
@@ -139,6 +142,33 @@
 	</cfif>
 	
 	<cfreturn variables.xTypes>
+</cffunction>
+
+<cffunction name="loadTypesStruct" access="public" returntype="any" output="no">
+	
+	<cfset var type_index = 0>
+	<cfset var transformer_index = 0>
+	<cfset var xType = 0>
+	<cfset var xTransformer = 0>
+	<cfset var type_key = "">
+	<cfset var transformer_key = "">
+	
+	<cfset Variables.sTypes = StructNew()>
+	
+	<cfloop index="type_index" from="1" to="#ArrayLen(variables.xTypes.types.type)#">
+		<cfset xType = variables.xTypes.types.type[type_index]>
+		<cfset type_key = xType.XmlAttributes["lcase_name"]>
+		<cfset Variables.sTypes[type_key] = xType.XmlAttributes>
+		<cfif StructKeyExists(xType,"transform")>
+			<cfloop index="transformer_index" from="1" to="#ArrayLen(xType.transform)#">
+				<cfset xTransformer = xType.transform[transformer_index]>
+				<cfset transformer_key = type_key & ":" & xTransformer.XmlAttributes["lcase_name"]>
+				<cfset Variables.sTypes[transformer_key] = xTransformer.XmlAttributes>
+				<cfset StructAppend(Variables.sTypes[transformer_key],xType.XmlAttributes,"no")>
+			</cfloop>
+		</cfif>
+	</cfloop>
+	
 </cffunction>
 
 <cffunction name="adjustImage" access="public" returntype="any" output="no">
