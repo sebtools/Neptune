@@ -1,6 +1,7 @@
-<!--- 2.0 Beta 1 --->
-<!--- Last Updated: 2011-30-30 --->
+<!--- 2.1 --->
+<!--- Last Updated: 2014-08-22 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
+<!--- Requires Coldfusion 8 or higher --->
 <cfcomponent displayname="Mailer" hint="I handle sending of email notices. The advantage of using Mailer instead of cfmail is that I can be instantiated with information and then passed as an object to a component that sends email, circumventing the need to pass a bunch of email-related information to each component that sends email.">
 
 <cffunction name="init" access="public" returntype="Mailer" output="no" hint="I instantiate and return this object.">
@@ -15,6 +16,8 @@
 	<cfargument name="logtable" type="string" default="mailerLogs">
 	<cfargument name="mode" type="string" required="false">
 	<cfargument name="log" type="boolean" default="false">
+	<cfargument name="port" type="string" required="false">
+	<cfargument name="useTLS" type="boolean" required="false">
 	
 	<cfset variables.MailServer = arguments.MailServer>
 	<cfset variables.DefaultFrom = arguments.From>
@@ -34,6 +37,13 @@
 		AND	Len(arguments.From)
 	)>
 		<cfset arguments.mode = "Sim">
+	</cfif>
+	
+	<cfif StructKeyExists(arguments,"port")>
+		<cfset variables.port = arguments.port>
+	</cfif>
+	<cfif StructKeyExists(arguments,"useTLS")>
+		<cfset variables.useTLS = arguments.useTLS>
 	</cfif>
 	
 	<cfif NOT StructKeyExists(arguments,"mode")>
@@ -229,35 +239,26 @@
 	
 	<cfset var sent = false>
 	
+	<cfif StructKeyExists(variables,"port") AND Len(variables.port) AND isNumeric(variables.port)>
+		<cfparam name="arguments.port" default="#variables.port#">
+	</cfif>
+	<cfif StructKeyExists(variables,"useTLS") AND isBoolean(variables.useTLS)>
+		<cfparam name="arguments.useTLS" default="#variables.useTLS#">
+	</cfif>
+	
 	<cfif Len(arguments.text) OR Len(arguments.html)>
-		<cfif Len(arguments.username) AND Len(arguments.password)>
-			<cfmail to="#arguments.To#" from="#arguments.From#" subject="#arguments.Subject#" cc="#arguments.CC#" bcc="#arguments.BCC#" server="#arguments.MailServer#" failto="#arguments.failto#" mailerID="#arguments.mailerID#" wraptext="#arguments.wraptext#" username="#arguments.username#" password="#arguments.password#"><cfif Len(Trim(arguments.ReplyTo))><cfmailparam name="Reply-To" value="#Trim(arguments.ReplyTo)#"></cfif><cfif Len(Trim(arguments.Sender))><cfmailparam name="Sender" value="#Trim(arguments.Sender)#"></cfif>
-				<cfif Len(arguments.text)>
-					<cfmailpart type="text" charset="utf-8" wraptext="#arguments.wraptext#">#arguments.text#</cfmailpart>
-				</cfif>
-				<cfif Len(arguments.html)>
-					<cfmailpart type="html" charset="utf-8" wraptext="#arguments.wraptext#">#arguments.html#</cfmailpart>
-				</cfif>
-				<cfif Len(arguments.Attachments)><cfloop index="Attachment" list="#arguments.Attachments#"><cfmailparam file="#Attachment#"></cfloop></cfif>
-			</cfmail>
-		<cfelse>
-			<cfmail to="#arguments.To#" from="#arguments.From#" subject="#arguments.Subject#" cc="#arguments.CC#" bcc="#arguments.BCC#" server="#arguments.MailServer#" failto="#arguments.failto#" mailerID="#arguments.mailerID#" wraptext="#arguments.wraptext#"><cfif Len(Trim(arguments.ReplyTo))><cfmailparam name="Reply-To" value="#Trim(arguments.ReplyTo)#"></cfif><cfif Len(Trim(arguments.Sender))><cfmailparam name="Sender" value="#Trim(arguments.Sender)#"></cfif>
-				<cfif Len(arguments.text)>
-					<cfmailpart type="text" charset="utf-8" wraptext="#arguments.wraptext#">#arguments.text#</cfmailpart>
-				</cfif>
-				<cfif Len(arguments.html)>
-					<cfmailpart type="html" charset="utf-8" wraptext="#arguments.wraptext#">#arguments.html#</cfmailpart>
-				</cfif>
-				<cfif Len(arguments.Attachments)><cfloop index="Attachment" list="#arguments.Attachments#"><cfmailparam file="#Attachment#"></cfloop></cfif>
-			</cfmail>
-		</cfif>
+		<cfmail attributeCollection="#arguments#"><cfif Len(Trim(arguments.ReplyTo))><cfmailparam name="Reply-To" value="#Trim(arguments.ReplyTo)#"></cfif><cfif Len(Trim(arguments.Sender))><cfmailparam name="Sender" value="#Trim(arguments.Sender)#"></cfif>
+			<cfif Len(arguments.text)>
+				<cfmailpart type="text" charset="utf-8" wraptext="#arguments.wraptext#">#arguments.text#</cfmailpart>
+			</cfif>
+			<cfif Len(arguments.html)>
+				<cfmailpart type="html" charset="utf-8" wraptext="#arguments.wraptext#">#arguments.html#</cfmailpart>
+			</cfif>
+			<cfif Len(arguments.Attachments)><cfloop index="Attachment" list="#arguments.Attachments#"><cfmailparam file="#Attachment#"></cfloop></cfif>
+		</cfmail>
 		<cfset sent = true>
 	<cfelse>
-		<cfif Len(arguments.username) AND Len(arguments.password)>
-			<cfmail to="#arguments.To#" from="#arguments.From#" type="#arguments.type#" subject="#arguments.Subject#" cc="#arguments.CC#" bcc="#arguments.BCC#" server="#arguments.MailServer#" failto="#arguments.failto#" mailerID="#arguments.mailerID#" wraptext="#arguments.wraptext#" username="#arguments.username#" password="#arguments.password#"><cfif Len(Trim(arguments.ReplyTo))><cfmailparam name="Reply-To" value="#Trim(arguments.ReplyTo)#"></cfif><cfif Len(Trim(arguments.Sender))><cfmailparam name="Sender" value="#Trim(arguments.Sender)#"></cfif>#arguments.Contents#<cfif Len(Trim(arguments.Attachments))><cfloop index="Attachment" list="#arguments.Attachments#"><cfmailparam file="#Attachment#"></cfloop></cfif></cfmail>
-		<cfelse>
-			<cfmail to="#arguments.To#" from="#arguments.From#" type="#arguments.type#" subject="#arguments.Subject#" cc="#arguments.CC#" bcc="#arguments.BCC#" server="#arguments.MailServer#" failto="#arguments.failto#" mailerID="#arguments.mailerID#" wraptext="#arguments.wraptext#"><cfif Len(Trim(arguments.ReplyTo))><cfmailparam name="Reply-To" value="#Trim(arguments.ReplyTo)#"></cfif><cfif Len(Trim(arguments.Sender))><cfmailparam name="Sender" value="#Trim(arguments.Sender)#"></cfif>#arguments.Contents#<cfif Len(Trim(arguments.Attachments))><cfloop index="Attachment" list="#arguments.Attachments#"><cfmailparam file="#Attachment#"></cfloop></cfif></cfmail>
-		</cfif>
+		<cfmail attributeCollection="#arguments#"><cfif Len(Trim(arguments.ReplyTo))><cfmailparam name="Reply-To" value="#Trim(arguments.ReplyTo)#"></cfif><cfif Len(Trim(arguments.Sender))><cfmailparam name="Sender" value="#Trim(arguments.Sender)#"></cfif>#arguments.Contents#<cfif Len(Trim(arguments.Attachments))><cfloop index="Attachment" list="#arguments.Attachments#"><cfmailparam file="#Attachment#"></cfloop></cfif></cfmail>
 		<cfset sent = true>
 	</cfif>
 	
