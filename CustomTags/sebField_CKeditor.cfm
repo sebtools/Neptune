@@ -119,12 +119,13 @@ Site Configuration Instructions
 		{ name: 'others' }
 	];
 </script>
+<cfset instanceToolbarGroups = "instanceToolbarGroups">
 <cfelse>
 <script type="text/javascript">
-	var instanceToolbarGroups = [#attributes.toolbarGroups#];
+	var instanceToolbarGroups_#attributes.id# = [#attributes.toolbarGroups#];
 </script>
+<cfset instanceToolbarGroups = "instanceToolbarGroups_#attributes.id#">
 </cfif>
-<cfset instanceToolbarGroups = "instanceToolbarGroups">
 
 <!--- textarea control --->
 <textarea id="#attributes.id#" name="#attributes.fieldname#">#attributes.value#</textarea>
