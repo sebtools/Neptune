@@ -1022,7 +1022,12 @@ function getPageController(path) {
 	<!---<cfdirectory name="qProgramFile" action="list" directory="#arguments.FilePath#" filter="Program.cfc">--->
 	<cfset qProgramFile = getMyDirectoryList(directory=arguments.FilePath,filter="Program.cfc",recurse=false,exclude=getExcludeDirs())>
 	
-	<cfset aRegisteredPrograms = XmlSearch(variables.instance.xPrograms,"//program[@path='#path_browser#']")>
+	<cftry>
+		<cfset aRegisteredPrograms = XmlSearch(variables.instance.xPrograms,"//program[@path='#XmlFormat(path_browser)#']")>
+	<cfcatch>
+		<cfset aRegisteredPrograms = ArrayNew(1)>
+	</cfcatch>
+	</cftry>
 	<cfif ArrayLen(aRegisteredPrograms)>
 		<cfset DateInstalled = aRegisteredPrograms[1].XmlAttributes.installed>
 	</cfif>
