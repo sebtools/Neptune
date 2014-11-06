@@ -91,6 +91,8 @@
 	</cfif>
 	
 	<cfset This["getDirectoryList"] = getMyDirectoryList>
+	<cfset This["DirectoryCopy"] = MyDirectoryCopy>
+	
 	
 	<cfreturn This>
 </cffunction>
@@ -1620,7 +1622,7 @@ function makeCompName(str) {
  @author Joe Rinehart (joe.rinehart@gmail.com) 
  @version 1, July 27, 2005 
 --->
-<cffunction name="directoryCopy" output="true">
+<cffunction name="MyDirectoryCopy" output="true">
 	<cfargument name="source" required="true" type="string">
 	<cfargument name="destination" required="true" type="string">
 	<cfargument name="nameconflict" required="true" default="overwrite">
