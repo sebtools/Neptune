@@ -790,6 +790,7 @@
 				AND	(
 							variables.this[method].access EQ "remote"
 						OR	variables.this[method].access EQ "public"
+						OR	variables.this[method].access EQ 0
 					)
 			)
 		>
