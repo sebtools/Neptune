@@ -1,0 +1,58 @@
+<site>
+	<arguments>
+		<argument name="Value1" type="string" />
+		<argument name="Value2" type="string" />
+		<argument name="Value3" type="string" />
+	</arguments>
+	<components>
+		<component name="Comp" path="ExampleComp">
+		</component>
+		<component name="CompWithValue" path="ExampleComp">
+			<argument name="Arg1" arg="Value1" />
+		</component>
+		<component name="CompWithValues" path="ExampleComp">
+			<argument name="Arg1" arg="Value1" />
+			<argument name="Arg2" config="Value2" />
+		</component>
+		<component name="CompWithComp" path="ExampleComp">
+			<argument name="ArgComp" component="Comp" />
+			<argument name="ArgComp2" component="ServiceFactory" />
+		</component>
+		<component name="CompWithComp2" path="ExampleComp">
+			<argument name="Arg1" component="Comp" />
+			<argument name="Arg2" component="CompWithValues" />
+		</component>
+		<component name="CompWithComp3" path="ExampleComp" special="MySpecial">
+			<argument name="Arg1" component="Comp" />
+			<argument name="Arg2" component="CompWithComp2" />
+			<argument name="Arg3" arg="Value3" />
+		</component>
+		<component name="CompWithDeep" path="ExampleComp">
+			<argument name="Arg1Comp" component="CompWithComp3" />
+			<argument name="Arg2Comp" component="CompWithComp2" />
+			<argument name="Arg3Val" arg="Value3" />
+		</component>
+		<component name="CompWithCircle" path="ExampleComp">
+			<argument name="Arg1Val" arg="Value1" />
+			<argument name="Arg2Comp" component="CompWithCircle3" />
+		</component>
+		<component name="CompWithCircle2" path="ExampleComp">
+			<argument name="Arg1" arg="Value1" />
+			<argument name="Arg2" component="CompWithCircle" />
+		</component>
+		<component name="CompWithCircle3" path="ExampleComp">
+			<argument name="Arg1" arg="Value1" />
+			<argument name="Arg2" component="CompWithCircle2" />
+		</component>
+		<component name="CompWithMissingCompSkipArg" path="ExampleComp">
+			<argument name="Arg1" arg="Value1" />
+			<argument name="Arg2" component="MissingComp" ifmissing="skiparg" />
+		</component>
+		<component name="CompWithMissingCompSkipComp" path="ExampleComp">
+			<argument name="Arg1Val" arg="Value1" />
+			<argument name="Arg2Comp" component="MissingComp" ifmissing="skipcomp" />
+		</component>
+	</components>
+	<postactions>
+	</postactions>
+</site>

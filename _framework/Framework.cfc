@@ -1,5 +1,5 @@
-<!--- 1.0 Beta 2 (Build 26) --->
-<!--- Last Updated: 2012-08-05 --->
+<!--- 1.0 Beta 2 (Build 27) --->
+<!--- Last Updated: 2014-11-30 --->
 <!--- Information: sebtools.com --->
 <!--- Created by Steve Bryant 2007-06-27 --->
 <cfcomponent output="false">
@@ -85,11 +85,6 @@
 	
 	<!---<cfset this.Config.runConfigFiles("#variables.instance.ConfigFolder#config.cfm")>--->
 	
-	<!--- Only way to preserve Loader Arguments state across reload of Loader so that it doesn't force reload of all components --->
-	<cfif StructKeyExists(Application,"Framework") AND StructKeyExists(Application.Framework,"Loader")>
-		<cfset request.Apploader_Args = Application.Framework.Loader.getArgs()>
-	</cfif>
-	
 	<cfset This["getDirectoryList"] = getMyDirectoryList>
 	<cfset This["DirectoryCopy"] = MyDirectoryCopy>
 	
@@ -105,21 +100,29 @@
 	<cfset var result = 0>
 	<cfset var comp = arguments.component>
 	<cfset var meth = arguments.method>
+	<cfset var isComponent = true>
+	<cfset var oService = 0>
 	
 	<cfset StructDelete(sArgs,"component")>
 	<cfset StructDelete(sArgs,"method")>
 	
-	<cfif StructKeyExists(This.Loader,comp) AND isObject(This.Loader[comp]) AND StructKeyExists(This.Loader[comp],meth)>
-		<cfinvoke
-			returnvariable="result"
-			component="#This.Loader[comp]#"
-			method="#meth#"
-			argumentCollection="#sArgs#"
-		>
-		</cfinvoke>
-		
-		<cfif isDefined("result")>
-			<cfreturn result>
+	<!--- Just to make sure the component is loaded, if it exists --->
+	<cfset isComponent = This.Loader.loadService(comp)>
+	
+	<cfif isComponent AND StructKeyExists(This.Loader[comp],meth)>
+		<cfset oService = This.Loader.getService(comp)>
+		<cfif StructKeyExists(oService,meth)>
+			<cfinvoke
+				returnvariable="result"
+				component="#oService#"
+				method="#meth#"
+				argumentCollection="#sArgs#"
+			>
+			</cfinvoke>
+			
+			<cfif isDefined("result")>
+				<cfreturn result>
+			</cfif>
 		</cfif>
 	</cfif>
 	
@@ -128,34 +131,22 @@
 <cffunction name="loadLoader" access="public" returntype="boolean" output="no">
 	
 	<cfset var doLoad = false>
-	<cfset var qFiles = 0>
-	<cfset var sLoaderArgs = StructNew()>
 	
 	<!--- Determine if Loader needs to be created --->
-	<!--- Load should be created if it doesn't exist of if the file has been updated since it was last created --->
+	<!--- Load should be created if it doesn't exist or if the file has been updated since it was last created --->
 	<cfif NOT ( StructKeyExists(this,"Loader") AND StructKeyExists(variables.instance,"LoaderLoaded") AND isDate(variables.instance.LoaderLoaded) )>
 		<cfset doLoad = true>
-	<cfelse>
-		<!--- <cfdirectory name="qFiles" action="list" directory="#variables.instance.ConfigFolderPath#" filter="#variables.instance.ComponentsFile#"> --->
-		<cfset qFiles = getMyDirectoryList(directory="#variables.instance.ConfigFolderPath#",filter="#variables.instance.ComponentsFile#")>
-		
-		<cfif qFiles.DateLastModified GT variables.instance.LoaderLoaded>
-			<cfset doLoad = true>
-		</cfif>
+	<cfelseif This.Loader.getServiceLastUpdated("ServiceFactory") GT variables.instance.LoaderLoaded>
+		<cfset doLoad = true>
 	</cfif>
 	
-	<!--- If Loader should be created, create it and remember when it was created --->
 	<cfif doLoad>
-		<cfset sLoaderArgs["XmlFilePath"] = variables.instance.ComponentsFilePath>
-		<cfif StructKeyExists(variables.instance,"Proxy")>
-			<cfset sLoaderArgs["Proxy"] = variables.instance.Proxy>
-		</cfif>
-		<cfset this.Loader = CreateObject("component","AppLoader").init(argumentCollection=sLoaderArgs)>
-		<cfset this.Loader.Config = this.Config>
-		<cfset this.Loader["Framework"] = This>
-		
+		<cfset This.Loader = CreateObject("component","ServiceFactory").init()>
+		<cfset This.Loader.loadXml(variables.instance.ComponentsFilePath)>
+		<cfset This.Loader.setScope(Application)>
 		<cfset variables.instance.LoaderLoaded = now()>
 	</cfif>
+	<cfset This.Loader.loadConfig(This.Config)>
 	
 	<cfreturn doLoad>
 </cffunction>
@@ -176,15 +167,9 @@
 
 <cffunction name="loadConfigSettings" access="private" returntype="string" output="no">
 	
-	<cfset var configvars = this.Config.getSettings()>
-	<cfset var configkey = "">
 	<cfset var result = "">
 	
-	<cfinvoke returnvariable="result" component="#this.Loader#" method="setArgs">
-		<cfloop collection="#configvars#" item="configkey">
-			<cfinvokeargument name="#configkey#" value="#configvars[configkey]#">
-		</cfloop>
-	</cfinvoke>
+	<cfset This.Loader.loadConfig(This.Config)>
 	
 	<cfreturn result>
 </cffunction>
@@ -221,29 +206,11 @@
 	<!--- Configuration --->
 	<cfset runConfigFiles()>
 	<cfset runConfigProgramLinks()>
-	<!---<cfif isRegistrationPerformed>--->
-		<cfset ChangedSettings = ListAppend(
-			ChangedSettings,
-			loadConfigSettings()
-		)>
-	<!---</cfif>--->
 	<cfset this.Config.loadSettings()>
 	
-	<!--- Component Creation --->
-	<!---<cftry>--->
-		<!---<cfcatch>
-			<cfset registerAllPrograms(true)>
-			<cfinvoke component="#this.Loader#" method="load">
-				<cfinvokeargument name="refresh" value="#arguments.refresh#">
-			</cfinvoke>
-		</cfcatch>	
-	</cftry>--->
-	<cfif doLoad OR arguments.refresh NEQ false OR Len(ChangedSettings)>
-		
-		<cfinvoke component="#this.Loader#" method="load">
-			<cfinvokeargument name="refresh" value="#arguments.refresh#">
-			<!---<cfinvokeargument name="ChangedSettings" value="#ChangedSettings#">--->
-		</cfinvoke>
+	<cfif doLoad OR arguments.refresh NEQ false>
+		<cfset This.Loader.removeServices(arguments.refresh)>
+		<cfset This.Loader.getAllServices()>
 		
 		<cfset variables.instance["PathServices"] = StructNew()>
 		<cfset variables.instance["NoPathServices"] = StructNew()> 
@@ -256,6 +223,9 @@
 			</cfif>
 		</cfif>
 	</cfif>
+	
+	<!--- This is a super-cheap operation once it has run. No reason not to call it again. --->
+	<cfset This.Loader.getAllServices()>
 	
 </cffunction>
 
@@ -634,14 +604,14 @@ function getPageController(path) {
 	<cfset var ii = 0>
 	<cfset var path_file = getFilePathFromBrowserPath(arguments.path)>
 	<cfset var path_comp = getComponentPath(path_file)>
-	<cfset var aComponents = This.Loader.getComponents()>
+	<cfset var sComponents = This.Loader.getServicesMeta()>
 	<cfset var aProgramComponents = ArrayNew(1)>
 	
 	<cfif Len(path_comp)>
 		<!--- Get all of the programs for this component --->
-		<cfloop index="ii" from="1" to="#ArrayLen(aComponents)#" step="1">
-			<cfif Len(aComponents[ii].path) GT Len(path_comp) AND Left(aComponents[ii].path,Len(path_comp)) EQ path_comp>
-				<cfset ArrayAppend(aProgramComponents,aComponents[ii])>
+		<cfloop item="ii" collection="#sComponents#">
+			<cfif Len(sComponents[ii].path) GT Len(path_comp) AND Left(sComponents[ii].path,Len(path_comp)) EQ path_comp>
+				<cfset ArrayAppend(aProgramComponents,sComponents[ii])>
 			</cfif>
 		</cfloop>
 	</cfif>
@@ -694,16 +664,14 @@ function getPageController(path) {
 			<cfset result = aProgramComponents[1].name>
 		<cfelse>
 			<cfloop index="ii" from="1" to="#ArrayLen(aProgramComponents)#" step="1">
-				<cfset oComponent = This.Loader[aProgramComponents[ii].name]>
-				<cfset sComponent = getMetaData(oComponent)>
+				<cfset sComponent = This.Loader.getServiceInfo(aProgramComponents[ii].name)>
 				<cfif StructKeyExists(sComponent,"mainservice") AND sComponent.mainservice IS true>
 					<cfset result = aComponents[ii].name>
 					<cfbreak>
 				</cfif>
 			</cfloop>
 			<cfloop index="ii" from="1" to="#ArrayLen(aProgramComponents)#" step="1">
-				<cfset oComponent = This.Loader[aProgramComponents[ii].name]>
-				<cfset sComponent = getMetaData(oComponent)>
+				<cfset sComponent = This.Loader.getServiceInfo(aProgramComponents[ii].name)>
 				<cfif StructKeyExists(sComponent,"extends") AND ListLast(sComponent.extends.name,".") EQ "ProgramManager">
 					<cfset result = aComponents[ii].name>
 					<cfbreak>
@@ -721,10 +689,8 @@ function getPageController(path) {
 <cffunction name="getService" access="public" returntype="any" output="no">
 	<cfargument name="name" type="string" required="yes">
 	
-	<cfset arguments.name = arguments.name>
-	
-	<cfif StructKeyExists(This.Loader,arguments.name)>
-		<cfreturn This.Loader[arguments.name]>
+	<cfif This.Loader.hasService(arguments.name)>
+		<cfreturn This.Loader.getService(arguments.name)>
 	<cfelse>
 		<cfreturn getServiceFromPath(arguments.name)>
 	</cfif>
@@ -773,13 +739,14 @@ function getPageController(path) {
 	<cfset var oComponent = 0>
 	<cfset var checkLabel = 0>
 	
+	<!--- ToDo: Way to get all components --->
 	<cfif NOT ArrayLen(aComponents)>
-		<cfset aComponents = This.Loader.getComponents()>
+		<cfset aComponents = This.Loader.getServicesArray()>
 	</cfif>
 	
 	<cfloop index="checkLabel" from="0" to="1" step="1">
 		<cfloop index="ii" from="1" to="#ArrayLen(aComponents)#" step="1">
-			<cfset oComponent = This.Loader[aComponents[ii].name]>
+			<cfset oComponent = This.Loader.getService(aComponents[ii].name)>
 			<cfif isComponentForLabel(oComponent,arguments.Label,checkLabel)>
 				<cfreturn oComponent>
 			<cfelse>
@@ -803,8 +770,8 @@ function getPageController(path) {
 	<cfset var result = false>
 	<cfset var sMetaStruct = 0>
 	
-	<cfif isSimpleValue(arguments.Component) AND StructKeyExists(This.Loader,arguments.Component)>
-		<cfset arguments.Component = This.Loader[arguments.Component]>
+	<cfif isSimpleValue(arguments.Component) AND This.Loader.hasService(arguments.Component)>
+		<cfset arguments.Component = This.Loader.getService(arguments.Component)>
 	</cfif>
 	
 	<cfif
@@ -833,16 +800,7 @@ function getPageController(path) {
 	<cfargument name="ComponentXML" type="string" required="yes">
 	<cfargument name="overwrite" type="boolean" default="false">
 	
-	<cftry>
-		<cfset this.Loader.register(arguments.ComponentXML,arguments.overwrite)>
-	<cfcatch type="AppLoader">
-		<cfif CFCATCH.ErrorCode EQ "NoSuchArg">
-			<cfset this.Config.throwError(errorcode="Required",name=CFCATCH.ExtendedInfo)>
-		<cfelse>
-			<cfrethrow>
-		</cfif>
-	</cfcatch>
-	</cftry>
+	<cfset This.Loader.register(arguments.ComponentXML,arguments.overwrite)>
 	
 </cffunction>
 
