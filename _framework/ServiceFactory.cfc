@@ -243,13 +243,7 @@
 				<cfset oService = Variables.cache[Arguments.ServiceName].init(ArgumentCollection=sArgs)>
 				<cfset EndTime = getTickCount()>
 				
-				<!--- Store reference to service in needed spaces --->
-				<cfset Variables.cache[Arguments.ServiceName] = Variables.cache[Arguments.ServiceName].init(ArgumentCollection=sArgs)>
-				<cfset This[Arguments.ServiceName] = Variables.cache[Arguments.ServiceName]>
-				<cfset Variables.sScope[Arguments.ServiceName] = Variables.cache[Arguments.ServiceName]>
-				
-				<!--- Store metadata about service (include when it was loaded and how long it took to initialize) --->
-				<cfset Variables.metadata[Arguments.ServiceName] = getMetaData(Variables.cache[Arguments.ServiceName])>
+				<cfset storeServiceReference(Arguments.ServiceName,oService)>
 				<cfset Variables.metadata[Arguments.ServiceName]["DateLoaded"] = now()>
 				<cfset Variables.metadata[Arguments.ServiceName]["LoadTime"] = EndTime - BeginTime>
 				
@@ -707,8 +701,16 @@
 	
 	<cfset Variables.sScope = Arguments.Scope>
 	
+	<cfloop item="key" collection="#Variables.sScope#">
+		<cfif hasService(key) AND NOT hasServiceLoaded(key)>
+			<cfset storeServiceReference(key,Variables.sScope[key])>
+		</cfif>
+	</cfloop>
+	
 	<cfloop item="key" collection="#Variables.cache#">
-		<cfset Variables.sScope[key] = Variables.cache[key]> 
+		<cfif NOT StructKeyExists(Variables.sScope,key)>
+			<cfset Variables.sScope[key] = Variables.cache[key]>
+		</cfif> 
 	</cfloop>
 	
 </cffunction>
@@ -814,6 +816,20 @@
 	</cfif>
 	
 	<cfreturn result>
+</cffunction>
+
+<cffunction name="storeServiceReference" access="private" returntype="any" output="no">
+	<cfargument name="ServiceName" type="string" required="no">
+	<cfargument name="oService" type="any" required="no">
+	
+	<!--- Store reference to service in needed spaces --->
+	<cfset Variables.cache[Arguments.ServiceName] = oService>
+	<cfset This[Arguments.ServiceName] = oService>
+	<cfset Variables.sScope[Arguments.ServiceName] = oService>
+	
+	<!--- Store metadata about service (include when it was loaded and how long it took to initialize) --->
+	<cfset Variables.metadata[Arguments.ServiceName] = getMetaData(oService)>
+	
 </cffunction>
 
 <cffunction name="throwError" access="private" returntype="void" output="no">
