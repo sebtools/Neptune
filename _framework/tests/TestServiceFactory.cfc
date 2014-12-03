@@ -598,7 +598,7 @@
 	
 	<cfset Variables.ServiceFactory.loadXml('<site><components><component name="ExampleWithExtras" path="_framework.tests.ExampleWithExtras"></component></components></site>')>
 	
-	<cfset sInfo = Variables.ServiceFactory.getServiceInfo('ExampleWithExtras')>
+	<cfset sInfo = Variables.ServiceFactory.getServiceInfo('ExampleWithExtras',True)>
 	
 	<cfset assertTrue(StructKeyExists(sInfo,"LoadTime") AND Val(sInfo.LoadTime) GTE 20,"Service Factory failed to track a load time for a loaded.")>
 	
@@ -709,6 +709,19 @@
 	
 	<cfset StructDelete(request,"Loaded1")>
 	<cfset StructDelete(request,"Loaded2")>
+	
+</cffunction>
+
+<cffunction name="shouldGetServiceFactoryInfo" access="public" returntype="void" output="no"
+	hint="Server Factory should be able to get information about itself."
+>
+	
+	<cfset loadXml()>
+	
+	<cfset assertTrue(isDate(Variables.ServiceFactory.getServiceLastUpdated("ServiceFactory")),"Service Factory was unable to retreive a last update date for itself.")>
+	
+	<cfset assertTrue(isStruct(Variables.ServiceFactory.getServiceInfo("ServiceFactory")),"Service Factory was unable to retreive info on itself.")>
+
 	
 </cffunction>
 

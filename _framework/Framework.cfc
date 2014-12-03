@@ -136,6 +136,8 @@
 	<!--- Load should be created if it doesn't exist or if the file has been updated since it was last created --->
 	<cfif NOT ( StructKeyExists(this,"Loader") AND StructKeyExists(variables.instance,"LoaderLoaded") AND isDate(variables.instance.LoaderLoaded) )>
 		<cfset doLoad = true>
+	<cfelseif NOT StructKeyExists(This.Loader,"getServiceLastUpdated")>
+		<cfset doLoad = true>
 	<cfelseif This.Loader.getServiceLastUpdated("ServiceFactory") GT variables.instance.LoaderLoaded>
 		<cfset doLoad = true>
 	</cfif>

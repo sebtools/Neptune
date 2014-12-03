@@ -80,6 +80,17 @@
 	</cfif>
 </cffunction>
 
+<cffunction name="getFileLastUpdated" access="public" returntype="date" output="no" hint="I tell when the file for a service was last updated.">
+	<cfargument name="FilePath" type="string" required="no">
+	
+	<!--- Thanks Kevan Stannard! http://blog.stannard.net.au/2006/10/03/getting-a-files-timestamp-using-coldfusion/ --->
+	
+	<cfset var fileObj = CreateObject("java","java.io.File").init(Arguments.FilePath)>
+	<cfset var result = CreateObject("java","java.util.Date").init(fileObj.lastModified())>
+	
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="getXml" access="public" returntype="any" output="no" hint="I return the XML used to define the components.">
 	<cfreturn Variables.xComponents>
 </cffunction>
@@ -298,13 +309,16 @@
 
 <cffunction name="getServiceInfo" access="public" returntype="struct" output="no" hint="I return information about the requested service component.">
 	<cfargument name="ServiceName" type="string" required="no">
+	<cfargument name="WithLastUpdated" type="boolean" default="false">
 	
 	<cfset var sResult = 0>
 	
 	<cfset getService(Arguments.ServiceName)>
 	
 	<cfset sResult = StructCopy(Variables.metadata[Arguments.ServiceName])>
-	<cfset sResult["LastUpdated"] = getServiceLastUpdated(Arguments.ServiceName)>
+	<cfif Arguments.WithLastUpdated>
+		<cfset sResult["LastUpdated"] = getServiceLastUpdated(Arguments.ServiceName)>
+	</cfif>
 	
 	<cfreturn sResult>
 </cffunction>
@@ -712,17 +726,6 @@
 			</cfif>
 		</cfloop>
 	</cfloop>
-	
-	<cfreturn result>
-</cffunction>
-
-<cffunction name="getFileLastUpdated" access="private" returntype="date" output="no" hint="I tell when the file for a service was last updated.">
-	<cfargument name="FilePath" type="string" required="no">
-	
-	<!--- Thanks Kevan Stannard! http://blog.stannard.net.au/2006/10/03/getting-a-files-timestamp-using-coldfusion/ --->
-	
-	<cfset var fileObj = CreateObject("java","java.io.File").init(Arguments.FilePath)>
-	<cfset var result = CreateObject("java","java.util.Date").init(fileObj.lastModified())>
 	
 	<cfreturn result>
 </cffunction>
