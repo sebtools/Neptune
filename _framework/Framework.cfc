@@ -142,6 +142,7 @@
 		<cfset This.Loader = CreateObject("component","ServiceFactory").init()>
 		<cfset This.Loader.loadXml(variables.instance.ComponentsFilePath)>
 		<cfset This.Loader.setScope(Application)>
+		<cfset This.Loader.Framework = This>
 		<cfset variables.instance.LoaderLoaded = now()>
 	</cfif>
 	<cfset This.Loader.loadConfig(This.Config)>
