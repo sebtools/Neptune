@@ -136,10 +136,6 @@
 	<!--- Load should be created if it doesn't exist or if the file has been updated since it was last created --->
 	<cfif NOT ( StructKeyExists(this,"Loader") AND StructKeyExists(variables.instance,"LoaderLoaded") AND isDate(variables.instance.LoaderLoaded) )>
 		<cfset doLoad = true>
-	<cfelseif NOT StructKeyExists(This.Loader,"getServiceLastUpdated")>
-		<cfset doLoad = true>
-	<cfelseif This.Loader.getServiceLastUpdated("ServiceFactory") GT variables.instance.LoaderLoaded>
-		<cfset doLoad = true>
 	</cfif>
 	
 	<cfif doLoad>
@@ -347,7 +343,15 @@ function getPageController(path) {
 	<cfargument name="components" type="string" required="yes">
 	<cfargument name="refresh" type="string" required="yes">
 	
-	<cfreturn this.Loader.checkRefresh(argumentCollection=arguments)>
+	<cfset var comp = "">
+	
+	<cfloop index="comp" list="#Arguments.components#">
+		<cfif NOT This.Loader.hasServiceLoaded(ServiceName=comp)>
+			<cfreturn True>
+		</cfif>
+	</cfloop>
+	
+	<cfreturn This.Loader.checkRefresh(argumentCollection=arguments)>
 </cffunction>
 
 <cffunction name="getBrowserPath" access="public" returntype="string" output="no">

@@ -220,6 +220,7 @@
 	<cfset var sObserverArgs = 0>
 	
 	<cfif Arguments.ServiceName EQ "ServiceFactory">
+		<cfset loadServiceFactory()>
 		<cfreturn This>
 	</cfif>
 	
@@ -327,6 +328,10 @@
 	<cfargument name="ServiceName" type="string" required="no">
 	
 	<cfset getService(Arguments.ServiceName)>
+	
+	<cfif Arguments.ServiceName EQ "ServiceFactory" AND NOT StructKeyExists(Variables.metadata,Arguments.ServiceName)>
+		<cfreturn getFileLastUpdated(getCurrentTemplatePath())>
+	</cfif>
 	
 	<cfreturn getFileLastUpdated(Variables.metadata[Arguments.ServiceName].Path)>
 </cffunction>
@@ -448,6 +453,12 @@
 	</cfif>
 	
 	<cfreturn result>
+</cffunction>
+
+<cffunction name="hasServiceLoaded" access="public" returntype="boolean" output="no" hint="I indicate if the given service is already loaded.">
+	<cfargument name="ServiceName" type="string" required="no">
+	
+	<cfreturn StructKeyExists(Variables.cache,Arguments.ServiceName)>
 </cffunction>
 
 <cffunction name="hasServicePath" access="public" returntype="boolean" output="no" hint="I indicate if the given service path is defined once (and only once).">
@@ -743,10 +754,14 @@
 <cffunction name="loadServiceFactory" access="private" returntype="any" output="no" hint="I put a reference to ServiceFactory as a servicee within Service Factory.">
 	
 	<!--- Ability to pass ServiceFactory into other components (not recommended) --->
-	<cfset Variables.cache["ServiceFactory"] = This>
-	<cfset Variables.metadata["ServiceFactory"] = getMetaData(variables.cache["ServiceFactory"])>
-	<cfset Variables.metadata["ServiceFactory"]["DateLoaded"] = now()>
-	<cfset Variables.metadata["ServiceFactory"]["LoadTime"] = Variables.LoadTime>
+	<cfif NOT StructKeyExists(Variables.cache,"ServiceFactory")>
+		<cfset Variables.cache["ServiceFactory"] = This>
+	</cfif>
+	<cfif NOT StructKeyExists(Variables.metadata,"ServiceFactory")>
+		<cfset Variables.metadata["ServiceFactory"] = getMetaData(variables.cache["ServiceFactory"])>
+		<cfset Variables.metadata["ServiceFactory"]["DateLoaded"] = now()>
+		<cfset Variables.metadata["ServiceFactory"]["LoadTime"] = Variables.LoadTime>
+	</cfif>
 	
 </cffunction>
 
