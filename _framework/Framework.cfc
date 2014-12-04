@@ -196,6 +196,7 @@
 		OR	( Len(arguments.refresh) AND arguments.refresh NEQ false )
 	>
 		<cfset ChangedSettings = loadConfigSettings()>
+		<cfset This.Loader.removeServices(arguments.refresh)>
 		<cfset isAnyProgramRegistered = registerAllPrograms(false)>
 	</cfif>
 	<cfset isLocalProgramRegistered = registerProgram(GetDirectoryFromPath(GetBaseTemplatePath()))>
@@ -210,7 +211,6 @@
 	<cfset this.Config.loadSettings()>
 	
 	<cfif doLoad OR arguments.refresh NEQ false>
-		<cfset This.Loader.removeServices(arguments.refresh)>
 		<cfset Variables.WhenLoadedAllServices = now()>
 		<cfset This.Loader.getAllServices()>
 		
