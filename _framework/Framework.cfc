@@ -145,7 +145,9 @@
 		<cfset This.Loader.Framework = This>
 		<cfset variables.instance.LoaderLoaded = now()>
 	</cfif>
-	<cfset This.Loader.loadConfig(This.Config)>
+	<cfif NOT StructKeyExists(This.Loader,"Config")>
+		<cfset This.Loader.loadConfig(This.Config)>
+	</cfif>
 	
 	<cfreturn doLoad>
 </cffunction>
@@ -209,6 +211,7 @@
 	
 	<cfif doLoad OR arguments.refresh NEQ false>
 		<cfset This.Loader.removeServices(arguments.refresh)>
+		<cfset Variables.WhenLoadedAllServices = now()>
 		<cfset This.Loader.getAllServices()>
 		
 		<cfset variables.instance["PathServices"] = StructNew()>
@@ -223,8 +226,15 @@
 		</cfif>
 	</cfif>
 	
-	<!--- This is a super-cheap operation once it has run. No reason not to call it again. --->
-	<cfset This.Loader.getAllServices()>
+	<!--- This is a pretty cheap operation. Will make sure it is called at least once an hour to verify that all services are loaded. If it doesn't work, no big deal. It probably wasn't needed anyway. --->
+	<cfif NOT ( StructKeyExists(Variables,"WhenLoadedAllServices") AND DateAdd("h",1,Variables.WhenLoadedAllServices) GT now() )>
+		<cfset Variables.WhenLoadedAllServices = now()>
+		<cftry>
+			<cfset This.Loader.getAllServices()>
+		<cfcatch>
+		</cfcatch>
+		</cftry>
+	</cfif>
 	
 </cffunction>
 
