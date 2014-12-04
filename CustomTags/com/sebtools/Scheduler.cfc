@@ -1,12 +1,16 @@
-<!--- 1.4 Build 10 --->
-<!--- Last Updated: 2011-04-11 --->
+<!--- 1.5 Build 11 --->
+<!--- Last Updated: 2014-09-18 --->
 <!--- Created by Steve Bryant 2007-01-31 --->
 <cfcomponent displayname="Scheduler">
 
 <cffunction name="init" access="public" returntype="any" output="no">
 	<cfargument name="DataMgr" type="any" required="yes">
+	<cfargument name="ServiceFactory" type="any" required="no">
 	
 	<cfset variables.DataMgr = arguments.DataMgr>
+	<cfif StructKeyExists(arguments,"ServiceFactory")>
+		<cfset variables.ServiceFactory = arguments.ServiceFactory>
+	</cfif>
 	
 	<cfset variables.datasource = variables.DataMgr.getDatasource()>
 	<cfset variables.DataMgr.loadXml(getDbXml(),true,true)>
@@ -23,16 +27,24 @@
 	<cfargument name="Name" type="string" required="yes">
 	<cfargument name="interval" type="string" default="1800">
 	
-	<cfschedule action="UPDATE" task="#arguments.Name#"  operation="HTTPRequest" url="#arguments.URL#" startdate="#now()#" starttime="12:00 AM" interval="#arguments.interval#">
+	<cfschedule action="UPDATE" task="#condenseTaskName(arguments.Name)#"  operation="HTTPRequest" url="#arguments.URL#" startdate="#now()#" starttime="12:00 AM" interval="#arguments.interval#">
 	
 </cffunction>
 
 <cffunction name="getActionRecords" access="public" returntype="query" output="no">
 	
+	<cfif StructKeyExists(Arguments,"TaskName")>
+		<cfset Arguments.TaskName = condenseTaskName(arguments.TaskName)>
+	</cfif>
+	
 	<cfreturn variables.DataMgr.getRecords("schActions",arguments)>
 </cffunction>
 
 <cffunction name="getTaskRecords" access="public" returntype="query" output="no">
+	
+	<cfif StructKeyExists(Arguments,"TaskName")>
+		<cfset Arguments.TaskName = condenseTaskName(arguments.TaskName)>
+	</cfif>
 	
 	<cfreturn variables.DataMgr.getRecords("schTasks",arguments)>
 </cffunction>
@@ -66,39 +78,102 @@
 
 <cffunction name="loadAbandonedTasks" access="public" returntype="void" output="false">
 	
-	<cfset var qTasks = getTaskRecords(interval="once")>
+	<!--- <cfset var qTasks = getTaskRecords(interval="once")> --->
+	<cfset var qTasks = getTaskRecords()>
+	<cfset var sSavedArgs = 0>
+	<cfset var aErrorMessages = ArrayNew(1)>
+	<cfset var ExpandedTaskName = "">
 	
 	<cfloop query="qTasks">
+		<cfset ExpandedTaskName = expandTaskName(Name=Name,jsonArgs=jsonArgs,TaskID=TaskID)>
 		<cfif
-				NOT StructKeyExists(variables.tasks,Name)
-			AND	StructKeyExists(variables.sComponents,ComponentPath)
+				NOT StructKeyExists(variables.tasks,ExpandedTaskName)
 			AND	dateCreated GTE DateAdd("d",-1,now())
 		>
-			<cfset variables.tasks[Name] = StructNew()>
-			<cfset variables.tasks[Name]["ComponentPath"] = ComponentPath>
-			<cfset variables.tasks[Name]["Component"] = variables.sComponents[ComponentPath]>
-			<cfset variables.tasks[Name]["MethodName"] = MethodName>
-			<cfset variables.tasks[Name]["interval"] = "once">
-			<cfset variables.tasks[Name]["Hours"] = Hours>
+			<cfif StructKeyExists(Variables,"ServiceFactory") AND NOT StructKeyExists(variables.sComponents,ComponentPath)>
+				<cftry>
+					<cfset setComponent(ComponentPath,Variables.ServiceFactory.getServiceByPath(ComponentPath))>
+				<cfcatch>
+				</cfcatch>
+				</cftry>
+			</cfif>
+			<cfif NOT StructKeyExists(variables.sComponents,ComponentPath)>
+				<cfset removeTask(Name)>
+				<cfset ArrayAppend(aErrorMessages,"The task #Name# has been deleted because the component specified by this task's component path (#ComponentPath#) is not available to Scheduler.")>
+			<cfelse>
+				<cfset variables.tasks[ExpandedTaskName] = StructNew()>
+				<cfset variables.tasks[ExpandedTaskName]["ComponentPath"] = ComponentPath>
+				<cfset variables.tasks[ExpandedTaskName]["Component"] = variables.sComponents[ComponentPath]>
+				<cfset variables.tasks[ExpandedTaskName]["MethodName"] = MethodName>
+				<cfset variables.tasks[ExpandedTaskName]["interval"] = "once">
+				<cfset variables.tasks[ExpandedTaskName]["Hours"] = Hours>
+				<cfset variables.tasks[ExpandedTaskName]["jsonArgs"] = jsonArgs>
+				<cfset variables.tasks[ExpandedTaskName]["name"] = ExpandedTaskName>
+							
+				<cfif jsonArgs CONTAINS "[[Complex Value Removed by Scheduler]]">
+					<cfset removeTask(Name)>
+					<cfset ArrayAppend(aErrorMessages,"Unable to retrieve complex arguments for #MethodName# method in the #Name# task. The task has been deleted.")>
+				<cfelse>
+					<!--- Load arguments from the json string in db and if not empty --->
+					<cfset sSavedArgs = DeserializeJSON( jsonArgs )>
+					<cfif StructCount( sSavedArgs ) GT 0>
+						<cfset variables.tasks[ExpandedTaskName]["Args"] = sSavedArgs>
+					</cfif>		
+				</cfif>
+			</cfif>			
 		</cfif>
 	</cfloop>
+	
+	<!--- Now we can throw any errors since successful tasks have now been reloaded into variables scope --->
+	<cfif ArrayLen(aErrorMessages)>
+		<cfif ArrayLen(aErrorMessages) EQ 1>
+			<cfthrow message="#aErrorMessages[1]#" type="Scheduler">
+		<cfelse>
+			<cfthrow message="The following errors occurred when trying to load abandoned tasks." detail="#ArrayToList(aErrorMessages,';')#" type="Scheduler">
+		</cfif>
+	</cfif>
 	
 </cffunction>
 
 <cffunction name="removeTask" access="public" returntype="void" output="no">
 	<cfargument name="Name" type="string" required="yes">
 	
-	<cfset var qTask = getTaskNameRecord(arguments.Name)>
+	<cfset var qTask = getTaskNameRecord(Name=Arguments.Name,fieldlist="TaskID")>
 	<cfset var data = StructNew()>
 	
 	<cfset data["TaskID"] = qTask.TaskID>
 	
+	<cfset StructDelete(variables.tasks, expandTaskName(arguments.Name,qTask.jsonargs,qTask.TaskID))>
 	<cfset variables.DataMgr.deleteRecord("schTasks",data)>
-	<cfset StructDelete(variables.tasks, arguments.Name)>
 	
 </cffunction>
 
-<cffunction name="setTask" access="public" returntype="void" output="no">
+<cffunction name="serializeArgsJSON" access="private" returntype="string" output="no">
+	<cfargument name="args" type="any" required="yes">
+	
+	<cfset var serializedJSON = "" />
+	<cfset var argCount = 1 />
+	
+	<cfloop collection="#arguments.args#" item="key">
+		<cfset var quotedKey = ListQualify( key ,'"',",","CHAR") />
+		<cfset var quotedValue = IsSimpleValue( args[ key ] ) ? ListQualify( args[ key ] ,'"',",","CHAR") : '"[[Complex Value Removed by Scheduler]]"' />
+		<cfset var keyValuePair = quotedKey & ":" & quotedValue />
+		<cfset serializedJSON &= ( argCount NEQ 1 ) ? "," & keyValuePair : keyValuePair />
+		<cfset argCount += 1 />
+	</cfloop>
+	
+	<cfreturn "{" & serializedJSON & "}"/>
+</cffunction>
+
+<cffunction name="setComponent" access="public" returntype="void" output="no">
+	<cfargument name="ComponentPath" type="string" required="yes" hint="The path to your component (example com.sebtools.NoticeMgr).">
+	<cfargument name="Component" type="any" required="yes">
+
+	<cfset variables.sComponents[arguments.ComponentPath] = arguments.Component>
+	
+</cffunction>
+
+<cffunction name="setTask" access="public" returntype="numeric" output="no">
 	<cfargument name="Name" type="string" required="yes">
 	<cfargument name="ComponentPath" type="string" required="yes" hint="The path to your component (example com.sebtools.NoticeMgr).">
 	<cfargument name="Component" type="any" required="yes">
@@ -108,17 +183,37 @@
 	<cfargument name="hours" type="string" required="no" hint="The hours in which the task can be run.">
 	<cfargument name="weekdays" type="string" required="no" hint="The week days on which the task can be run.">
 	
-	<cfset var qTask = getTaskNameRecord(arguments.Name)>
+	<cfset var qTask = 0>
+	<cfset var ExpandedTaskName = "">
 	
 	<cfif Len(Arguments.ComponentPath) GT 50>
 		<cfset Arguments.ComponentPath = Right(Arguments.ComponentPath,50)>
 	</cfif>
 	
+	<cfif StructKeyExists(arguments,"hours")>
+		<cfset arguments.hours = expandHoursList(arguments.hours)>
+	</cfif>
+	
+	<cfif StructKeyExists( arguments, "args" )>
+		<cfset arguments.jsonArgs = serializeArgsJSON( arguments.args ) />
+	<cfelse>
+		<cfset arguments.jsonArgs = "{}"/> <!--- compliant empty json string --->
+	</cfif>
+	
+	<cfset qTask = getTaskNameRecord(ArgumentCollection=arguments)>
+	<cfif qTask.RecordCount>
+		<cfset arguments.TaskID = qTask.TaskID>
+	<cfelse>
+		<cfset arguments.TaskID = variables.DataMgr.saveRecord("schTasks",arguments)>
+	</cfif>
+	
+	<cfset ExpandedTaskName = expandTaskName(arguments.Name,arguments.jsonArgs,arguments.TaskID)>
+	
 	<!--- Make sure task of this name doesn't exist for another component. --->
-	<cfif StructKeyExists(variables.tasks,arguments.Name)>
+	<cfif StructKeyExists(variables.tasks,ExpandedTaskName)>
 		<cfif
-				( variables.tasks[arguments.Name].ComponentPath NEQ arguments.ComponentPath )
-			OR	( variables.tasks[arguments.Name].MethodName NEQ arguments.MethodName )
+				( variables.tasks[ExpandedTaskName].ComponentPath NEQ arguments.ComponentPath )
+			OR	( variables.tasks[ExpandedTaskName].MethodName NEQ arguments.MethodName )
 		>
 			<cfthrow message="A task using this name already exists for another component method." type="Scheduler" errorcode="NameExists">
 		</cfif>
@@ -128,18 +223,9 @@
 		<cfset variables.sComponents[arguments.ComponentPath] = arguments.Component>
 	</cfif>
 	
-	<cfif StructKeyExists(arguments,"hours")>
-		<cfset arguments.hours = expandHoursList(arguments.hours)>
-	</cfif>
-	
-	<cfset variables.tasks[arguments.Name] = arguments>
-	
-	<cfif qTask.RecordCount>
-		<cfset arguments.TaskID = qTask.TaskID>
-	</cfif>
-	
-	<cfset arguments.TaskID = variables.DataMgr.saveRecord("schTasks",arguments)>
-	
+	<cfset variables.tasks[ExpandedTaskName] = arguments>
+
+	<cfreturn arguments.TaskID>
 </cffunction>
 
 <cffunction name="rerun" access="public" returntype="any" output="no">
@@ -160,6 +246,7 @@
 	
 	<cfset var sTask = StructNew()>
 	<cfset var qTask = getTaskNameRecord(arguments.Name)>
+	<cfset var ExpandedTaskName = expandTaskName(arguments.Name)>
 	<cfset var sTaskUpdate = StructNew()>
 	<cfset var sAction = StructNew()>
 	<cfset var key = "">
@@ -168,11 +255,11 @@
 	<cfset var TimeMarkEnd = 0>
 	
 	<cfif qTask.RecordCount>
-		<cfif StructKeyExists(variables.sRunningTasks,arguments.name)>
+		<cfif StructKeyExists(variables.sRunningTasks,ExpandedTaskName)>
 			<cfreturn false>
 		</cfif>
 		
-		<cfset variables.sRunningTasks[arguments.Name] = now()>
+		<cfset variables.sRunningTasks[ExpandedTaskName] = now()>
 		
 		<cfset sTaskUpdate["TaskID"] = qTask.TaskID>
 		<cfset sTaskUpdate["rerun"] = 0>
@@ -181,8 +268,8 @@
 		<cfset sAction["TaskID"] = qTask.TaskID>
 		<cfset sAction["ActionID"] = variables.DataMgr.insertRecord("schActions",sAction,"insert")>
 		
-		<cfloop collection="#variables.tasks[arguments.Name]#" item="key">
-			<cfset sTask[key] = variables.tasks[arguments.Name][key]>
+		<cfloop collection="#variables.tasks[ExpandedTaskName]#" item="key">
+			<cfset sTask[key] = variables.tasks[ExpandedTaskName][key]>
 		</cfloop>
 		
 		<cfif arguments.remove>
@@ -199,7 +286,7 @@
 			<cfset TimeMarkEnd = getTickCount()>
 			<cfset sAction.Success = true>
 		<cfcatch>
-			<cfset StructDelete(variables.sRunningTasks,arguments.Name)>
+			<cfset StructDelete(variables.sRunningTasks,ExpandedTaskName)>
 			<cfset sAction.Success = false>
 			<cfset TimeMarkEnd = getTickCount()>
 			<cfset sAction.Seconds = GetSecondsDiff(TimeMarkBegin,TimeMarkEnd)>
@@ -218,7 +305,7 @@
 		<cfset sAction = variables.DataMgr.truncate("schActions",sAction)>
 		<cfset variables.DataMgr.updateRecord("schActions",sAction)>
 		
-		<cfset StructDelete(variables.sRunningTasks,arguments.Name)>
+		<cfset StructDelete(variables.sRunningTasks,ExpandedTaskName)>
 	</cfif>
 	
 </cffunction>
@@ -231,9 +318,9 @@
 	<cfloop index="ii" from="1" to="#ArrayLen(aTasks)#" step="1">
 		<cfif StructKeyExists(aTasks[ii],"name") AND NOT StructKeyExists(variables.sRunningTasks,aTasks[ii].name)>
 			<cfif aTasks[ii].interval EQ "once">
-				<cfset runTask(aTasks[ii].name,true)>
+				<cfset runTask(ExpandTaskName(aTasks[ii].name,aTasks[ii].jsonArgs),true)>
 			<cfelse>
-				<cfset runTask(aTasks[ii].name)>
+				<cfset runTask(ExpandTaskName(aTasks[ii].name,aTasks[ii].jsonArgs))>
 			</cfif>
 		</cfif>
 	</cfloop>
@@ -255,7 +342,7 @@
 	
 	<!--- Look at each task --->
 	<cfloop collection="#variables.tasks#" item="task">
-		<cfif isRunnableTask(task,arguments.runtime)>
+		<cfif isRunnableTask(ExpandTaskName(task,variables.tasks[task].jsonargs),arguments.runtime)>
 			<cfset ArrayAppend(aResults,variables.tasks[task])>
 		</cfif>
 	</cfloop>
@@ -270,7 +357,7 @@
 	<cfset var sIntervals = getIntervals()>
 	<cfset var adjustedtime = DateAdd("n",10,arguments.runtime)><!--- Tasks run every 15 minutes at most and we need a margin of error for date checks. --->
 	<cfset var result = now()>
-	<cfset var task = Arguments.Name>
+	<cfset var task = expandTaskName(Arguments.Name)>
 	
 	<cfscript>
 	// If the interval is numeric, check by the number of seconds
@@ -312,8 +399,8 @@
 	<cfset var qCheckRun = 0>
 	<cfset var sIntervals = getIntervals()>
 	<cfset var adjustedtime = DateAdd("n",10,arguments.runtime)><!--- Tasks run every 15 minutes at most and we need a margin of error for date checks. --->
-	<cfset var task = Arguments.Name>
-	<cfset var qTask = getTaskNameRecord(task)>
+	<cfset var task = expandTaskName(Arguments.Name)>
+	<cfset var qTask = getTaskNameRecord(Arguments.Name)>
 
 	<cfif Len(variables.datasource)>
 		<!--- See if the task has already been run within its interval --->
@@ -339,8 +426,8 @@
 	<cfargument name="runtime" type="date" default="#now()#">
 	
 	<cfset var result = false>
-	<cfset var task = Arguments.Name>
-	<cfset var qTask = getTaskNameRecord(task)>
+	<cfset var qTask = getTaskNameRecord(Name=Arguments.Name,fieldlist="rerun")>
+	<cfset var task = expandTaskName(Arguments.Name)>
 	
 	<!--- If hours are specified, make sure current time is in that list of hours --->
 	<cfif qTask.rerun IS true>
@@ -371,6 +458,76 @@
 	
 	<cfset sComponents[arguments.ComponentPath] = arguments.Component>
 	
+</cffunction>
+
+<cffunction name="condenseTaskName" access="private" returntype="string" output="no" hint="I return the TaskName in its condensed form, that is just the task name itself.">
+	<cfargument name="Name" type="string" required="true">
+	
+	<!--- SEB: This is the same as ListFirst(Arguments.Name,":") except that it allows for TaskNames that contain ":". --->
+	<cfreturn ReReplaceNoCase(Arguments.Name,":\d+$","")>
+</cffunction>
+
+<cffunction name="expandTaskName" access="private" returntype="string" output="no" hint="I return the TaskName in its expanded form - including the TaskID.">
+	<cfargument name="Name" type="string" required="true">
+	<cfargument name="jsonArgs" type="string" required="false">
+	<cfargument name="TaskID" type="string" required="false">
+	
+	<cfset var result = Arguments.Name>
+	<cfset var qTask = 0>
+	<cfset var sRecord = 0>
+	
+	<!--- Only take action if the name doesn't already match the expanded form --->
+	<cfif NOT isExpandedForm(Arguments.Name)>
+		<cfif NOT StructKeyExists(Arguments,"TaskID")>
+			<cfset sRecord = StructNew()>
+			<cfset sRecord["Name"] = Arguments.Name>
+			<cfset sRecord["fieldlist"] = "TaskID">
+			<cfif StructKeyExists(Arguments,"jsonArgs")>
+				<cfset sRecord["jsonArgs"] = Arguments.jsonArgs>
+			</cfif>
+			<cfset qTask = getTaskNameRecord(ArgumentCollection=sRecord)>
+			<cfif qTask.RecordCount EQ 1>
+				<cfset Arguments.TaskID = qTask.TaskID>
+				<!--- <cfif NOT StructKeyExists(variables.tasks,"#Arguments.Name#:#qTask.TaskID#")>
+					<cfset result = "#Arguments.Name#:#qTask.TaskID#">
+				<cfelse>
+					<cfthrow message="Unable to uniquely identify the task #Arguments.Name#." type="Scheduler" errorcode="NoUniqueTaskFound">
+				</cfif> --->
+			<cfelse>
+				<cfthrow message="The task record for #Arguments.Name# was not found." type="Scheduler" errorcode="NoTaskFound">
+			</cfif>
+		</cfif>
+		<cfset result = "#Arguments.Name#:#Arguments.TaskID#">
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="splitTaskName" access="private" returntype="struct" output="no" hint="I return a structure of values from a TaskName.">
+	<cfargument name="Name" type="string" required="true">
+	
+	<cfset var sResult = StructNew()>
+	
+	<cfif isExpandedForm(Arguments.Name)>
+		<cfset sResult["TaskName"] = condenseTaskName(Arguments.Name)>
+		<cfset sResult["TaskID"] = ListLast(Arguments.Name,":")>
+	<cfelse>
+		<cfset sResult["TaskName"] = Arguments.Name>
+	</cfif>
+	
+	<cfreturn sResult>
+</cffunction>
+
+<cffunction name="isExpandedForm" access="private" returntype="boolean" output="no" hint="I determine if the given TaskName is in expanded form.">
+	<cfargument name="Name" type="string" required="true">
+	
+	<cfset var result = false>
+	
+	<cfif ReFindNoCase(":\d+$",Arguments.Name)>
+		<cfset result = true>
+	</cfif>
+	
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="getIntervals" access="private" returntype="struct" output="no">
@@ -405,7 +562,7 @@
 <cffunction name="getTaskNameRecord" access="private" returntype="query" output="no">
 	<cfargument name="Name" type="string" required="yes">
 	
-	<cfreturn variables.DataMgr.getRecords("schTasks",arguments)>
+	<cfreturn variables.DataMgr.getRecords("schTasks",splitTaskName(Arguments.Name))>
 </cffunction>
 
 <cffunction name="expandHoursList" access="public" returntype="string" output="false" hint="">
@@ -470,6 +627,7 @@
 					join-field="TaskID"
 				/>
 			</field>
+			<field ColumnName="jsonArgs" CF_DataType="CF_SQL_VARCHAR" Length="320" />
 		</table>
 		<table name="schActions">
 			<field ColumnName="ActionID" CF_DataType="CF_SQL_BIGINT" PrimaryKey="true" Increment="true" />
