@@ -1,4 +1,4 @@
-﻿<cfcomponent DisplayName="Service Factory" output="no">
+<cfcomponent DisplayName="Service Factory" output="no">
 
 <cffunction name="init" access="public" returntype="any" output="no">
 	<cfargument name="Config" type="struct" required="no">
@@ -13,6 +13,7 @@
 	<cfset Variables.xComponents = XmlNew()>
 	<cfset Variables.xLCaseComponents = XmlNew()>
 	<cfset Variables.sScope = StructNew()>
+	<cfset Variables.sInternalCache = StructNew()>
 	
 	<cfset Variables.attorder = "name,component,config,arg">
 	
@@ -26,6 +27,7 @@
 	
 	<!--- Just for backwards compatibility with AppLoader --->
 	<cfset This.getComponentsXML = getXml()>
+	<cfset This["register"] = registerServices>
 	
 	<cfset Variables.LoadTime = getTickCount() - BeginTime>
 	
@@ -98,12 +100,10 @@
 <cffunction name="loadService" access="public" returntype="any" output="no" hint="I load up the requested service component if it is defined.">
 	<cfargument name="ServiceName" type="string" required="no">
 	
-	<cfset var axServices = 0>
 	<cfset var result = true>
 	
 	<cfif NOT StructKeyExists(Variables.cache,Arguments.ServiceName)>
-		<cfset axServices = XmlSearch(Variables.xLCaseComponents,"//component[@name='#LCase(Arguments.ServiceName)#']")>
-		<cfif ArrayLen(axServices)>
+		<cfif hasService(Arguments.ServiceName)>
 			<cfset getService(Arguments.ServiceName)>
 		<cfelse>
 			<cfset result = false>
@@ -196,12 +196,14 @@
 	<cfset var ii = 0>
 	<cfset var xComponent = 0>
 	
-	<cfloop index="ii" from="1" to="#ArrayLen(Variables.xComponents.site.components.component)#">
-		<cfset xComponent = Variables.xComponents.site.components.component[ii]>
-		<cfif StructKeyExists(xComponent.XmlAttributes,"name")>
-			<cfset getService(xComponent.XmlAttributes["name"])>
-		</cfif>
-	</cfloop>
+	<cflock name="#getLockNamePrefix()#:GetAllServices" timeout="15">
+		<cfloop index="ii" from="1" to="#ArrayLen(Variables.xComponents.site.components.component)#">
+			<cfset xComponent = Variables.xComponents.site.components.component[ii]>
+			<cfif StructKeyExists(xComponent.XmlAttributes,"name")>
+				<cfset getService(xComponent.XmlAttributes["name"])>
+			</cfif>
+		</cfloop>
+	</cflock>
 	
 	<cfreturn Variables.cache>
 </cffunction>
@@ -240,7 +242,7 @@
 			<cfif doLoad>
 				<!--- Initialize service (and track init time) --->
 				<cfset BeginTime = getTickCount()>
-				<cfset oService = Variables.cache[Arguments.ServiceName].init(ArgumentCollection=sArgs)>
+				<cfset oService = initService(ServiceName=Arguments.ServiceName,sArgs=sArgs)>
 				<cfset EndTime = getTickCount()>
 				
 				<cfset storeServiceReference(Arguments.ServiceName,oService)>
@@ -359,20 +361,24 @@
 	<cfset var aResult = ArrayNew(1)>
 	<cfset var sService = 0>
 	
-	<cfloop index="ii" from="1" to="#ArrayLen(Variables.xComponents.site.components.component)#">
-		<cfset xComponent = Variables.xComponents.site.components.component[ii]>
-		<cfif StructKeyExists(xComponent.XmlAttributes,"name")>
-			<cfset ServiceName = xComponent.XmlAttributes["name"]>
-			<cfset getService(ServiceName)>
-			<cfif StructKeyExists(Variables.cache,ServiceName)>
-				<cfset sService = StructNew()>
-				<cfset sService["name"] = ServiceName>
-				<cfset ArrayAppend(aResult,sService)>
+	<!--- The services array won't change unless more components are loaded, so cache it. --->
+	<cfif NOT StructKeyExists(Variables.sInternalCache,"aServices")>
+		<cfloop index="ii" from="1" to="#ArrayLen(Variables.xComponents.site.components.component)#">
+			<cfset xComponent = Variables.xComponents.site.components.component[ii]>
+			<cfif StructKeyExists(xComponent.XmlAttributes,"name")>
+				<cfset ServiceName = xComponent.XmlAttributes["name"]>
+				<cfset getService(ServiceName)>
+				<cfif StructKeyExists(Variables.cache,ServiceName)>
+					<cfset sService = StructNew()>
+					<cfset sService["name"] = ServiceName>
+					<cfset ArrayAppend(aResult,sService)>
+				</cfif>
 			</cfif>
-		</cfif>
-	</cfloop>
+		</cfloop>
+		<cfset Variables.sInternalCache.aServices = aResult>
+	</cfif>
 	
-	<cfreturn aResult>
+	<cfreturn Variables.sInternalCache.aServices>
 </cffunction>
 
 <cffunction name="getSpecialService" access="public" returntype="any" output="no">
@@ -391,14 +397,23 @@
 <cffunction name="getSpecialServiceName" access="public" returntype="any" output="no">
 	<cfargument name="type" type="string" required="true">
 	
-	<cfset var axSpecialComponents = XmlSearch(variables.xLCaseComponents,"//component[string-length(@name)>0][@special='#LCase(Arguments.type)#']")>
+	<cfset var axSpecialComponents = 0>
+	<cfset var ii = 0>
 	<cfset var service = "">
 	
-	<cfloop index="ii" from="1" to="#ArrayLen(axSpecialComponents)#">
-		<cfif axSpecialComponents[ii].XmlAttributes["special"] EQ Arguments.type>
-			<cfset service = ListAppend(service,axSpecialComponents[ii].XmlAttributes["name"])>
-		</cfif>
-	</cfloop>
+	<cfif NOT StructKeyExists(Variables.sInternalCache,"sSpecialsNames")>
+		<cflock name="#getLockNamePrefix()#:sSpecialsNames" timeout="10">
+			<cfset Variables.sInternalCache["sSpecialsNames"] = StructNew()>
+			<cfset axSpecialComponents = XmlSearch(variables.xLCaseComponents,"//component[string-length(@name)>0][@special='#LCase(Arguments.type)#']")>
+			<cfloop index="ii" from="1" to="#ArrayLen(axSpecialComponents)#">
+				<cfset Variables.sInternalCache["sSpecialsNames"][axSpecialComponents[ii].XmlAttributes["special"]] = axSpecialComponents[ii].XmlAttributes["name"]>
+			</cfloop>
+		</cflock>
+	</cfif>
+	
+	<cfif StructKeyExists(Variables.sInternalCache["sSpecialsNames"],Arguments.type)>
+		<cfset service = Variables.sInternalCache["sSpecialsNames"][Arguments.type]>
+	</cfif>
 	
 	<cfreturn service>
 </cffunction>
@@ -487,6 +502,7 @@
 	<cfif isObject(Arguments.Config)>
 		<cfif StructKeyExists(Arguments.Config,"dump") AND StructKeyExists(Arguments.Config,"getsetting")>
 			<cfset Variables.oConfig = Arguments.Config>
+			<cfset This["Config"] = Variables.oConfig> 
 			<cfif StructCount(Variables.sConfig)>
 				<cfloop item="key" collection="#Variables.sConfig#">
 					<cfset Variables.oConfig.paramSetting(key,Variables.sConfig[key])>
@@ -663,6 +679,8 @@
 		</cfloop>
 	</cfif>
 	
+	<cfset StructClear(Variables.sInternalCache)>
+	
 </cffunction>
 
 <cffunction name="removeServices" access="public" returntype="any" output="no" hint="I remove the given service components from the internal cache.">
@@ -684,6 +702,8 @@
 			<cfset removeService(comp)>
 		</cfloop>
 	</cfif>
+	
+	<cfset StructClear(Variables.sInternalCache)>
 	
 	<cfreturn Variables.cache>
 </cffunction>
@@ -712,6 +732,8 @@
 			<cfset Variables.sScope[key] = Variables.cache[key]>
 		</cfif> 
 	</cfloop>
+	
+	<cfset StructClear(Variables.sInternalCache)>
 	
 </cffunction>
 
@@ -743,14 +765,21 @@
 	<cfreturn result>
 </cffunction>
 
+<cffunction name="getLockNamePrefix" access="private" returntype="string" output="no" hint="I return the prefix for locks on this instance.">
+	<cfreturn "ServiceFactory(#Variables.UUID#)">
+</cffunction>
+
 <cffunction name="initService" access="private" returntype="any" output="false" hint="">
 	<cfargument name="ServiceName" type="string" required="no">
 	<cfargument name="sArgs" type="struct" required="no">
-		
-	<cflock name="ServiceFactory(#Variables.UUID#):Init:#Arguments.ServiceName#" timeout="30" throwontimeout="false">
-		<cfset Variables.cache[Arguments.ServiceName] = Variables.cache[Arguments.ServiceName].init(ArgumentCollection=sArgs)>
+	
+	<cfset var oService = 0>
+	
+	<cflock name="#getLockNamePrefix()#:Init:#Arguments.ServiceName#" timeout="30" throwontimeout="false">
+		<cfset oService = Variables.cache[Arguments.ServiceName].init(ArgumentCollection=sArgs)>
 	</cflock>
 	
+	<cfreturn oService>
 </cffunction>
 
 <cffunction name="loadServiceFactory" access="private" returntype="any" output="no" hint="I put a reference to ServiceFactory as a servicee within Service Factory.">
@@ -775,43 +804,43 @@
 	<cfset var result = true>
 	<cfset var str = "">
 	
-	<cfif StructKeyExists(sAttribs,"component")>
+	<cfif StructKeyExists(Arguments.sAttribs,"component")>
 		<cfset str = 'component="#sAttribs.component#"'>
-		<cfif hasService(sAttribs["component"])>
-			<cfset sArgs[sAttribs["name"]] = getService(sAttribs["component"])>
+		<cfif hasService(Arguments.sAttribs["component"])>
+			<cfset Arguments.sArgs[Arguments.sAttribs["name"]] = getService(Arguments.sAttribs["component"])>
 		</cfif>
-	<cfelseif StructKeyExists(sAttribs,"arg")>
+	<cfelseif StructKeyExists(Arguments.sAttribs,"arg")>
 		<cfset str = 'arg="#sAttribs.arg#"'>
-		<cfif hasConfig(sAttribs["arg"])>
-			<cfset sArgs[sAttribs["name"]] = getConfig(sAttribs["arg"])>
+		<cfif hasConfig(Arguments.sAttribs["arg"])>
+			<cfset Arguments.sArgs[Arguments.sAttribs["name"]] = getConfig(Arguments.sAttribs["arg"])>
 		</cfif>
-	<cfelseif StructKeyExists(sAttribs,"config")>
-		<cfset str = 'config="#sAttribs.config#"'>
-		<cfif hasConfig(sAttribs["config"])>
-			<cfset sArgs[sAttribs["name"]] = getConfig(sAttribs["config"])>
+	<cfelseif StructKeyExists(Arguments.sAttribs,"config")>
+		<cfset str = 'config="#Arguments.sAttribs.config#"'>
+		<cfif hasConfig(Arguments.sAttribs["config"])>
+			<cfset Arguments.sArgs[Arguments.sAttribs["name"]] = getConfig(Arguments.sAttribs["config"])>
 		</cfif>
-	<cfelseif StructKeyExists(sAttribs,"value")>
+	<cfelseif StructKeyExists(Arguments.sAttribs,"value")>
 		<cfset str = 'value="#sAttribs.value#"'>
-		<cfset sArgs[sAttribs["name"]] = sAttribs["value"]>
+		<cfset Arguments.sArgs[Arguments.sAttribs["name"]] = Arguments.sAttribs["value"]>
 	<cfelse>
-		<cfset str = 'name="#sAttribs.name#"'>
-		<cfif hasService(sAttribs["name"])>
-			<cfset sArgs[sAttribs["name"]] = getService(sAttribs["name"])>
-		<cfelseif hasConfig(sAttribs["name"])>
-			<cfset sArgs[sAttribs["name"]] = getConfig(sAttribs["name"])>
+		<cfset str = 'name="#Arguments.sAttribs.name#"'>
+		<cfif hasService(Arguments.sAttribs["name"])>
+			<cfset Arguments.sArgs[Arguments.sAttribs["name"]] = getService(Arguments.sAttribs["name"])>
+		<cfelseif hasConfig(Arguments.sAttribs["name"])>
+			<cfset Arguments.sArgs[Arguments.sAttribs["name"]] = getConfig(Arguments.sAttribs["name"])>
 		</cfif>
 	</cfif>
-	<cfif NOT StructKeyExists(sArgs,sAttribs["name"])>
-		<cfif StructKeyExists(sAttribs,"ifmissing")>
-			<cfif sAttribs.ifmissing EQ "skiparg">
+	<cfif NOT StructKeyExists(Arguments.sArgs,Arguments.sAttribs["name"])>
+		<cfif StructKeyExists(Arguments.sAttribs,"ifmissing")>
+			<cfif Arguments.sAttribs.ifmissing EQ "skiparg">
 				<!--- Do nothing, just skip the argument --->
 			<cfelseif sAttribs.ifmissing EQ "skipcomp">
 				<cfset result = false>
 			<cfelse>
-				<cfset throwError("The service #Arguments.ServiceName# requires the argument #sAttribs.name#, the value for which (#str#) is not available.")>
+				<cfset throwError("The service #Arguments.ServiceName# requires the argument #Arguments.sAttribs.name#, the value for which (#str#) is not available.")>
 			</cfif>
 		<cfelse>
-			<cfset throwError("The service #Arguments.ServiceName# requires the argument #sAttribs.name#, the value for which (#str#) is not available.")>
+			<cfset throwError("The service #Arguments.ServiceName# requires the argument #Arguments.sAttribs.name#, the value for which (#str#) is not available.")>
 		</cfif>
 	</cfif>
 	
