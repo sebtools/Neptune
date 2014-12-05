@@ -226,8 +226,8 @@
 		</cfif>
 	</cfif>
 	
-	<!--- This is a pretty cheap operation. Will make sure it is called at least once an hour to verify that all services are loaded. If it doesn't work, no big deal. It probably wasn't needed anyway. --->
-	<cfif NOT ( StructKeyExists(Variables,"WhenLoadedAllServices") AND DateAdd("h",1,Variables.WhenLoadedAllServices) GT now() )>
+	<!--- This is a pretty cheap operation. Will make sure it is called at least once every 20 minutes to verify that all services are loaded. If it doesn't work, no big deal. It probably wasn't needed anyway. --->
+	<cfif NOT ( StructKeyExists(Variables,"WhenLoadedAllServices") AND DateAdd("n",20,Variables.WhenLoadedAllServices) GT now() )>
 		<cfset Variables.WhenLoadedAllServices = now()>
 		<cftry>
 			<cfset This.Loader.getAllServices()>
