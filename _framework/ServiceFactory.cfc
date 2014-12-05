@@ -775,7 +775,7 @@
 	
 	<cfset var oService = 0>
 	
-	<cflock name="#getLockNamePrefix()#:Init:#Arguments.ServiceName#" timeout="30" throwontimeout="false">
+	<cflock name="#getLockNamePrefix()#:Init:#Arguments.ServiceName#" timeout="30" throwontimeout="true">
 		<cfset oService = Variables.cache[Arguments.ServiceName].init(ArgumentCollection=sArgs)>
 	</cflock>
 	

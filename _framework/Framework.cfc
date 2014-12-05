@@ -1081,6 +1081,7 @@ function getPageController(path) {
 				<cfset oProgram.config(Config=This.Config,Framework=This)>
 				<cfset loadConfigSettings()>
 			</cfif>
+			<cfset runConfigFiles()>
 			<cfif Len(Trim(ComponentsXML))>
 				<cfset registerComponents(ComponentsXML,arguments.overwrite)>
 			</cfif>
