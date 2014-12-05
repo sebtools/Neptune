@@ -1,5 +1,5 @@
 <!--- 1.5 Build 11 --->
-<!--- Last Updated: 2014-09-18 --->
+<!--- Last Updated: 2014-12-04 --->
 <!--- Created by Steve Bryant 2007-01-31 --->
 <cfcomponent displayname="Scheduler">
 
@@ -151,18 +151,30 @@
 <cffunction name="serializeArgsJSON" access="private" returntype="string" output="no">
 	<cfargument name="args" type="any" required="yes">
 	
-	<cfset var serializedJSON = "" />
-	<cfset var argCount = 1 />
+	<cfset var serializedJSON = "">
+	<cfset var argCount = 1>
+	<cfset var quotedKey = "">
+	<cfset var quotedValue = "">
+	<cfset var keyValuePair = "">
+	<cfset var key = "">
 	
 	<cfloop collection="#arguments.args#" item="key">
-		<cfset var quotedKey = ListQualify( key ,'"',",","CHAR") />
-		<cfset var quotedValue = IsSimpleValue( args[ key ] ) ? ListQualify( args[ key ] ,'"',",","CHAR") : '"[[Complex Value Removed by Scheduler]]"' />
-		<cfset var keyValuePair = quotedKey & ":" & quotedValue />
-		<cfset serializedJSON &= ( argCount NEQ 1 ) ? "," & keyValuePair : keyValuePair />
-		<cfset argCount += 1 />
+		<cfset quotedKey = ListQualify( key ,'"',",","CHAR")>
+		<cfif IsSimpleValue( args[ key ] )>
+			<cfset quotedValue = ListQualify( args[ key ] ,'"',",","CHAR")>
+		<cfelse>
+			<cfset quotedValue = '"[[Complex Value Removed by Scheduler]]"'>
+		</cfif>
+		<cfset keyValuePair = quotedKey & ":" & quotedValue>
+		<cfif ( argCount NEQ 1 )>
+			<cfset serializedJSON &= "," & keyValuePair>
+		<cfelse>
+			<cfset serializedJSON &= keyValuePair>
+		</cfif>
+		<cfset argCount = argCount + 1>
 	</cfloop>
 	
-	<cfreturn "{" & serializedJSON & "}"/>
+	<cfreturn "{" & serializedJSON & "}">
 </cffunction>
 
 <cffunction name="setComponent" access="public" returntype="void" output="no">
