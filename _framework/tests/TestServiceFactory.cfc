@@ -828,6 +828,88 @@
 	
 </cffunction>
 
+<cffunction name="shouldRecoverMissingServiceError" access="public" returntype="void" output="no"
+	hint="Service Factory should be able to recover a missing service given the error message."
+>
+	
+	<cfset var sError = 0>
+	<cfset var BeginTime = 0>
+	<cfset var TotalTime = 0>
+	<cfset var sScope = StructNew()>
+
+	<!--- Do: Load into scope --->
+	<cfset Variables.ServiceFactory.setScope(sScope)>
+
+	<cfset loadXML()>
+
+	<cfset Variables.ServiceFactory.removeService("Comp")>
+	<cfset Variables.ServiceFactory.removeService("CompWithComp")>
+
+	<cfset assertFalse(StructKeyExists(sScope,"Comp"),"The removed service Comp still exists in the scope.")>
+	<cfset assertFalse(StructKeyExists(sScope,"CompWithComp"),"The removed service CompWithComp still exists in the scope.")>
+
+	<!--- Given an unrelated error, ServiceFactory should quickly do nothing --->
+	<cfset sError = StructNew()>
+	<cfset sError.Message = "Unrelated Error">
+	<cfset BeginTime = getTickCount()>
+	<cfset Variables.ServiceFactory.handleError(sError)>
+	<cfset TotalTime = getTickCount() - BeginTime>
+	<cfset assertTrue(TotalTime LT 10,"It took more than 10 milliseconds to respond to an unrelated error.")>
+
+	<!--- Given an error for a non-existent component, ServiceFactory should quickly do nothing --->
+		<!--- Using Element key --->
+		<cfset sError = StructNew()>
+		<cfset sError["Element"] = "NoSuchService">
+		<cfset Variables.ServiceFactory.handleError(sError)>
+		<cfset TotalTime = getTickCount() - BeginTime>
+		<cfset assertTrue(TotalTime LT 15,"It took more than 15 milliseconds to respond to an error on a non-existent service (using element).")>
+
+		<!--- Using message key --->
+		<cfset sError = StructNew()>
+		<cfset sError["Message"] = "Element NOSUCHSERVICE.NOSUCHCOMP is undefined in a Java object of type class [Ljava.lang.String; referenced as ''">
+		<cfset Variables.ServiceFactory.handleError(sError)>
+		<cfset TotalTime = getTickCount() - BeginTime>
+		<cfset assertTrue(TotalTime LT 20,"It took more than 20 milliseconds to respond to an error on a non-existent service (using message).")>
+
+	<!--- Given an error for a defined service, ServiceFactory should load it into Application scope. --->
+		
+		<!--- Using Element key --->
+		<cfset sError = StructNew()>
+		<cfset sError["Message"] = "Element CompWithComp.NOSUCHCOMP is undefined in a Java object of type class [Ljava.lang.String; referenced as ''">
+		<cfset sError["Element"] = "Comp.NoSuchComp">
+		<cfset Variables.ServiceFactory.handleError(sError)>
+		<cfset TotalTime = getTickCount() - BeginTime>
+		<cfset assertTrue(StructKeyExists(sScope,"Comp"),"ServiceFactory failed to recover a service from the element key of an exception.")>
+
+		<!--- Using message key --->
+		<cfset sError = StructNew()>
+		<cfset sError["Message"] = "Element CompWithComp.NOSUCHCOMP is undefined in a Java object of type class [Ljava.lang.String; referenced as ''">
+		<cfset Variables.ServiceFactory.handleError(sError)>
+		<cfset TotalTime = getTickCount() - BeginTime>
+		<cfset assertTrue(StructKeyExists(sScope,"CompWithComp"),"ServiceFactory failed to recover a service from the message string of an exception.")>
+
+	<!--- ServiceFactory should record services still loaded in factory, but missing from scope --->
+	<cfset StructDelete(sScope,"Comp")>
+
+	<cfset sError = StructNew()>
+	<cfset sError["Message"] = "Element Comp.NOSUCHCOMP is undefined in a Java object of type class [Ljava.lang.String; referenced as ''">
+	<cfset sError["Element"] = "Comp.NoSuchComp">
+	<cfset Variables.ServiceFactory.handleError(sError)>
+	<cfset TotalTime = getTickCount() - BeginTime>
+	<cfset assertTrue(StructKeyExists(sScope,"Comp"),"ServiceFactory failed to recover a service into the scope that still exists in ServiceFactory itself.")>
+
+	<!--- Handle "Factory" in variable reference for missing component --->
+	<cfset Variables.ServiceFactory.removeService("Comp")>
+
+	<cfset sError = StructNew()>
+	<cfset sError["Message"] = "Element Factory.Comp.NOSUCHCOMP is undefined in a Java object of type class [Ljava.lang.String; referenced as ''">
+	<cfset sError["Element"] = "Factory.Comp.NoSuchComp">
+	<cfset Variables.ServiceFactory.handleError(sError)>
+	<cfset TotalTime = getTickCount() - BeginTime>
+	<cfset assertTrue(StructKeyExists(sScope,"Comp"),"ServiceFactory failed to recover a service referenced via the generic Factory.")>
+
+</cffunction>
+
 <cffunction name="assertCompLoad" access="private" returntype="void" output="no">
 	<cfargument name="CompName" type="string" required="true">
 	<cfargument name="ArgList" type="string" required="true">
