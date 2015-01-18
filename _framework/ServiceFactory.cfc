@@ -432,6 +432,33 @@
 	<cfreturn sResult>
 </cffunction>
 
+<cffunction name="handleError" access="public" returntype="void" output="no" hint="I handle errors from missing services by reloading them.">
+	<cfargument name="Exception" type="struct" required="yes">
+	
+	<cfset var isMissingServiceError = StructKeyExists(Exception,"Message") AND REFindNoCase("^Element \w[\d\w\.]* is undefined in a Java object of type class",Exception.Message)>
+	<cfset var ServiceName = "">
+
+	<cfif isMissingServiceError>
+		<cfif StructKeyExists(Exception,"Element")>
+			<cfset ServiceName = Exception.Element>
+		<cfelse>
+			<cfset ServiceName = Trim(REReplaceNoCase(REReplaceNoCase(Exception.Message,"^Element ","")," is undefined.*",""))>
+		</cfif>
+
+		<!--- Handle "Factory" reference --->
+		<cfset ServiceName = ReReplaceNoCase(ServiceName,"^Factory\.","")>
+
+		<cfset ServiceName = ListFirst(ServiceName,".")>
+
+		<cfif Len(ServiceName) AND hasService(ServiceName)>
+			<cfset loadService(ServiceName)>
+			<cfset storeServiceReference(ServiceName,getService(ServiceName))>
+		</cfif>
+
+	</cfif>
+
+</cffunction>
+
 <cffunction name="hasConfig" access="public" returntype="boolean" output="no" hint="I indicate if the given service exists (or could exist).">
 	<cfargument name="name" type="string" required="yes">
 	
@@ -851,13 +878,15 @@
 	<cfargument name="ServiceName" type="string" required="no">
 	<cfargument name="oService" type="any" required="no">
 	
-	<!--- Store reference to service in needed spaces --->
-	<cfset Variables.cache[Arguments.ServiceName] = oService>
-	<cfset This[Arguments.ServiceName] = oService>
-	<cfset Variables.sScope[Arguments.ServiceName] = oService>
-	
-	<!--- Store metadata about service (include when it was loaded and how long it took to initialize) --->
-	<cfset Variables.metadata[Arguments.ServiceName] = getMetaData(oService)>
+	<cflock name="#getLockNamePrefix()#:storeServiceReference:#ServiceName#" timeout="15">
+		<!--- Store reference to service in needed spaces --->
+		<cfset Variables.cache[Arguments.ServiceName] = oService>
+		<cfset This[Arguments.ServiceName] = oService>
+		<cfset Variables.sScope[Arguments.ServiceName] = oService>
+		
+		<!--- Store metadata about service (include when it was loaded and how long it took to initialize) --->
+		<cfset Variables.metadata[Arguments.ServiceName] = getMetaData(oService)>
+	</cflock>
 	
 </cffunction>
 
