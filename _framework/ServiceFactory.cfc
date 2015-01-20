@@ -814,6 +814,7 @@
 	<!--- Ability to pass ServiceFactory into other components (not recommended) --->
 	<cfif NOT StructKeyExists(Variables.cache,"ServiceFactory")>
 		<cfset Variables.cache["ServiceFactory"] = This>
+		<cfset Variables.sScope["ServiceFactory"] = This>
 	</cfif>
 	<cfif NOT StructKeyExists(Variables.metadata,"ServiceFactory")>
 		<cfset Variables.metadata["ServiceFactory"] = getMetaData(variables.cache["ServiceFactory"])>
