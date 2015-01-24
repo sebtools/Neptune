@@ -35,7 +35,7 @@
 			<cfinvoke
 				component="#Variables.sEvents[EventName][ii].Listener#"
 				method="#Variables.sEvents[EventName][ii].ListenerMethod#"
-				argumentcollection="#Arguments#"
+				argumentcollection="#Arguments.Args#"
 			>
 			</cfinvoke>
 		</cfloop>
