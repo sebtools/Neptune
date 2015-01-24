@@ -46,6 +46,21 @@
 	
 </cffunction>
 
+<cffunction name="getListeners" access="public" returntype="struct" output="no">
+	<cfargument name="EventName" type="string" default="update">
+
+	<cfset var sResult = StructNew()>
+	<cfset var ii = "">
+
+	<cfif StructKeyExists(Variables.sEvents,Arguments.EventName) AND ArrayLen(Variables.sEvents[Arguments.EventName])>
+		<cfloop index="ii" from="1" to="#ArrayLen(Variables.sEvents[Arguments.EventName])#">
+			<cfset sResult[Variables.sEvents[Arguments.EventName][ii]["ListenerName"]] = Variables.sEvents[Arguments.EventName][ii]>
+		</cfloop>
+	</cfif>
+
+	<cfreturn sResult>
+</cffunction>
+
 <cffunction name="checkEventRecursion" access="private" returntype="void" output="no">
 	<cfargument name="EventName" type="string" default="update">
 	<cfargument name="RecursionLimit" type="numeric" required="true">
