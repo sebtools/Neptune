@@ -18,6 +18,8 @@
 	<cfargument name="log" type="boolean" default="false">
 	<cfargument name="port" type="string" required="false">
 	<cfargument name="useTLS" type="boolean" required="false">
+	<cfargument name="ErrorTo" type="string" default="">
+	<cfargument name="verify" type="boolean" default="false">
 	
 	<cfset variables.MailServer = arguments.MailServer>
 	<cfset variables.DefaultFrom = arguments.From>
@@ -28,6 +30,8 @@
 	<cfset variables.ReplyTo = arguments.ReplyTo>
 	<cfset variables.Sender = arguments.Sender>
 	<cfset variables.logtable = arguments.logtable>
+	<cfset variables.ErrorTo = arguments.ErrorTo>
+	<cfset variables.verify = arguments.verify>
 	
 	<cfset variables.Notices = StructNew()>
 	<cfset variables.isLogging = false>
@@ -58,7 +62,7 @@
 	
 	<cfif StructKeyExists(arguments,"DataMgr")>
 		<cfset variables.DataMgr = arguments.DataMgr>
-		<cfif Arguments.log OR variables.mode EQ "Sim">
+		<cfif Arguments.log OR variables.mode EQ "Sim" OR variables.verify>
 			<cfset startLogging(variables.DataMgr)>
 		</cfif>
 	</cfif>
@@ -186,9 +190,15 @@
 	<cfargument name="wraptext" type="string" default="800">
 	<cfargument name="Sender" type="string" default="#variables.Sender#">
 	<cfargument name="MailServer" type="string" default="#variables.MailServer#">
+	<cfargument name="verify" type="boolean" default="false">
 	
 	<cfset var sent = false>
 	<cfset var attachment = "">
+	
+	<!--- Need to check for variables.verify here instead of cfargument to maintain backwards compatibility --->
+	<cfif StructKeyExists(Variables,"verify")>
+		<cfset Arguments.verify = Variables.verify>
+	</cfif>
 	
 	<cfif NOT StructKeyExists(arguments,"Contents") AND NOT (Len(arguments.html) OR Len(arguments.text))>
 		<cfthrow message="Send method requires Contents argument or html or text arguments.">
@@ -231,6 +241,10 @@
 	</cfif>
 	
 	<cfset logSend(argumentCollection=arguments)>
+	
+	<cfif Arguments.verify>
+		<cfset verifySent(ArgumentCollection=Arguments)>
+	</cfif>
 	
 	<cfreturn sent>
 </cffunction>
@@ -427,6 +441,99 @@
 		<cfset variables.DataMgr.insertRecord(variables.logtable,variables.DataMgr.truncate(variables.logtable,arguments))>
 	</cfif>
 	
+</cffunction>
+
+<cffunction name="getVerify" access="public" returntype="boolean" output="no">
+	<cfreturn variables.verify>
+</cffunction>
+
+<cffunction name="getErrorTo" access="public" returntype="string" output="no">
+	
+	<cfset var ErrorTo = "">
+	
+	<cfif StructKeyExists(Variables,"ErrorTo")>
+		<cfset ErrorTo = Variables.ErrorTo>
+	</cfif>
+	
+	<cfreturn ErrorTo>
+</cffunction>
+
+<cffunction name="setVerify" access="public" returntype="void" output="no">
+	<cfargument name="verify" type="boolean" required="yes">
+	
+	<cfset variables.verify = arguments.verify>
+	
+</cffunction>
+
+<cffunction name="setErrorTo" access="public" returntype="void" output="no">
+	<cfargument name="ErrorTo" type="string" required="yes">
+	
+	<cfset variables.ErrorTo = arguments.ErrorTo>
+	
+</cffunction>
+
+<cffunction name="sendErrorEmail" access="private" returntype="void" output="no">
+		
+	<cfset var sError = {}>
+	<cfset var ErrorContent = "">
+	<cfset var arg = "">
+	
+	<cfif StructKeyExists(variables,"ErrorTo") AND Len(variables.ErrorTo)>
+		<cfset sError["To"] = variables.ErrorTo>
+		<cfset sError["Subject"] = "Failed email">
+		<cfset sError["type"] = "text">
+		<cfoutput>
+			<cfsavecontent variable="ErrorContent">
+			Failed email details:
+			<cfloop collection="#Arguments#" item="arg"> 
+				#arg#: #StructFind(Arguments,arg)#
+			</cfloop>
+			</cfsavecontent>
+		</cfoutput>
+		<cfset sError["Contents"] = ErrorContent>
+		<cfset sError["verify"] = false>
+		
+		<cfset send(ArgumentCollection=sError)>
+	</cfif>
+</cffunction>
+
+<cffunction name="verifySent" access="public" returntype="void" output="no">
+	<cfargument name="To" type="string" required="yes">
+	<cfargument name="Subject" type="string" required="yes">
+	<cfargument name="From" type="string" required="yes">
+	<cfargument name="CC" type="string" required="yes">
+	<cfargument name="BCC" type="string" required="yes">
+	<cfargument name="ReplyTo" type="string" required="yes">
+	
+	<cfset var qLogs = 0>
+	<cfset var sLogArgs = {}>
+	<cfset var aFilters = ArrayNew(1)>
+	<cfset var sFilter = {}>
+	<!---
+	Set BeforeSend to 5 minutes ago so we can check if the email was sent in the last five minutes.
+	This should avoid conflict with previous similar emails.
+	--->
+	<cfset var BeforeSend = CreateODBCDateTime(CreateDateTime(Year(now()),Month(now()),Day(now()),Hour(now()),Minute(now())-5,Second(now())))>
+	<cfset var RightNow = CreateODBCDateTime(CreateDateTime(Year(now()),Month(now()),Day(now()),Hour(now()),Minute(now()),Second(now())))>
+	
+	<cfset sLogArgs["To"] = Arguments.To>
+	<cfset sLogArgs["Subject"] = Arguments.Subject>
+	<cfset sLogArgs["From"] = Arguments.From>
+	<cfset sLogArgs["CC"] = Arguments.CC>
+	<cfset sLogArgs["BCC"] = Arguments.BCC>
+	<cfset sLogArgs["ReplyTo"] = Arguments.ReplyTo>
+
+	<cfset sFilter = {field="DateSent",operator="GT",value="#BeforeSend#"}>
+	<cfset ArrayAppend(aFilters,sFilter)>
+	<cfset sFilter = {field="DateSent",operator="LT",value="#RightNow#"}>
+	<cfset ArrayAppend(aFilters,sFilter)>
+	
+	<cfset qLogs = variables.DataMgr.getRecords(tablename=variables.logtable,data=sLogArgs,filters=aFilters)>
+	
+	<cfif NOT qLogs.RecordCount>
+		<cfset sendErrorEmail(ArgumentCollection=sLogArgs)>
+	</cfif>
+		
 </cffunction>
 
 <cffunction name="getDbXml" access="private" returntype="string" output="no" hint="I return the XML for the tables needed for Searcher to work.">
