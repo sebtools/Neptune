@@ -400,11 +400,11 @@
 	<cfset var axSpecialComponents = 0>
 	<cfset var ii = 0>
 	<cfset var service = "">
-	
+
 	<cfif NOT StructKeyExists(Variables.sInternalCache,"sSpecialsNames")>
 		<cflock name="#getLockNamePrefix()#:sSpecialsNames" timeout="10">
 			<cfset Variables.sInternalCache["sSpecialsNames"] = StructNew()>
-			<cfset axSpecialComponents = XmlSearch(variables.xLCaseComponents,"//component[string-length(@name)>0][@special='#LCase(Arguments.type)#']")>
+			<cfset axSpecialComponents = XmlSearch(variables.xLCaseComponents,"//component[string-length(@name)>0][string-length(@special)>0]")>
 			<cfloop index="ii" from="1" to="#ArrayLen(axSpecialComponents)#">
 				<cfset Variables.sInternalCache["sSpecialsNames"][axSpecialComponents[ii].XmlAttributes["special"]] = axSpecialComponents[ii].XmlAttributes["name"]>
 			</cfloop>
