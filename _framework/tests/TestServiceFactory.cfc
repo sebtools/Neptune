@@ -910,6 +910,78 @@
 
 </cffunction>
 
+<cffunction name="shouldPassChangedValue" access="public" returntype="void" output="no"
+	hint="Service Factory should correctly notice and pass a new value from the XML into a service when loading it."
+>
+	<cfset var CompPath = "#getDirectoryFromPath(getCurrentTemplatePath())#comp1.xml">
+	<cfset var sScope = StructNew()>
+	<cfset var oServiceFactory = CreateObject("component","admin.meta.model.ServiceFactory").init()>
+	<cfset var CompXml = "">
+
+<cfsavecontent variable="CompXml"><cfoutput>
+<site>
+	<components>
+		<component name="Comp" path="ExampleWithInitArg">
+			<argument name="Value" value="Value1" />
+		</component>
+	</components>
+</site>
+</cfoutput></cfsavecontent>
+
+	<cfset FileWrite(CompPath,CompXml)>
+	
+	<cfset oServiceFactory.loadXml(CompPath)>
+	<cfset oServiceFactory.setScope(sScope)>
+	<cfset oServiceFactory.getAllServices()>
+
+	<cfset assertEquals("value1",sScope.Comp.getValue(),"Service Factory failed to correctly set a hard-coded value from the XML.")>
+
+
+<cfsavecontent variable="CompXml"><cfoutput>
+<site>
+	<components>
+		<component name="Comp" path="ExampleWithInitArg">
+			<argument name="Value" value="Value2" />
+		</component>
+	</components>
+</site>
+</cfoutput></cfsavecontent>
+
+	<cfset FileWrite(CompPath,CompXml)>
+
+	<cfset oServiceFactory = CreateObject("component","admin.meta.model.ServiceFactory").init()>
+	
+	<cfset oServiceFactory.loadXml(CompPath)>
+	<cfset oServiceFactory.setScope(sScope)>
+
+	<cfset oServiceFactory.removeServices("Comp")>
+
+	<cfset oServiceFactory.getAllServices()>
+
+	<cfset assertEquals("Value2",sScope.Comp.getValue(),"Service Factory failed to pass the changed value from the XML.")>
+
+	<cfset FileDelete(CompPath)>
+
+</cffunction>
+
+<cffunction name="shouldPassValueWithCase" access="public" returntype="void" output="no"
+	hint="Service Factory should pass in values with the original case."
+>
+	<cfset var oServiceFactory = CreateObject("component","admin.meta.model.ServiceFactory").init()>
+
+	<cfset oServiceFactory.loadXml('<site>
+	<components>
+		<component name="Comp" path="ExampleWithInitArg">
+			<argument name="Value" value="Value1" />
+		</component>
+	</components>
+</site>')>
+	<cfset oServiceFactory.getAllServices()>
+
+	<cfset AssertEqualsCase('Value1',oServiceFactory.Comp.getValue(),"Service Factory failed to correctly pass in the case of a value argument.")>
+	
+</cffunction>
+
 <cffunction name="assertCompLoad" access="private" returntype="void" output="no">
 	<cfargument name="CompName" type="string" required="true">
 	<cfargument name="ArgList" type="string" required="true">

@@ -227,7 +227,7 @@
 	</cfif>
 	
 	<cfif NOT StructKeyExists(Variables.cache,Arguments.ServiceName)>
-		<cfset axServices = XmlSearch(Variables.xLCaseComponents,"//component[@name='#LCase(Arguments.ServiceName)#']")>
+		<cfset axServices = XmlSearch(Variables.xComponents,"//component[translate(@name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='#LCase(Arguments.ServiceName)#']")>
 		<cfif ArrayLen(axServices)>
 			<cfset Variables.cache[Arguments.ServiceName] = CreateObject("component",axServices[1].XmlAttributes["path"])>
 			<!--- Make Init Arguments --->
