@@ -2,8 +2,12 @@
 
 <cffunction name="setUp" access="public" returntype="void" output="no">
 	
-	<cfset loadExternalVars("Mailer,DataMgr")>
-	
+	<cfset var sConfig = StructFromArgs(datasource="#Application.DataMgr.getDatasource()#")>
+
+	<cfset Variables.ServiceFactory = CreateObject("component","admin.meta.model.ServiceFactory").init(config=sConfig)>
+	<cfset Variables.ServiceFactory.setScope(Variables)>
+	<cfset loadServices()>
+
 </cffunction>
 
 <cffunction name="shouldFailedEmailSendAlert" access="public" returntype="void" output="no"
@@ -74,6 +78,33 @@
 	<cfset qLogs = Variables.DataMgr.getRecords(tablename="mailerLogs",data=sEmail)>
 	
 	<cfset assertTrue(qLogs.RecordCount,"Mailer is not logging and verify is set to true.")>
+	
+</cffunction>
+
+<cffunction name="getXML" access="private" returntype="string" output="no">
+	<cfset var TestXML = "">
+	
+	<cfsavecontent variable="TestXML"><cfoutput><site>
+		<components>
+			<component name="DataMgr" path="com.sebtools.DataMgr">
+				<argument name="datasource" arg="datasource" />
+			</component>
+			<component name="Mailer" path="watcher.Mailer">
+				<argument name="DataMgr" ifmissing="skiparg" />
+				<argument name="MailServer" value="mail.test.com" />
+				<argument name="From" value="from@example.com" />
+				<argument name="Mode" value="Sim" />
+			</component>
+		</components>
+	</site></cfoutput></cfsavecontent>
+	
+	<cfreturn TestXML>
+</cffunction>
+
+<cffunction name="loadServices" access="private" returntype="void" output="no">
+	
+	<cfset Variables.ServiceFactory.loadXml(getXML())>
+	<cfset Variables.ServiceFactory.getAllServices()>
 	
 </cffunction>
 
