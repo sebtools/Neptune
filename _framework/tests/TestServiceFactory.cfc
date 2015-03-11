@@ -331,6 +331,43 @@
 	
 </cffunction>
 
+<cffunction name="shouldRemoveAndGetCompAndDeps" access="public" returntype="void" output="no"
+	hint="Removing and getting a component should reload that component and all of its dependants (but nothing else)."
+>
+	<cfset var sServices = 0>
+	<cfset var sScope = StructNew()>
+	<cfset var DateRefreshed = 0>
+	<cfset var Independents = "Comp,CompWithValue,CompWithValues,CompWithComp,CompWithCircle,CompWithCircle2,CompWithCircle3,CompWithMissingCompSkipArg">
+	<cfset var Dependents = "CompWithComp3,CompWithDeep">
+	<cfset var comp = "">
+
+	<cfset Variables.ServiceFactory.setScope(sScope)>
+	
+	<cfset loadXML()>
+	
+	<cfset sServices = Variables.ServiceFactory.getAllServices()>
+	
+	<cfset sleep(10)>
+	
+	<cfset DateRefreshed = now()>
+	
+	<cfset sleep(10)>
+	
+	<cfset sServices = Variables.ServiceFactory.removeServices("CompWithComp2")>
+
+	<cfset Variables.ServiceFactory.getAllServices()>
+	
+	<cfloop index="comp" list="#Independents#">
+		<cfset assertTrue((DateRefreshed.getTime() GT sServices[comp].DateLoaded.getTime()), "A component not dependent on the refreshed component was refreshed (#comp#)." )>
+	</cfloop>
+	
+	<cfset assertTrue((sServices["CompWithComp2"].DateLoaded.getTime() GT DateRefreshed.getTime()), "Service Factory failed to refreshed the component." )>
+	<cfloop index="comp" list="#Dependents#">
+		<cfset assertTrue((sServices[comp].DateLoaded.getTime() GT DateRefreshed.getTime()), "A component that is dependent on the refreshed component was not refreshed (#comp#)." )>
+	</cfloop>
+	
+</cffunction>
+
 <cffunction name="shouldRemoveServicesRemoveList" access="public" returntype="void" output="no"
 	hint="Remove Services should remove a list of services and all dependants from the cache."
 >
@@ -980,6 +1017,40 @@
 
 	<cfset AssertEqualsCase('Value1',oServiceFactory.Comp.getValue(),"Service Factory failed to correctly pass in the case of a value argument.")>
 	
+</cffunction>
+
+<cffunction name="shoulHandleNameOnlyArgs" access="public" returntype="void" output="no"
+	hint="Service Factory should correctly handle argument tags that just have name attributes."
+>
+	<cfset var oServiceFactory = CreateObject("component","admin.meta.model.ServiceFactory").init()>
+	<cfset var oConfig = CreateObject("component","_framework.Config").init("request")>
+	
+	<cfset oConfig.paramSetting("Value","banana")>
+	
+	<cfset oServiceFactory.loadConfig(oConfig)>
+
+	<cfset oServiceFactory.loadXml('<site>
+	<components>
+		<component name="Comp1" path="ExampleWithInitArg">
+			<argument name="Value" />
+		</component>
+		<component name="Comp2" path="ExampleComp">
+			<argument name="Comp1" />
+		</component>
+	</components>
+</site>')>
+	<cfset oServiceFactory.getAllServices()>
+
+	<cfset AssertEqualsCase('banana',oServiceFactory.Comp1.getValue(),"Service Factory failed to use an configuration for an argument based only on the name.")>
+	
+	<cfif NOT (
+			StructKeyExists(oServiceFactory.Comp2,"Args")
+		AND	StructKeyExists(oServiceFactory.Comp2.Args,"Comp1")
+		AND	oServiceFactory.Comp2.Args.Comp1.getValue() EQ "banana"
+	)>
+		<cfset fail("Service Factory failed to use an configuration for an argument based only on the name.")>
+	</cfif>
+
 </cffunction>
 
 <cffunction name="assertCompLoad" access="private" returntype="void" output="no">
