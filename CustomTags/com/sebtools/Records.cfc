@@ -117,7 +117,7 @@
 	</cfif>
 	
 	<cfset Arguments.fieldlist = Arguments.field>
-	<cfinvoke component="#This#" method="#sMetaStruct.method_gets#" returnvariable="qRecords" argumentcollection="#Arguments#">
+	<cfinvoke component="#This#" method="getRecords" returnvariable="qRecords" argumentcollection="#Arguments#">
 	
 	<cfif qRecords.RecordCount>
 		<cfset result = ArrayToList(qRecords[Arguments.field])>
@@ -290,7 +290,7 @@
 		
 		<cfset result = variables.DataMgr.hasRecords(argumentCollection=variables.Manager.alterArgs(argumentCollection=arguments))>
 	<cfelse>
-		<cfset result = (numRecords(argumentCollection=arguments) GT 0)>
+		<cfset result = (numRecords(argumentCollection=alterArgs(argumentCollection=arguments)) GT 0)>
 	</cfif>
 	
 	<cfreturn result>
