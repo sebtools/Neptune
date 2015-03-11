@@ -228,7 +228,7 @@
 	
 	<cfif NOT StructKeyExists(Variables.cache,Arguments.ServiceName)>
 		<cfset axServices = XmlSearch(Variables.xComponents,"//component[translate(@name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='#LCase(Arguments.ServiceName)#']")>
-		<cfif ArrayLen(axServices)>
+			<cfif ArrayLen(axServices) AND StructKeyExists(axServices[1].XmlAttributes,"path") AND Len(axServices[1].XmlAttributes["path"])>
 			<cfset Variables.cache[Arguments.ServiceName] = CreateObject("component",axServices[1].XmlAttributes["path"])>
 			<!--- Make Init Arguments --->
 			<cfset sArgs = StructNew()>
@@ -565,6 +565,15 @@
 	</cfif>
 	
 	<cfreturn Variables.cache>
+</cffunction>
+
+<cffunction name="refreshServices" access="public" returntype="any" output="no" hint="I refresh the given services.">
+	<cfargument name="Services" type="string" required="no">
+
+	<cfset removeServices(Arguments.Services)>
+
+	<cfset getAllServices()>
+
 </cffunction>
 
 <cffunction name="refreshStaleServices" access="public" returntype="struct" output="no" hint="I refresh all stale services (those )for which the files have changed since they were instantiated).">
