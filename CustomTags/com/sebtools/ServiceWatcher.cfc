@@ -18,6 +18,48 @@
 	<cfreturn This>
 </cffunction>
 
+<cffunction name="getBigHitters" access="public" returntype="query" output="no" hint="I return information about slow loading services.">
+	<cfargument name="SinceDate" type="date" required="false">
+
+	<cfset var qServiceData = 0>
+
+	<cfquery name="qServiceData" datasource="#Variables.datasource#">
+	SELECT		time_rank,ServiceName,AvgLoadTime,LastLoaded
+	FROM		(
+					SELECT		ServiceName,
+								AVG(LoadTime) AS AvgLoadTime,
+								count(*) AS NumLoads,
+								RANK( ) OVER (ORDER BY Avg(LoadTime) DESC) time_rank,
+								NTILE(10) OVER (ORDER BY Avg(LoadTime)) AS Tenths,
+								Max(DateLoaded) AS LastLoaded
+					FROM		svcLoads
+					WHERE		1 = 1
+						<cfif StructKeyExists(Arguments,"SinceDate")>
+						AND		DateLoaded >= #CreateODBCDateTime(Arguments.SinceDate)#
+						</cfif>
+					GROUP BY	ServiceID, ServiceName
+				) data
+	WHERE		Tenths >= 10
+		AND		AvgLoadTime >= (
+					SELECT		SUM(AvgLoadTime) / 10
+					FROM		(
+									SELECT		AVG(LoadTime) AS AvgLoadTime,
+												NTILE(10) OVER (ORDER BY Avg(LoadTime)) AS Tenths
+									FROM		svcLoads
+									WHERE		1 = 1
+										<cfif StructKeyExists(Arguments,"SinceDate")>
+										AND		DateLoaded >= #CreateODBCDateTime(Arguments.SinceDate)#
+										</cfif>
+									GROUP BY	ServiceID
+								) avgs
+					WHERE		Tenths >= 9
+				)
+	ORDER BY	time_rank ASC
+	</cfquery>
+	
+	<cfreturn qServiceData>
+</cffunction>
+
 <cffunction name="getLastLoadData" access="public" returntype="query" output="no" hint="I return information about the last time that the given service was loaded.">
 	<cfargument name="ServiceName" type="string" required="true">
 	
@@ -151,7 +193,7 @@
 	FROM	svcLoads
 	WHERE	1 = 1
 	<cfif StructKeyExists(Arguments,"ServiceDate")>
-		AND	DateTracked >= #createODBCDate(Arguments.ServiceDate)#
+		AND	DateTracked >= #CreateODBCDate(Arguments.ServiceDate)#
 	</cfif>
 	</cfquery>
 	
