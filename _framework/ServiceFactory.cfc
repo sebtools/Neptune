@@ -196,7 +196,7 @@
 	<cfset var ii = 0>
 	<cfset var xComponent = 0>
 	
-	<cflock name="#getLockNamePrefix()#:GetAllServices" timeout="15">
+	<cflock name="#getLockNamePrefix()#:GetAllServices" timeout="300">
 		<cfloop index="ii" from="1" to="#ArrayLen(Variables.xComponents.site.components.component)#">
 			<cfset xComponent = Variables.xComponents.site.components.component[ii]>
 			<cfif StructKeyExists(xComponent.XmlAttributes,"name")>
