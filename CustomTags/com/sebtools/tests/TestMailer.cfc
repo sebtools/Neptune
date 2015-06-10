@@ -81,6 +81,20 @@
 	
 </cffunction>
 
+<cffunction name="shouldFixEmail" access="public" returntype="void" output="no"
+	hint="Mailer should be able to fix basic mistakes in email addresses."
+>
+
+	<cfset assertEquals('josh@resonantmedia.com',Variables.Mailer.fixEmail('josh @resonantmedia,com'),"Failed to correct space and comma in non-aliased email address.")>
+	<cfset assertEquals('good@resonantmedia.com',Variables.Mailer.fixEmail('good@resonantmedia,com'),"Failed to correct comma in non-aliased email address.")>
+	<cfset assertEquals('better@resonantmedia.com',Variables.Mailer.fixEmail('better@resonantmedia.com'),"Failed to preserve valid email address.")>
+	<cfset assertEquals('Better Option <better@resonantmedia.com>',Variables.Mailer.fixEmail('Better Option <better@resonantmedia,com>'),"Failed to correct comma in aliased email address.")>
+	<cfset assertEquals('"Better Option" <better@resonantmedia.com>',Variables.Mailer.fixEmail('"Better Option" <better@resonantmedia,com>'),"Failed to correct comma in email address with quoted alias.")>
+	<cfset assertEquals('"Better Option" <better@resonantmedia.com>',Variables.Mailer.fixEmail('"Better Option" <better @resonantmedia,com>'),"Failed to correct comma and space in email address with a quoated alias.")>
+	<cfset assertEquals('"Option, Better" <better@resonantmedia.com>',Variables.Mailer.fixEmail('"Option, Better" <better @resonantmedia,com>'),"Failed to preserve comma in quoated alias.")>
+	
+</cffunction>
+
 <cffunction name="getXML" access="private" returntype="string" output="no">
 	<cfset var TestXML = "">
 	
@@ -89,7 +103,7 @@
 			<component name="DataMgr" path="com.sebtools.DataMgr">
 				<argument name="datasource" arg="datasource" />
 			</component>
-			<component name="Mailer" path="watcher.Mailer">
+			<component name="Mailer" path="admin.meta.model.Mailer">
 				<argument name="DataMgr" ifmissing="skiparg" />
 				<argument name="MailServer" value="mail.test.com" />
 				<argument name="From" value="from@example.com" />

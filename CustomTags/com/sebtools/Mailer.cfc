@@ -105,6 +105,20 @@
 	
 </cffunction>
 
+<cffunction name="fixEmail" access="public" returntype="string" output="no" hint="I fix an email address (or attempt to).">
+	<cfargument name="email" type="string" required="yes">
+	
+	<cfif Len(Arguments.email)>
+		<cfif REFind("(\[|\(|<)",Arguments.email)>
+			<cfset Arguments.email = Left(Arguments.email,REFind("(\[|\(|<)",Arguments.email) -1).concat(ReplaceNoCase(ReplaceNoCase(Mid(Arguments.email,REFind("(\[|\(|<)",Arguments.email),Len(Arguments.email)),',','.','ALL'),' ','','ALL'))>
+		<cfelse>
+			<cfset Arguments.email = ReplaceNoCase(ReplaceNoCase(Arguments.email,',','.','ALL'),' ','','ALL')>
+		</cfif>
+	</cfif>
+	
+	<cfreturn Arguments.email>
+</cffunction>
+
 <cffunction name="getData" access="public" returntype="struct" output="no" hint="I get the data stored in the Mailer component.">
 	<cfreturn variables.RootData>
 </cffunction>
@@ -194,6 +208,7 @@
 	
 	<cfset var sent = false>
 	<cfset var attachment = "">
+	<cfset var e = "">
 	
 	<!--- Need to check for variables.verify here instead of cfargument to maintain backwards compatibility --->
 	<cfif StructKeyExists(Variables,"verify")>
@@ -203,6 +218,13 @@
 	<cfif NOT StructKeyExists(arguments,"Contents") AND NOT (Len(arguments.html) OR Len(arguments.text))>
 		<cfthrow message="Send method requires Contents argument or html or text arguments.">
 	</cfif>
+
+	<!--- double check for invalid email addresses and fix them if possible --->
+	<cfloop list="From,CC,BCC,To,ReplyTo,Sender" index="e">
+		<cfif StructKeyExists(Arguments,e) AND Len(Arguments[e])>
+			<cfset Arguments[e] = fixEmail(Arguments[e])>
+		</cfif>
+	</cfloop>
 	
 	<!--- Filter invalid recipients --->
 	<cfif variables.mode EQ "Live">
