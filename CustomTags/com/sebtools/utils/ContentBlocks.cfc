@@ -33,6 +33,7 @@
 <cffunction name="addContentBlock" access="public" returntype="any" output="no" hint="I add the given content block if it doesn't yet exist.">
 	
 	<cfset var qCheck = 0>
+	<cfset var sCheck = {}>
 	
 	<!--- Friendlier argument names --->
 	<cfif StructKeyExists(Arguments,"Name") AND NOT StructKeyExists(Arguments,"ContentBlockName")>
@@ -48,19 +49,25 @@
 		<cfset StructDelete(Arguments,"html")>
 	</cfif>
 	
-	<cfset qCheck = getContentBlocks(ContentBlockName=Arguments.ContentBlockName,ExcludeComponent=Arguments.Component,fieldlist="ContentBlockID,Component")>
-	
-	<cfif qCheck.RecordCount AND Len(Variables.Manager.DataMgr.getDatasource())>
-		<cfset throwError(Message="A content block of this name is already being used by another component (""#qCheck.Component#"").",ErrorCode="NameConflict")>
+	<cfif StructKeyExists(Arguments,"Component")>
+		<cfset qCheck = getContentBlocks(ContentBlockName=Arguments.ContentBlockName,ExcludeComponent=Arguments.Component,fieldlist="ContentBlockID,Component")>
+		
+		<cfif qCheck.RecordCount AND Len(Variables.Manager.DataMgr.getDatasource())>
+			<cfset throwError(Message="A content block of this name is already being used by another component (""#qCheck.Component#"").",ErrorCode="NameConflict")>
+		</cfif>
 	</cfif>
-	
-	<cfset Variables.sContentBocks[Arguments.ContentBlockName] = Arguments>
 	
 	<!---
 	Only take action if this doesn't already exists for this component.
 	(we don't want to update because the admin may have change the text from the default)
 	--->
-	<cfif NOT hasContentBlocks(ContentBlockName=Arguments.ContentBlockName,Component=Arguments.Component)>
+	<cfset sCheck["ContentBlockName"] = Arguments.ContentBlockName>
+	<cfif StructKeyExists(Arguments,"Component")>
+		<cfset sCheck["Component"] = Arguments.Component>
+	</cfif>
+	<cfif NOT hasContentBlocks(ArgumentCollection=sCheck)>
+		<cfset Variables.sContentBocks[Arguments.ContentBlockName] = Arguments>
+
 		<cfset saveContentBlock(ArgumentCollection=arguments)>
 	</cfif>
 	
@@ -68,6 +75,7 @@
 
 <cffunction name="getContentBlockHTML" access="public" returntype="string" output="no" hint="I get the HTML for the requested content block.">
 	<cfargument name="ContentBlockName" type="string" required="yes">
+	<cfargument name="data" type="struct" required="no">
 	
 	<cfset var qContentBlock = 0>
 	<cfset var result = "">
@@ -87,10 +95,12 @@
 			<cfset result = ParagraphFormatFull(result)>
 		</cfif>
 	</cfif>
-	
-	<cfif Len(result) AND StructKeyExists(Variables,"Settings") AND StructKeyExists(Variables.Settings,"populate")>
-		<cfset result = Variables.Settings.populate(result)>
+
+	<cfif NOT StructKeyExists(Arguments,"data")>
+		<cfset Arguments.data = StructNew()>
 	</cfif>
+	
+	<cfset result = populate(result,Arguments.data)>
 	
 	<cfreturn result>
 </cffunction>
@@ -110,6 +120,7 @@
 
 <cffunction name="getContentBlockText" access="public" returntype="string" output="no" hint="I get the TEXT for the requested content block.">
 	<cfargument name="ContentBlockName" type="string" required="yes">
+	<cfargument name="data" type="struct" required="no">
 	
 	<cfset var qContentBlock = 0>
 	<cfset var result = "">
@@ -129,9 +140,11 @@
 		</cfif>
 	</cfif>
 	
-	<cfif Len(result) AND StructKeyExists(Variables,"Settings") AND StructKeyExists(Variables.Settings,"populate")>
-		<cfset result = Variables.Settings.populate(result)>
+	<cfif NOT StructKeyExists(Arguments,"data")>
+		<cfset Arguments.data = StructNew()>
 	</cfif>
+	
+	<cfset result = populate(result,Arguments.data)>
 	
 	<cfreturn result>
 </cffunction>
@@ -200,6 +213,30 @@
 	
 	<cfreturn result>
 </cffunction>--->
+
+<cffunction name="populate" access="public" returntype="any" output="no" hint="I populate the values within the string from the given structure (and from Settings, if available).">
+	<cfargument name="string" type="string" required="true">
+	<cfargument name="data" type="struct" required="false">
+	
+	<cfset var result = Arguments.string>
+	<cfset var key = "">
+
+	<cfif Len(Trim(result))>
+		<cfif StructKeyExists(Arguments,"data") AND StructCount(Arguments.data) AND ReFindNoCase("\[.*\]",result)>
+			<cfloop collection="#Arguments.data#" item="key">
+				<cfif StructKeyExists(Arguments.data,key) AND isSimpleValue(Arguments.data[key])>
+					<cfset result = ReplaceNoCase(result,"[#key#]",Arguments.data[key])>
+				</cfif>
+			</cfloop>
+		</cfif>
+
+		<cfif Len(result) AND StructKeyExists(Variables,"Settings") AND StructKeyExists(Variables.Settings,"populate")>
+			<cfset result = Variables.Settings.populate(result)>
+		</cfif>
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>
 
 <cffunction name="saveContentBlock" access="public" returntype="string" output="no">
 	
