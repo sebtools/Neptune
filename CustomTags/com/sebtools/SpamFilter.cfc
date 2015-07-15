@@ -76,11 +76,11 @@
 	
 	<!--- If we don't have a point limit, set it to the number of fields --->
 	<cfif NOT pointlimit>
-		<cfset pointlimit = getPointLimit(arguments.data)>
+		<cfset pointlimit = getPointLimit(arguments.data,maxpoints)>
 	</cfif>
 	
 	<!--- Run that filter! --->
-	<cfset pointval = getPoints(arguments.data)>
+	<cfset pointval = getPoints(arguments.data,maxpoints)>
 	
 	<cfif pointval GT pointlimit>
 		<cfset result = true>
@@ -91,6 +91,7 @@
 
 <cffunction name="getPoints" access="public" returntype="numeric" output="no"hint="I return the number of points in the given structure.">
 	<cfargument name="data" type="struct" required="yes">
+	<cfargument name="maxpoints" type="numeric" default="0">
 	
 	<cfset var pointval = 0>
 	<cfset var qWords = variables.DataMgr.getRecords("spamWords")>
@@ -104,13 +105,19 @@
 		<cfif isSimpleValue(arguments.data[field]) AND Len(field) AND Len(arguments.data[field]) AND field NEQ "Email">
 			<cfloop query="qWords">
 				<!--- Get the number of times the word appears --->
-				<cfset finds = numWordMatches(arguments.data[field],trim(Word))>
+				<cfset finds = numWordMatches(arguments.data[field],trim(Word),Arguments.maxpoints)>
 				<cfset pointval = pointval + (finds * Val(points))>
+				<cfif maxpoints GT 0 AND pointval GT maxpoints>
+					<cfreturn pointval>
+				</cfif>
 			</cfloop>
 			<cfloop query="qRegExs">
 				<!--- Get the number of times the expression is matched --->
-				<cfset finds = numRegExMatches(arguments.data[field],trim(RegEx),Val(checkcase))>
+				<cfset finds = numRegExMatches(arguments.data[field],trim(RegEx),Val(checkcase),Arguments.maxpoints)>
 				<cfset pointval = pointval + (finds * Val(points))>
+				<cfif maxpoints GT 0 AND pointval GT maxpoints>
+					<cfreturn pointval>
+				</cfif>
 			</cfloop>
 			<!--- Points for duplicate field values --->
 			<cfset duplist = ListAppend(duplist,field)>
@@ -124,6 +131,9 @@
 				>
 					<cfset pointval = pointval + 1>
 					<cfset duplist = ListAppend(duplist,field2)>
+					<cfif maxpoints GT 0 AND pointval GT maxpoints>
+						<cfreturn pointval>
+					</cfif>
 				</cfif>
 			</cfloop>
 		</cfif>
@@ -318,6 +328,7 @@
 <cffunction name="numRegExCaseMatches" access="public" returntype="numeric" output="no" hint="I return the number of times the given regular expression is matched in the given string.">
 	<cfargument name="string" type="string" require="true">
 	<cfargument name="regex" type="string" require="true">
+	<cfargument name="maxpoints" type="numeric" default="0">
 	
 	<cfset var result = 0>
 	<cfset var findat = REFind(arguments.regex, arguments.string)>
@@ -325,6 +336,9 @@
 	<cfscript>
 	while ( findat GT 0 ) {
 		result = result + 1;
+		if ( arguments.maxpoints GT 0 AND result GT arguments.maxpoints ) {
+			return result;
+		}
 		findat = REFind(arguments.regex, arguments.string, findat+1);
 	}
 	</cfscript>
@@ -335,8 +349,9 @@
 <cffunction name="numWordMatches" access="public" returntype="numeric" output="no" hint="I return the number of times the given word is found in the given string.">
 	<cfargument name="string" type="string" require="true">
 	<cfargument name="word" type="string" require="true">
+	<cfargument name="maxpoints" type="numeric" default="0">
 	
-	<cfreturn numRegExMatches(arguments.string,"\b#arguments.word#\b")>
+	<cfreturn numRegExMatches(arguments.string,"\b#arguments.word#\b",arguments.maxpoints)>
 </cffunction>
 
 <cffunction name="upgrade" access="public" returntype="void" output="no">
