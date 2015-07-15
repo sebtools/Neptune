@@ -7,6 +7,7 @@
 	<cfset Variables.DataMgr.loadXml(getDbXml(),true,true)>
 	
 	<cfset loadPastDeployments()>
+	<cfset deployNewLengths()>
 	
 	<cfreturn This>
 </cffunction>
@@ -109,6 +110,35 @@
 	<cfreturn "#sArgs.Name#:::#sArgs.ComponentPath#">
 </cffunction>
 
+<cffunction name="changeLengths" access="public" returntype="void" output="no">
+
+	<cfset var qColumns = 0>
+
+	<cfquery name="qColumns" datasource="#Variables.DataMgr.getDatasource()#">
+	SELECT	column_name,character_maximum_length    
+	FROM	information_schema.columns  
+	WHERE	table_name = 'utilDeployments'
+		AND	data_type = 'varchar'
+		AND	column_name IN ('Name','ComponentPath','MethodName')
+	</cfquery>
+	
+	<cfoutput query="qColumns">
+		<cfif character_maximum_length LT 255>
+			<cfquery datasource="#Variables.DataMgr.getDatasource()#">
+			ALTER TABLE	utilDeployments
+			ALTER COLUMN #column_name# VARCHAR(255)
+			</cfquery>
+		</cfif>
+	</cfoutput>
+
+</cffunction>
+
+<cffunction name="deployNewLengths" access="public" returntype="void" output="no">
+
+	<cfset deploy(Name="deployNewDeploymentNameLength",ComponentPath="com.sebtools.utils.Deployer",Component=This,MethodName="changeLengths")>
+
+</cffunction>
+
 <cffunction name="getDbXml" access="private" returntype="string" output="no" hint="I return the XML for the tables needed for Deployer to work.">
 	
 	<cfset var result = "">
@@ -117,9 +147,9 @@
 	<tables>
 		<table name="utilDeployments">
 			<field ColumnName="DeploymentID" CF_DataType="CF_SQL_INTEGER" PrimaryKey="true" Increment="true" />
-			<field ColumnName="Name" CF_DataType="CF_SQL_VARCHAR" Length="50" />
-			<field ColumnName="ComponentPath" CF_DataType="CF_SQL_VARCHAR" Length="50" />
-			<field ColumnName="MethodName" CF_DataType="CF_SQL_VARCHAR" Length="50" />
+			<field ColumnName="Name" CF_DataType="CF_SQL_VARCHAR" Length="255" />
+			<field ColumnName="ComponentPath" CF_DataType="CF_SQL_VARCHAR" Length="255" />
+			<field ColumnName="MethodName" CF_DataType="CF_SQL_VARCHAR" Length="255" />
 			<field ColumnName="DateRun" CF_DataType="CF_SQL_DATE" Special="CreationDate" />
 			<field ColumnName="ErrorMessage" CF_DataType="CF_SQL_VARCHAR" Length="250" />
 			<field ColumnName="ErrorDetail" CF_DataType="CF_SQL_VARCHAR" Length="250" />
