@@ -136,6 +136,11 @@
 					</cfif>
 				</cfif>
 			</cfloop>
+
+			<!--- get points for banned foreign languages --->
+			<cfset langPoints = getForeignLanguagePoints(arguments.data[field]) />
+			<cfset pointval = pointval + langPoints />
+
 		</cfif>
 	</cfloop>
 	
@@ -376,6 +381,26 @@
 		</cfif>
 	</cfloop>
 	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="getForeignLanguagePoints" access="public" returntype="numeric" output="no">
+	<cfargument name="string" type="string" require="true">
+
+	<cfset var key = "">
+	<cfset var pointval = 1>
+	<cfset var result = 0>
+
+	<!--- Test for Cyrilic --->
+	<cfif arguments.string.matches("(.*)[\u0400-\u04FF](.*)")>
+		<cfset result = result + pointval>
+	</cfif>
+
+	<!--- Test for Kanji --->
+	<cfif arguments.string.matches("(.*)[\u+4E00-\U+9FFF,](.*)")>
+		<cfset result = result + pointval>
+	</cfif>
+
 	<cfreturn result>
 </cffunction>
 
