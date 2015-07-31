@@ -397,7 +397,7 @@
 	</cfif>
 
 	<!--- Test for Kanji --->
-	<cfif arguments.string.matches("(.*)[\u+4E00-\U+9FFF,](.*)")>
+	<cfif arguments.string.matches("(.*)[\u4E00-\u9FFF](.*)")>
 		<cfset result = result + pointval>
 	</cfif>
 
