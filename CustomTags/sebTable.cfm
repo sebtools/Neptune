@@ -79,6 +79,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebtable-overview.cfm?version=1.
 	<cfparam name="attributes.doSort" default="true" type="boolean">
 	<cfparam name="attributes.jqhover" default="false" type="boolean">
 	<cfparam name="attributes.isExcel" default="false" type="boolean">
+	<cfparam name="attributes.hasJQuery" default="false" type="boolean">
 	<cfparam name="url.sebdeleteid#sfx#" default="">
 	<cfparam name="url.sebsort#sfx#" default="">
 	<cfparam name="url.sebsortorder#sfx#" default="ASC">
@@ -922,7 +923,7 @@ arrHiddenPK = ArrayNew(1);
 </cfif></style><cfif Len(attributes.skin)>
 <style type="text/css">@import url(#attributes.skinpath##attributes.skin#.css);</style></cfif>
 <!--[if IE 6]><style type="text/css">.sebTable th a {height:1%;}</style><![endif]-->
-<cfif (attributes.jqhover OR hasSorter) AND NOT StructKeyExists(request,"sebTable_jqhover")><script type="text/javascript" src="#attributes.librarypath#jquery/jquery.js"></script>
+<cfif (attributes.jqhover OR hasSorter) AND NOT StructKeyExists(request,"sebTable_jqhover") AND NOT attributes.hasJQuery><script type="text/javascript" src="#attributes.librarypath#jquery/jquery.js"></script>
 </cfif><cfif hasSorter>
 <script type="text/javascript" src="#attributes.librarypath#/jquery/jquery.tablednd.js"></script></cfif><cfif hasSorter OR attributes.isDeletable IS NOT false OR attributes.isRowClickable OR Len(attributes.classOver) OR attributes.jqhover><script type="text/javascript"><cfif attributes.isDeletable IS NOT false>
 function sebDeleteIt(id,name) {
