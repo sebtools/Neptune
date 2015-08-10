@@ -459,6 +459,7 @@
 <cffunction name="logSend" access="private" returntype="void" output="no">
 	
 	<cfif variables.isLogging>
+		<cfset arguments.MailMode = getMode()>
 		<cfset arguments.DateSent = now()>
 		<cfset variables.DataMgr.insertRecord(variables.logtable,variables.DataMgr.truncate(variables.logtable,arguments))>
 	</cfif>
@@ -585,6 +586,7 @@
 			<field ColumnName="mailerID" CF_DataType="CF_SQL_VARCHAR" Length="250" />
 			<field ColumnName="wraptext" CF_DataType="CF_SQL_VARCHAR" Length="40" />
 			<field ColumnName="notice" CF_DataType="CF_SQL_VARCHAR" Length="180" />
+			<field ColumnName="MailMode" CF_DataType="CF_SQL_VARCHAR" Length="10" />
 		</table>
 	</tables>
 	</cfoutput></cfsavecontent>
