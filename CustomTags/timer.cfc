@@ -37,7 +37,7 @@
 	
 </cffunction>
 
-<cffunction name="getDbXml" access="private" returntype="string" output="no" hint="I return the XML for the tables needed for Searcher to work.">
+<cffunction name="getDbXml" access="private" returntype="string" output="no">
 	
 	<cfset var result = "">
 	
@@ -47,7 +47,7 @@
 			<field ColumnName="TimerID" CF_DataType="CF_SQL_BIGINT" PrimaryKey="true" Increment="true" />
 			<field ColumnName="Name" CF_DataType="CF_SQL_VARCHAR" Length="255" />
 			<field ColumnName="Template" CF_DataType="CF_SQL_VARCHAR" Length="255" />
-			<field ColumnName="Label" CF_DataType="CF_SQL_VARCHAR" Length="50" />
+			<field ColumnName="Label" CF_DataType="CF_SQL_VARCHAR" Length="250" />
 			<field ColumnName="Time_ms" CF_DataType="CF_SQL_INTEGER" />
 			<field ColumnName="data" CF_DataType="CF_SQL_LONGVARCHAR" Length="60" />
 			<field ColumnName="DatePageLoaded" CF_DataType="CF_SQL_DATE" />

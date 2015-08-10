@@ -22,47 +22,88 @@
 <cfparam name="Attributes.tablename" default="cf_timer" type="string">
 <cfparam name="Attributes.data" default="#StructNew()#" type="struct">
 
+<!--- <cfif ThisTag.ExecutionMode EQ "Start" AND Attributes.Active>
+	<cfscript>
+	Attributes.CodeTemplate = "";
+	function getCallerTemplatePath() {
+		var field = getMetaData(Caller).getDeclaredField("pageContext");
+		field.setAccessible(true);
+		return field.get(caller).getPage().getCurrentTemplatePath();
+	}
+	function getFileURL(FilePath) {
+		var delim = Right(getDirectoryFromPath(getCurrentTemplatePath()),1);
+		var RootFilePath = ReplaceNoCase(ListChangeDelims(CGI.CF_TEMPLATE_PATH,delim,"/"),ListChangeDelims(CGI.SCRIPT_NAME,delim,"/"),"");
+		var result = "";
+
+		if ( FilePath CONTAINS RootFilePath ) {
+			result = "/" & ListChangeDelims(ReplaceNoCase(FilePath,RootFilePath,""),"/",delim);
+		}
+
+		return result;
+	}
+	</cfscript>
+	<cftry>
+		<cfset Attributes.CodeTemplate = getFileURL(getCallerTemplatePath())>
+	<cfcatch>
+	</cfcatch>
+	</cftry>
+</cfif> --->
+
+
 <!--- We only need DataMgr and table stuff if we are storing the time to the database --->
-<cfif Attributes.Type EQ "database">
+<cfif ThisTag.ExecutionMode EQ "Start" AND Attributes.Active AND Attributes.Type EQ "database">
+	
 	<!--- Make sure we have a structure for the timer objects. This allows us to cache it and avoid calling the loadXml() on every request. Caching is done by datasource in case more than one datasource is in use. --->
 	<cfif NOT StructKeyExists(Application,"cf_timers")>
 		<cfset Application.cf_timers = StructNew()>
 	</cfif>
-	<!--- Make sure we have newer version of timer component loaded. Later we can test using the time and reload using the getDataMgr method. --->
-	<cfif StructKeyExists(Application.cf_timers,attributes.datasource) AND NOT ( StructKeyExists(Application.cf_timers[attributes.datasource],"getDateLoaded") )>
-		<cfset StructDelete(Application.cf_timers,attributes.datasource)>
-	</cfif>
-	<!--- If a datasource is explicitely provided and a component already exists for it, then we are ready. No need for extra work. --->
-	<cfif NOT ( StructKeyExists(attributes,"datasource") AND StructKeyExists(Application.cf_timers,attributes.datasource) )>
-		<!--- If DataMgr isn't provided then we will need to find one or make one. --->
+	
+	<!--- Make sure we have a datasource --->
+	<cfif NOT StructKeyExists(attributes,"datasource")>
+		
+		<cfif StructKeyExists(Caller,"DataMgr")>
+			<cfparam name="Attributes.DataMgr" default="#Caller.DataMgr#">
+		<cfelseif StructKeyExists(Application,"DataMgr")>
+			<cfparam name="Attributes.DataMgr" default="#Application.DataMgr#">
+		</cfif>
+
+		<!--- If DataMgr isn't provided then we will need to find one. --->
 		<cfif NOT StructKeyExists(Attributes,"DataMgr")>
-			<cfif StructKeyExists(Caller,"DataMgr")>
-				<cfparam name="attributes.DataMgr" default="#Caller.DataMgr#">
-			<cfelseif StructKeyExists(Application,"DataMgr")>
-				<cfparam name="attributes.DataMgr" default="#Application.DataMgr#">
-			</cfif>
-			
-			<cfparam name="attributes.path" default="com.sebtools.DataMgr">
-			<cfif NOT StructKeyExists(attributes,"DataMgr")>
-				<cfinvoke returnvariable="attributes.DataMgr" component="#attributes.path#" method="init" argumentCollection="#attributes#">
-				</cfinvoke>
-			</cfif>
-			
-			<cfif NOT StructKeyExists(attributes,"DataMgr")>
-				<cfthrow type="CFTimer" message="Type 'database' requires DataMgr and none was found.">
-			</cfif>
+			<cfthrow type="CFTimer" message="Type 'database' requires database or DataMgr and neither was found.">
 		</cfif>
 		
 		<!--- Make sure we have a datasource attribute. --->
-		<cfset attributes.datasource = attributes.DataMgr.getDatasource()>
-		
-		<!--- Make sure we have a timers component. TODO: Will need a way to refresh this at some point. --->
-		<cfif NOT StructKeyExists(Application.cf_timers,attributes.datasource)>
-			<cfset Application.cf_timers[attributes.datasource] = CreateObject("component","timer").init(attributes.DataMgr)>
-		</cfif>
+		<cfset Attributes.datasource = Attributes.DataMgr.getDatasource()>
+
 	</cfif>
-	
-	<cfif NOT ( StructKeyExists(Application.cf_timers[attributes.datasource],"getDateLoaded") )>
+
+	<!--- ASSERT: Should be no way for datasource not to be set here, but we'll verify just in case. --->
+	<!--- If DataMgr isn't provided then we will need to find one. --->
+	<cfif NOT StructKeyExists(Attributes,"datasource")>
+		<cfthrow type="CFTimer" message="Type 'database' requires database or DataMgr and neither was found.">
+	</cfif>
+
+	<!--- Make sure we have a DataMgr --->
+	<cfif NOT StructKeyExists(Attributes,"DataMgr")>
+		<cfparam name="Attributes.path" default="com.sebtools.DataMgr">
+		<cfset Attributes.DataMgr = CreateObject("component",Attributes.path).init(ArgumentCollection=Attributes)>
+	</cfif>
+
+	<!--- Make sure we have newer version of timer component loaded. Later we can test using the time and reload using the getDataMgr method. --->
+	<cfif
+				StructKeyExists(attributes,"datasource")
+			AND	StructKeyExists(Application.cf_timers,attributes.datasource)
+			AND	NOT (
+						StructKeyExists(Application.cf_timers[attributes.datasource],"getDateLoaded")
+					AND	Application.cf_timers[attributes.datasource].getDateLoaded() GTE '2015-07-29'
+				)
+	>
+		<cfset StructDelete(Application.cf_timers,Attributes.datasource)>
+	</cfif>
+
+	<!--- Make sure we have a timers component.. --->
+	<cfif NOT StructKeyExists(Application.cf_timers,Attributes.datasource)>
+		<cfset Application.cf_timers[attributes.datasource] = CreateObject("component","timer").init(Attributes.DataMgr)>
 	</cfif>
 	
 	<!--- Just a handy reference for the timers component needed in this tag. --->
@@ -84,47 +125,48 @@
 
 </cfsilent><cfif Attributes.Active>
 	<cfswitch expression="#ThisTag.ExecutionMode#">
-		<cfcase value="start">
-			<cfset startTime = getTickCount()>
+	<cfcase value="start">
+		<cfset startTime = getTickCount()>
+	</cfcase>
+	<!--- //	Process Body	//--->
+	<cfcase value="end">
+		<!--- <cfdump var="#getCallerTemplatePath()#" /><cfabort /> --->
+		<cfset endTime = getTickCount()>
+		<cfset Value = endTime - startTime>
+		<cfset Output = "#Attributes.Label#: #Value#ms">
+		<cfif Len(Attributes.Name)>
+			<cfset Caller[Attributes.Name] = Value>
+		</cfif>
+		<cfoutput>
+		<cfswitch expression="#Attributes.Type#">
+		<cfcase value="comment">
+			<!-- #Output# --> 
 		</cfcase>
-		<!--- //	Process Body	//--->
-		<cfcase value="end">
-			<cfset endTime = getTickCount()>
-			<cfset Value = endTime - startTime>
-			<cfset Output = "#Attributes.Label#: #Value#ms">
-			<cfif Len(Attributes.Name)>
-				<cfset Caller[Attributes.Name] = Value>
-			</cfif>
-			<cfoutput>
-			<cfswitch expression="#Attributes.Type#">
-				<cfcase value="comment">
-					<!-- #Output# --> 
-				</cfcase>
-				<cfcase value="database">
-					<cfset oTimer.logTime(
-						Name=Attributes.Name,
-						Label=Attributes.Label,
-						Template=CGI.SCRIPT_NAME,
-						data=Attributes.data,
-						Time_ms=Value,
-						DatePageLoaded=request["cf_timer_page_loaded"]
-					)>
-				</cfcase>
-				<cfcase value="inline">
-					#Output#
-				</cfcase>
-				<cfcase value="log">
-					<cflog text="#Output#">
-				</cfcase>
-				<cfcase value="outline">
-					<fieldset class="cftimer">
-	   					<legend>#Output#</legend>
-						#ThisTag.GeneratedContent#
-					</fieldset>
-					<cfset ThisTag.GeneratedContent = "">
-				</cfcase>
-			</cfswitch>
-			</cfoutput>
+		<cfcase value="database">
+			<cfset oTimer.logTime(
+				Name=Attributes.Name,
+				Label=Attributes.Label,
+				Template=CGI.SCRIPT_NAME,
+				data=Attributes.data,
+				Time_ms=Value,
+				DatePageLoaded=request["cf_timer_page_loaded"]
+			)>
 		</cfcase>
+		<cfcase value="inline">
+			#Output#
+		</cfcase>
+		<cfcase value="log">
+			<cflog text="#Output#">
+		</cfcase>
+		<cfcase value="outline">
+			<fieldset class="cftimer">
+					<legend>#Output#</legend>
+				#ThisTag.GeneratedContent#
+			</fieldset>
+			<cfset ThisTag.GeneratedContent = "">
+		</cfcase>
+		</cfswitch>
+		</cfoutput>
+	</cfcase>
 	</cfswitch>
 </cfif>
