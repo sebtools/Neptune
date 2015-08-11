@@ -521,10 +521,10 @@
 	<cfset var sResult = StructNew()>
 	
 	<cfif isExpandedForm(Arguments.Name)>
-		<cfset sResult["TaskName"] = condenseTaskName(Arguments.Name)>
+		<cfset sResult["Name"] = condenseTaskName(Arguments.Name)>
 		<cfset sResult["TaskID"] = ListLast(Arguments.Name,":")>
 	<cfelse>
-		<cfset sResult["TaskName"] = Arguments.Name>
+		<cfset sResult["Name"] = Arguments.Name>
 	</cfif>
 	
 	<cfreturn sResult>
