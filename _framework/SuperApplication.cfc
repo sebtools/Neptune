@@ -67,11 +67,16 @@ if( ListLast(CGI.SCRIPT_NAME, ".") is "cfc" ) {
 	
 </cffunction>
 
-<!---<cffunction name="onError">
-	<cfdump var="#arguments#"><cfabort>
+<cffunction name="onError" output="yes">
+	<cfargument name="exception" required="true">
+	<cfargument name="EventName" type="String" required="true">
+
+	<cf_errorAlert error="#Arguments.exception#">
+
+	<cfreturn true>
 </cffunction>
 
-<cffunction name="onMissingTemplate">
+<!---<cffunction name="onMissingTemplate">
 	<cfdump var="#arguments#"><cfabort>
 </cffunction>--->
 
