@@ -20,6 +20,7 @@
 	<cfargument name="useTLS" type="boolean" required="false">
 	<cfargument name="ErrorTo" type="string" default="">
 	<cfargument name="verify" type="boolean" default="false">
+	<cfargument name="Scheduler" type="any" required="false">
 	
 	<cfset variables.MailServer = arguments.MailServer>
 	<cfset variables.DefaultFrom = arguments.From>
@@ -32,6 +33,16 @@
 	<cfset variables.logtable = arguments.logtable>
 	<cfset variables.ErrorTo = arguments.ErrorTo>
 	<cfset variables.verify = arguments.verify>
+	<cfif StructKeyExists(arguments,"Scheduler")>
+		<cfset variables.Scheduler = arguments.Scheduler>
+		<cfinvoke component="#variables.Scheduler#" method="setTask">
+			<cfinvokeargument name="Name" value="Mailer: Check Mail Server">
+			<cfinvokeargument name="ComponentPath" value="com.sebtools.Mailer">
+			<cfinvokeargument name="Component" value="#This#">
+			<cfinvokeargument name="MethodName" value="checkMailService">
+			<cfinvokeargument name="interval" value="hourly">
+		</cfinvoke>
+	</cfif>
 	
 	<cfset variables.Notices = StructNew()>
 	<cfset variables.isLogging = false>
@@ -66,8 +77,10 @@
 			<cfset startLogging(variables.DataMgr)>
 		</cfif>
 	</cfif>
+
+	<cfset checkMailService()>
 	
-	<cfreturn this>
+	<cfreturn This>
 </cffunction>
 
 <cffunction name="addNotice" access="public" returntype="void" output="no" hint="I add a notice to the mailer.">
@@ -518,6 +531,33 @@
 		
 		<cfset send(ArgumentCollection=sError)>
 	</cfif>
+</cffunction>
+
+<cffunction name="checkMailService" access="public" returntype="void" output="no">
+
+	<cfset var restart = false>
+	<cfset var spool = "">
+	<cfset var sFactory = 0>
+	<cfset var MailSpoolService = 0>
+
+	<cflock name="Mailer_CheckMailService" timeout="60">
+		<!--- Source: http://stackoverflow.com/questions/94932/coldfusion-mail-queue-stops-processing --->
+		<cfdirectory action="list" directory="#Server.ColdFusion.rootdir#\Mail\Spool\" name="spool" sort="datelastmodified">
+
+		<cfif isDate(spool.datelastmodified) AND datediff('n', spool.datelastmodified, now()) gt 60>
+			<cfset restart = true>
+		</cfif>
+
+		<cfif restart>
+			<cflock name="Mailer_RestartMailService" timeout="30">
+				<cfset sFactory = CreateObject("java","coldfusion.server.ServiceFactory")>
+				<cfset MailSpoolService = sFactory.mailSpoolService>
+				<cfset MailSpoolService.stop()>
+				<cfset MailSpoolService.start()>
+		    </cflock>
+		</cfif>
+	</cflock>
+
 </cffunction>
 
 <cffunction name="verifySent" access="public" returntype="void" output="no">
