@@ -1,5 +1,5 @@
-<!--- 1.1.5 (Build 16) --->
-<!--- Last Updated: 2012-07-27 --->
+<!--- 1.2 (Build 17) --->
+<!--- Last Updated: 2015-09-03 --->
 <!--- Created by Steve Bryant 2007-08-15 --->
 <!--- Information: sebtools.com --->
 <cfcomponent displayname="Spam Filter" output="false">
@@ -24,7 +24,7 @@
 	} 
 	</cfscript>
 	
-	<cfif variables.getNewDefs>
+	<cfif variables.getNewDefs AND NOT StructKeyExists(arguments,"Scheduler")>
 		<cfset loadUniversalData()>
 	</cfif>
 	
@@ -45,7 +45,7 @@
 	<cfif StructKeyExists(variables,"Scheduler")>
 		<cfinvoke component="#variables.Scheduler#" method="setTask">
 			<cfinvokeargument name="Name" value="SpamFilter">
-			<cfinvokeargument name="ComponentPath" value="#sMe.name#">
+			<cfinvokeargument name="ComponentPath" value="com.sebtools.SpamFilter">
 			<cfinvokeargument name="Component" value="#This#">
 			<cfinvokeargument name="MethodName" value="loadUniversalData">
 			<cfinvokeargument name="interval" value="weekly">
