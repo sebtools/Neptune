@@ -187,10 +187,10 @@
         <cfset arguments.dirInfo = QueryNew(cols)>
     </cfif>
     
-	<cfdirectory name="qFiles" directory="#arguments.directory#" sort="#sort#" filter="#arguments.filter#">
+	<cfdirectory name="qFiles" directory="#arguments.directory#" sort="#sort#" filter="#arguments.filter#" type="file">
 	
 	<cfif arguments.recurse>
-		<cfdirectory name="qDirs" directory="#arguments.directory#" sort="#sort#">
+		<cfdirectory name="qDirs" directory="#arguments.directory#" sort="#sort#" type="dir">
 		<cfloop query="qDirs">
 			<cfif type IS "dir">
 				<cfif StructKeyExists(variables,"instance") AND StructKeyExists(variables.instance,"RootPath")>
