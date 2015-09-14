@@ -576,8 +576,8 @@
 	Set BeforeSend to 5 minutes ago so we can check if the email was sent in the last five minutes.
 	This should avoid conflict with previous similar emails.
 	--->
-	<cfset var BeforeSend = CreateODBCDateTime(CreateDateTime(Year(now()),Month(now()),Day(now()),Hour(now()),Minute(now())-5,Second(now())))>
-	<cfset var RightNow = CreateODBCDateTime(CreateDateTime(Year(now()),Month(now()),Day(now()),Hour(now()),Minute(now()),Second(now())))>
+	<cfset var BeforeSend = CreateDateTime(Year(now()),Month(now()),Day(now()),Hour(now()),Minute(now())-5,Second(now()))>
+	<cfset var RightNow = CreateDateTime(Year(now()),Month(now()),Day(now()),Hour(now()),Minute(now()),Second(now()))>
 	
 	<cfset sLogArgs["To"] = Arguments.To>
 	<cfset sLogArgs["Subject"] = Arguments.Subject>
@@ -587,8 +587,6 @@
 	<cfset sLogArgs["ReplyTo"] = Arguments.ReplyTo>
 
 	<cfset sFilter = {field="DateSent",operator="GT",value="#BeforeSend#"}>
-	<cfset ArrayAppend(aFilters,sFilter)>
-	<cfset sFilter = {field="DateSent",operator="LT",value="#RightNow#"}>
 	<cfset ArrayAppend(aFilters,sFilter)>
 	
 	<cfset qLogs = variables.DataMgr.getRecords(tablename=variables.logtable,data=sLogArgs,filters=aFilters)>
