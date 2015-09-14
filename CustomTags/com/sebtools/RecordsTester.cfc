@@ -46,24 +46,22 @@
 
 <cffunction name="assertEmailSent" access="public" returntype="void" output="no" hint="I assert than an email has been sent. Arguments will match the keys of the email.">
 	<cfargument name="when" type="date" default="#now()#">
-	
-	<cfset var message = "Email was not sent">
-	
+	<cfargument name="message" type="string" default="Email was not sent">
+
 	<cfset assertEmailTestable()>
 	
 	<cfif NOT isEmailSent(argumentCollection=arguments)>
-		<cfset fail(message)>
+		<cfset fail(Arguments.message)>
 	</cfif>
 	
 </cffunction>
 
 <cffunction name="assertEmailNotSent" access="public" returntype="void" output="no">
 	<cfargument name="when" type="date" default="#now()#">
-	
-	<cfset var message = "Email was sent">
+	<cfargument name="message" type="string" default="Email was sent">
 	
 	<cfif isEmailSent(argumentCollection=arguments)>
-		<cfset fail(message)>
+		<cfset fail(Arguments.message)>
 	</cfif>
 	
 </cffunction>
