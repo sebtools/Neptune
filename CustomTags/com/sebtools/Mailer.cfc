@@ -294,6 +294,10 @@
 	<cfif StructKeyExists(variables,"useTLS") AND isBoolean(variables.useTLS)>
 		<cfparam name="arguments.useTLS" default="#variables.useTLS#">
 	</cfif>
+
+	<cfif StructKeyExists(Arguments,"MailServer") AND NOT StructKeyExists(Arguments,"Server")>
+		<cfset Arguments.Server = Arguments.MailServer>
+	</cfif>
 	
 	<cfif Len(arguments.text) OR Len(arguments.html)>
 		<cfmail attributeCollection="#arguments#"><cfif Len(Trim(arguments.ReplyTo))><cfmailparam name="Reply-To" value="#Trim(arguments.ReplyTo)#"></cfif><cfif Len(Trim(arguments.Sender))><cfmailparam name="Sender" value="#Trim(arguments.Sender)#"></cfif>
