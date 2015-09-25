@@ -124,8 +124,6 @@
 	<cfif Len(Arguments.email)>
 		<cfif REFind("(\[|\(|<)",Arguments.email)>
 			<cfset Arguments.email = Left(Arguments.email,REFind("(\[|\(|<)",Arguments.email) -1).concat(ReplaceNoCase(ReplaceNoCase(Mid(Arguments.email,REFind("(\[|\(|<)",Arguments.email),Len(Arguments.email)),',','.','ALL'),' ','','ALL'))>
-		<cfelse>
-			<cfset Arguments.email = ReplaceNoCase(ReplaceNoCase(Arguments.email,',','.','ALL'),' ','','ALL')>
 		</cfif>
 	</cfif>
 	
