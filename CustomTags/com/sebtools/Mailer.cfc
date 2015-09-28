@@ -196,6 +196,45 @@
 	
 </cffunction>
 
+<cffunction name="resendEmails" access="public" returntype="void" output="no">
+	<cfargument name="LogIDs" type="string" required="true">
+	
+	<cfset var qMailLogs = 0>
+	<cfset var sMail = {}>
+
+	<cfif StructKeyExists(Variables,"DataMgr")>
+		<cfquery name="qMailLogs" datasource="#Variables.DataMgr.getDatasource()#">
+		SELECT	*
+		FROM	#logtable#
+		WHERE	LogID IN (<cfqueryparam value="#Arguments.LogIDs#" cfsqltype="cf_sql_integer" list="true">)
+		</cfquery>
+
+		<cfoutput query="qMailLogs">
+			<cfset sMail = {}>
+			<cfset sMail["To"] = To>
+			<cfset sMail["Subject"] = Subject>
+			<cfset sMail["Contents"] = Contents>
+			<cfset sMail["From"] = From>
+			<cfset sMail["CC"] = CC>
+			<cfset sMail["BCC"] = BCC>
+			<cfset sMail["type"] = type>
+			<cfset sMail["ReplyTo"] = ReplyTo>
+			<cfset sMail["Attachments"] = Attachments>
+			<cfset sMail["html"] = html>
+			<cfset sMail["text"] = text>
+			<cfset sMail["username"] = username>
+			<cfset sMail["password"] = password>
+			<cfset sMail["FailTo"] = FailTo>
+			<cfset sMail["wraptext"] = wraptext>
+			<cfset sMail["notice"] = notice>
+			<cfset send(ArgumentCollection=sMail)>
+		</cfoutput>
+	<cfelse>
+		<cfthrow type="Mailer" message="DataMgr is required for resendEmails. The current Mailer object does not have access to DataMgr.">
+	</cfif>
+	
+</cffunction>
+
 <cffunction name="send" access="public" returntype="boolean" output="no" hint="I send an email message and indicate if the send was successful.">
 	<cfargument name="To" type="string" default="#variables.DefaultTo#">
 	<cfargument name="Subject" type="string" required="yes">
