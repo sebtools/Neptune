@@ -71,7 +71,16 @@ if( ListLast(CGI.SCRIPT_NAME, ".") is "cfc" ) {
 	<cfargument name="exception" required="true">
 	<cfargument name="EventName" type="String" required="true">
 
-	<cf_errorAlert error="#Arguments.exception#">
+	<cfif NOT StructKeyExists(request,"environment")>
+		<cftry>
+			<cfset request.environment = Application.Framework.guessEnvironment(CGI.SERVER_NAME)>
+		<cfcatch>
+			<cfset request.environment = "Production">
+		</cfcatch>
+		</cftry>
+	</cfif>
+
+	<cf_errorAlert error="#Arguments.exception#" environment="#request.environment#">
 
 	<cfreturn true>
 </cffunction>

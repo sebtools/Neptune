@@ -2,9 +2,20 @@
 <cfsilent>
 
 <cfparam name="Attributes.Error">
+<cfparam name="Attributes.environment" default="Production">
 <cfparam name="Attributes.site" default="#CGI.SERVER_NAME#">
-<cfparam name="Attributes.sendError" type="boolean" default="true">
-<cfparam name="Attributes.showError" type="boolean" default="false">
+<cfif Attributes.environment EQ "Local">
+	<cfset DefaultSendError = false>
+	<cfset DefaultShowError = true>
+<cfelseif Attributes.environment EQ "Development">
+	<cfset DefaultSendError = true>
+	<cfset DefaultShowError = true>
+<cfelseif Attributes.environment EQ "Production">
+	<cfset DefaultSendError = true>
+	<cfset DefaultShowError = false>
+</cfif>
+<cfparam name="Attributes.sendError" type="boolean" default="#DefaultSendError#">
+<cfparam name="Attributes.showError" type="boolean" default="#DefaultShowError#">
 <cfparam name="Attributes.MessageVariable" type="string" default="ErrorMessage">
 
 <cfif ThisTag.executionMode IS "End" OR NOT thisTag.hasEndTag>
@@ -29,9 +40,28 @@
 
 	<cfset Caller[Attributes.MessageVariable] = sAlert["message"]>
 	<cfset sAlert["message"] = "An error occurred on " & Attributes.site & ": " & sAlert.Message>
+		
+	<!--- Compile the full details about the message, including dumps of CGI,Form,URL scopes and the error itself and save to a local variable --->
+	<cfsavecontent variable="ErrorDetails">
+		<p><strong>Exception:</strong></p>
+		<cftry><cfdump var="#Attributes.Error#"><cfcatch>[Failed to Get exception information]</cfcatch></cftry>
+		<cfif isDefined("CGI")>
+			<p><strong>CGI:</strong></p>
+			<cftry><cfdump var="#CGI#"><cfcatch>[Failed to Get CGI information]</cfcatch></cftry>
+		</cfif>
+		<cfif isDefined("Form")>
+			<p><strong>Form:</strong></p>
+			<cftry><cfdump var="#Form#"><cfcatch>[Failed to Get Form information]</cfcatch></cftry>
+		</cfif>
+		<cfif isDefined("URL")>
+			<p><strong>URL:</strong></p>
+			<cftry><cfdump var="#URL#"><cfcatch>[Failed to Get URL information]</cfcatch></cftry>
+		</cfif>
+	</cfsavecontent>
 
 	<cfif Attributes.sendError>
 		<cftry>
+			<cfset NumErrors = 1>
 			<cfif NOT StructKeyExists(Application,"sErrors")>
 				<cfset Application.sErrors = {}>
 			</cfif>
@@ -40,24 +70,26 @@
 				<cfset Application.sErrors[ErrorHash]["Message"] = sAlert["message"]>
 				<cfset Application.sErrors[ErrorHash]["Time"] = now()>
 				<cfset Application.sErrors[ErrorHash]["Times"] = 1>
-				<cfset NumErrors = Application.sErrors[ErrorHash]["Times"]>
+			</cfif>
+			<cfset NumErrors = Application.sErrors[ErrorHash]["Times"]>
+			
+			<!---
+			Increase the number of times the error has occurred.
+			If two hours have passed since this error was first captured, reset the errors struct for this error.
+			--->
+			<cfif DateDiff("h",Application.sErrors[ErrorHash]["Time"],now()) GTE 2>
+				<cfset NumErrors = Application.sErrors[ErrorHash]["Times"] + 1>
+				<cfset StructDelete(Application.sErrors,ErrorHash)>
 			<cfelse>
-				<!---
-				Increase the number of times the error has occurred.
-				If two hours have passed since this error was first captured, reset the errors struct for this error.
-				--->
-				<cfif DateDiff("h",Application.sErrors[ErrorHash]["Time"],now()) GTE 2>
-					<cfset NumErrors = Application.sErrors[ErrorHash]["Times"] + 1>
-					<cfset StructDelete(Application.sErrors,ErrorHash)>
-				<cfelse>
-					<cfset Application.sErrors[ErrorHash]["Times"] = Application.sErrors[ErrorHash]["Times"] + 1>
-				</cfif>
+				<cfset Application.sErrors[ErrorHash]["Times"] = Application.sErrors[ErrorHash]["Times"] + 1>
 			</cfif>
 
 			<!--- Send alerts based on logarithmic scale down --->
 			<!--- If NumErrors is an integer, then it has increased logarithmically (1,10,100,1000,...) --->
 			<cfif Log10(NumErrors) EQ Round(Log10(NumErrors))>
 				<cfset sendAlert = true>
+			<cfelse>
+				<cfset sendAlert = false>
 			</cfif>
 		<cfcatch>
 			<cfset sendAlert = true>
@@ -65,24 +97,6 @@
 		</cftry>
 
 		<cfif sendAlert>
-
-			<!--- Compile the full details about the message, including dumps of CGI,Form,URL scopes and the error itself and save to a local variable --->
-			<cfsavecontent variable="ErrorDetails">
-				<p><strong>Exception:</strong></p>
-				<cftry><cfdump var="#Attributes.Error#"><cfcatch>[Failed to Get exception information]</cfcatch></cftry>
-				<cfif isDefined("CGI")>
-					<p><strong>CGI:</strong></p>
-					<cftry><cfdump var="#CGI#"><cfcatch>[Failed to Get CGI information]</cfcatch></cftry>
-				</cfif>
-				<cfif isDefined("Form")>
-					<p><strong>Form:</strong></p>
-					<cftry><cfdump var="#Form#"><cfcatch>[Failed to Get Form information]</cfcatch></cftry>
-				</cfif>
-				<cfif isDefined("URL")>
-					<p><strong>URL:</strong></p>
-					<cftry><cfdump var="#URL#"><cfcatch>[Failed to Get URL information]</cfcatch></cftry>
-				</cfif>
-			</cfsavecontent>
 
 			<!--- If an "Errors" service can be found, save the whole thing there and get back a UUID for the error --->
 			<cfset ErrorUUID = "">

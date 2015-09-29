@@ -10,6 +10,10 @@
 	<cfreturn This>
 </cffunction>
 
+<cffunction name="getWebHookURL" access="public" returntype="string" output="no">
+	<cfreturn variables.WebHookURL>
+</cffunction>
+
 <cffunction name="sendNotice" access="public" returntype="void" output="no">
 	<cfargument name="Message" type="string" required="yes">
 	<cfargument name="image_url" type="string" required="no">

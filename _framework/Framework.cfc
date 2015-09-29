@@ -779,6 +779,22 @@ function getPageController(path) {
 	<cfreturn false>
 </cffunction>
 
+<cffunction name="guessEnvironment" access="public" returntype="string" output="no">
+	<cfargument name="ServerName" type="string" required="yes">
+	
+	<cfset var EnvironmentGuess = "Production">
+
+	<cfif ListContainsNoCase(Arguments.ServerName,"local",".")>
+		<cfset EnvironmentGuess = "Local">
+	<cfelseif ListLen(Arguments.ServerName,".") EQ 2 OR ListContainsNoCase(Arguments.ServerName,"www",".")>
+		<cfset EnvironmentGuess = "Production">
+	<cfelse>
+		<cfset EnvironmentGuess = "Development">
+	</cfif>
+	
+	<cfreturn EnvironmentGuess>
+</cffunction>
+
 <cffunction name="isComponentForLabel" access="public" returntype="boolean" output="no">
 	<cfargument name="Component" type="any" required="true">
 	<cfargument name="labelSingular" type="string" default="true">
