@@ -200,7 +200,9 @@
 	<cfargument name="LogIDs" type="string" required="true">
 	
 	<cfset var qMailLogs = 0>
-	<cfset var sMail = {}>
+	<cfset var sMail = 0>
+	<cfset var keys = "To,Subject,Contents,From,CC,BCC,type,ReplyTo,Attachments,html,text,username,password,FailTo,wraptext,notice">
+	<cfset var key = "">
 
 	<cfif StructKeyExists(Variables,"DataMgr")>
 		<cfquery name="qMailLogs" datasource="#Variables.DataMgr.getDatasource()#">
@@ -210,23 +212,14 @@
 		</cfquery>
 
 		<cfoutput query="qMailLogs">
-			<cfset sMail = {}>
-			<cfset sMail["To"] = To>
-			<cfset sMail["Subject"] = Subject>
-			<cfset sMail["Contents"] = Contents>
-			<cfset sMail["From"] = From>
-			<cfset sMail["CC"] = CC>
-			<cfset sMail["BCC"] = BCC>
-			<cfset sMail["type"] = type>
-			<cfset sMail["ReplyTo"] = ReplyTo>
-			<cfset sMail["Attachments"] = Attachments>
-			<cfset sMail["html"] = html>
-			<cfset sMail["text"] = text>
-			<cfset sMail["username"] = username>
-			<cfset sMail["password"] = password>
-			<cfset sMail["FailTo"] = FailTo>
-			<cfset sMail["wraptext"] = wraptext>
-			<cfset sMail["notice"] = notice>
+			<cfset sMail = StructNew()>
+			<cfloop list="#keys#" index="key">
+				<cfif Len(Trim(qMailLogs[key][CurrentRow]))>
+					<cfset sMail[key] = qMailLogs[key][CurrentRow]>
+				</cfif>
+			</cfloop>
+			<cfset sMail["ResendOfLogID"] = LogID>
+			<cfset StructDelete(sMail,"MailMode")>
 			<cfset send(ArgumentCollection=sMail)>
 		</cfoutput>
 	<cfelse>
@@ -666,6 +659,7 @@
 			<field ColumnName="wraptext" CF_DataType="CF_SQL_VARCHAR" Length="40" />
 			<field ColumnName="notice" CF_DataType="CF_SQL_VARCHAR" Length="180" />
 			<field ColumnName="MailMode" CF_DataType="CF_SQL_VARCHAR" Length="10" />
+			<field ColumnName="ResendOfLogID" CF_DataType="CF_SQL_INTEGER" />
 		</table>
 	</tables>
 	</cfoutput></cfsavecontent>
