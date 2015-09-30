@@ -21,6 +21,7 @@
 	<cfargument name="ErrorTo" type="string" default="">
 	<cfargument name="verify" type="boolean" default="false">
 	<cfargument name="Scheduler" type="any" required="false">
+	<cfargument name="Observer" type="any" required="false">
 	
 	<cfset variables.MailServer = arguments.MailServer>
 	<cfset variables.DefaultFrom = arguments.From>
@@ -42,6 +43,9 @@
 			<cfinvokeargument name="MethodName" value="checkMailService">
 			<cfinvokeargument name="interval" value="hourly">
 		</cfinvoke>
+	</cfif>
+	<cfif StructKeyExists(arguments,"Observer")>
+		<cfset variables.Observer = arguments.Observer>
 	</cfif>
 	
 	<cfset variables.Notices = StructNew()>
@@ -438,11 +442,18 @@
 	<cfargument name="mode" type="string" required="yes">
 	
 	<cfset var SimModes = "Sim,Dev">
+	<cfset var sAnnounce = {}>
 	
 	<cfif ListFindNoCase(SimModes,arguments.mode)>
 		<cfset variables.mode = "Sim">
 	<cfelse>
 		<cfset variables.mode = "Live">
+	</cfif>
+
+	<!--- Announce setMode --->
+	<cfif StructKeyExists(variables,"Observer")>
+		<cfset sAnnounce["mode"] = Arguments.mode>
+		<cfset variables.Observer.announce("Mailer mode set",sAnnounce)>
 	</cfif>
 	
 </cffunction>
