@@ -4,6 +4,9 @@
 <cfparam name="Attributes.Error">
 <cfparam name="Attributes.environment" default="Production">
 <cfparam name="Attributes.site" default="#CGI.SERVER_NAME#">
+<cfparam name="Attributes.page" default="#CGI.SCRIPT_NAME#">
+<cfparam name="Attributes.queryString" default="#CGI.QUERY_STRING#">
+<cfparam name="Attributes.email_to" default="">
 <cfif Attributes.environment EQ "Local">
 	<cfset DefaultSendError = false>
 	<cfset DefaultShowError = true>
@@ -23,6 +26,13 @@
 	<cfset sAlert["notice_type"] = "Error!">
 	<cfset sAlert["icon_type"] = "failure">
 	<cfset sAlert["icon_emoji"] = ":bangbang:">
+	<cfset sAlert["email_to"] = Attributes.email_to>
+	<cfif StructKeyExists(Attributes,"DefaultWebHookURL")>
+		<cfset sAlert["DefaultWebHookURL"] = Attributes.DefaultWebHookURL>
+	</cfif>
+	<cfif StructKeyExists(Attributes,"WebHookURL")>
+		<cfset sAlert["WebHookURL"] = Attributes.WebHookURL>
+	</cfif>
 
 	<!--- Get the error message from the error and save to sAlert["message"] --->
 	<cfif StructKeyExists(Attributes.Error,"Cause")>
@@ -37,7 +47,11 @@
 	</cfif>
 
 	<cfset Caller[Attributes.MessageVariable] = sAlert["message"]>
-	<cfset sAlert["message"] = "An error occurred on " & Attributes.site & ": " & sAlert.Message>
+	<cfset ErrorURL = Attributes.site & Attributes.page>
+	<cfif Len(Attributes.queryString)>
+		<cfset ErrorURL = ErrorURL  & "?" & Attributes.queryString>
+	</cfif>
+	<cfset sAlert["message"] = "An error occurred on " & ErrorURL & ": " & sAlert.Message>
 
 	<cfif Attributes.sendError OR Attributes.showError>
 		<!--- Compile the full details about the message, including dumps of CGI,Form,URL scopes and the error itself and save to a local variable --->

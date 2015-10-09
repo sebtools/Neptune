@@ -4,6 +4,7 @@
 <cfparam name="Attributes.message" default="">
 <cfparam name="Attributes.extended_message" default="">
 <cfparam name="Attributes.icon_type" default="failure">
+<cfparam name="Attributes.email_to" default="">
 
 <cfif StructKeyExists(ThisTag,"GeneratedContent") AND Len(Trim(ThisTag.GeneratedContent)) AND NOT Len(Trim(Attributes.message))>
 	<cfset Attributes.message = Trim(ThisTag.GeneratedContent)>
@@ -26,14 +27,19 @@
 	<cfcatch>
 	</cfcatch>
 	</cftry>
-
+	
 	<!--- Send by email --->
 	<cfif StructKeyExists(Variables,"Mailer")>
-		<cftry>
-			<cfset Variables.Mailer.send(Subject=Attributes.message,body=Attributes.extended_message)>
-		<cfcatch>
-		</cfcatch>
-		</cftry>
+		<cfif NOT Len(Trim(Attributes.Email_To))>
+			<cfset Attributes.Email_To = Variables.Mailer.getTo()>
+		</cfif>
+		<cfif Len(Trim(Attributes.Email_To))>
+			<cftry>
+				<cfset Variables.Mailer.send(To=Attributes.Email_To,Subject=Attributes.message,Contents=Attributes.extended_message)>
+			<cfcatch>
+			</cfcatch>
+			</cftry>
+		</cfif>
 	</cfif>
 
 </cfif>

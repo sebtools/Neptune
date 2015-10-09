@@ -6,6 +6,7 @@
 <cfparam name="Attributes.icon_type" default="failure">
 <cfparam name="Attributes.result" default="sendAlert">
 <cfparam name="Attributes.key" default="#Attributes.message#">
+<cfparam name="Attributes.email_to" default="">
 
 <cfif ThisTag.executionMode IS "Start">
 	<cftry>
