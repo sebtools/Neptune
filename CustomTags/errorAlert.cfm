@@ -1,6 +1,12 @@
 <cfif NOT IsDefined("ThisTag.executionMode")>This must be called as custom tag.<cfabort></cfif>
 <cfsilent>
 
+<cfscript>
+if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, "cf_errorAlert") ) {
+	StructAppend(Attributes, request.cftags["cf_errorAlert"], "no");
+}
+</cfscript>
+
 <cfparam name="Attributes.Error">
 <cfparam name="Attributes.environment" default="Production">
 <cfparam name="Attributes.site" default="#CGI.SERVER_NAME#">
@@ -73,29 +79,31 @@
 		</cfsavecontent>
 	</cfif>
 
-	<!--- logarithmic scale down of alert --->
-	<cf_scaledAlert AttributeCollection="#sAlert#">
-		<!--- Opening cf_scaledAlert determines if it will send, allowing us to take appropriate action before closing tag. --->
-		<cfif sendAlert>
-			<!--- If an "Errors" service can be found, save the whole thing there and get back a UUID for the error --->
-			<cfset ErrorUUID = "">
-			<cf_service name="Errors">
-			<cfif StructKeyExists(Variables,"Errors")>
-				<cftry>
-					<cfset ErrorUUID = Variables.Errors.saveError(ErrorDetails)>
-				<cfcatch>
-				</cfcatch>
-				</cftry>
+	<cfif Attributes.sendError>
+		<!--- logarithmic scale down of alert --->
+		<cf_scaledAlert AttributeCollection="#sAlert#">
+			<!--- Opening cf_scaledAlert determines if it will send, allowing us to take appropriate action before closing tag. --->
+			<cfif sendAlert>
+				<!--- If an "Errors" service can be found, save the whole thing there and get back a UUID for the error --->
+				<cfset ErrorUUID = "">
+				<cf_service name="Errors">
+				<cfif StructKeyExists(Variables,"Errors")>
+					<cftry>
+						<cfset ErrorUUID = Variables.Errors.saveError(ErrorDetails)>
+					<cfcatch>
+					</cfcatch>
+					</cftry>
+				</cfif>
+				<!--- If we have a UUID for the error then the extended_message should be the link to the page that will show the details --->
+				<!--- If no UUID, then the extended message should be the variable holding the string of the details saved earlier --->
+				<cfif Len(ErrorUUID)>
+					<cfoutput>http://example.com/?error=#ErrorUUID#</cfoutput>
+				<cfelse>
+					<cfoutput>#ErrorDetails#</cfoutput>
+				</cfif>
 			</cfif>
-			<!--- If we have a UUID for the error then the extended_message should be the link to the page that will show the details --->
-			<!--- If no UUID, then the extended message should be the variable holding the string of the details saved earlier --->
-			<cfif Len(ErrorUUID)>
-				<cfoutput>http://example.com/?error=#ErrorUUID#</cfoutput>
-			<cfelse>
-				<cfoutput>#ErrorDetails#</cfoutput>
-			</cfif>
-		</cfif>
-	</cf_scaledAlert>
+		</cf_scaledAlert>
+	</cfif>
 	
 	<cfif Attributes.showError>
 		<cfset Variables.output = ErrorDetails>

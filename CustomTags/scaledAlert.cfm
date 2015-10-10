@@ -1,6 +1,12 @@
 <cfif NOT IsDefined("ThisTag.executionMode")>This must be called as custom tag.<cfabort></cfif>
 <cfsilent>
 
+<cfscript>
+if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, "cf_scaledAlert") ) {
+	StructAppend(Attributes, request.cftags["cf_scaledAlert"], "no");
+}
+</cfscript>
+
 <cfparam name="Attributes.message" default="">
 <cfparam name="Attributes.extended_message" default="">
 <cfparam name="Attributes.icon_type" default="failure">
