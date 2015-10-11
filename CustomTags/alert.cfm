@@ -41,7 +41,7 @@ if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, "cf_
 		</cfif>
 		<cfif Len(Trim(Attributes.Email_To))>
 			<cftry>
-				<cfset Variables.Mailer.send(To=Attributes.Email_To,Subject=Attributes.message,Contents=Attributes.extended_message)>
+				<cfset Variables.Mailer.send(To=Attributes.Email_To,Subject=Attributes.message,html=Attributes.extended_message)>
 			<cfcatch>
 			</cfcatch>
 			</cftry>

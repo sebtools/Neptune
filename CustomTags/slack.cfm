@@ -2,8 +2,8 @@
 <cfsilent>
 
 <cfscript>
-if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, "slack") ) {
-	StructAppend(Attributes, request.cftags["slack"], "no");
+if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, "cf_slack") ) {
+	StructAppend(Attributes, request.cftags["cf_slack"], "no");
 }
 </cfscript>
 

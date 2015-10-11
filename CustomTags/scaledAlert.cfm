@@ -49,6 +49,9 @@ if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, "cf_
 		--->
 		<cfif Log10(NumMessages) EQ Round(Log10(NumMessages))>
 			<cfset sendAlert = true>
+			<cfif NumMessages GT 1>
+				<cfset Attributes.message = Attributes.message & " ( X #NumberFormat(NumMessages)# )">
+			</cfif>
 		<cfelse>
 			<cfset sendAlert = false>
 		</cfif>
