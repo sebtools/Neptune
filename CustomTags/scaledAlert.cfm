@@ -28,6 +28,7 @@ if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, "cf_
 					<cfset StructDelete(Application.sAlerts,currkey)>
 				</cfif>
 			</cfloop>
+			<cfset Application.AlertsLastCleaned = now()>
 		</cfif>
 
 		<!--- Get the struct key started for this alert message. --->
