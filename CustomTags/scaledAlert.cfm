@@ -17,12 +17,25 @@ if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, "cf_
 <cfif ThisTag.executionMode IS "Start">
 	<cftry>
 
-		<cfif NOT StructKeyExists(Application,"sAlerts")>
-			<cfset Application.sAlerts = {}>
+		<cfparam name="Application.sAlerts" default="#StructNew()#">
+		<cfparam name="Application.AlertsLastCleaned" default="#now()#" type="date">
+
+		<!--- Clean out old alerts if it hasn't been done in the last hour --->
+		<cfif DateDiff("h",Application.AlertsLastCleaned,now()) GTE 1>
+			<cfloop collection="#Application.sAlerts#" item="currkey">
+				<!--- Remove any error that hasn't happened for more than two hours. We'll reset the count at that point --->
+				<cfif DateDiff("h",Application.sAlerts[currkey]["TimeLast"],now()) GTE 2>
+					<cfset StructDelete(Application.sAlerts,currkey)>
+				</cfif>
+			</cfloop>
 		</cfif>
 
 		<!--- Get the struct key started for this alert message. --->
-		<cfif NOT StructKeyExists(Application.sAlerts,Attributes.key)>
+		<cfif StructKeyExists(Application.sAlerts,Attributes.key)>
+			<!--- Increase the number of times the alert has occurred. --->
+			<cfset Application.sAlerts[Attributes.key]["TimeLast"] = now()>
+			<cfset Application.sAlerts[Attributes.key]["Times"] = Application.sAlerts[Attributes.key]["Times"] + 1>
+		<cfelse>
 			<cfset Application.sAlerts[Attributes.key] = {}>
 			<cfset Application.sAlerts[Attributes.key]["Message"] = Attributes["message"]>
 			<cfset Application.sAlerts[Attributes.key]["TimeFirst"] = now()>
@@ -31,18 +44,6 @@ if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, "cf_
 		</cfif>
 		<cfset NumMessages = Application.sAlerts[Attributes.key]["Times"]>
 		
-		<!---
-		Increase the number of times the alert has occurred.
-		If two hours have passed since this alert was last captured, reset the alert struct for this alert.
-		--->
-		<cfif DateDiff("h",Application.sAlerts[Attributes.key]["TimeLast"],now()) GTE 2>
-			<cfset NumMessages = Application.sAlerts[Attributes.key]["Times"] + 1>
-			<cfset StructDelete(Application.sAlerts,Attributes.key)>
-		<cfelse>
-			<cfset Application.sAlerts[Attributes.key]["TimeLast"] = now()>
-			<cfset Application.sAlerts[Attributes.key]["Times"] = Application.sAlerts[Attributes.key]["Times"] + 1>
-		</cfif>
-
 		<!---
 		Send alerts based on logarithmic scale down.
 		If NumMessages is an integer, then it has increased logarithmically (1,10,100,1000,...)
