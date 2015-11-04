@@ -12,7 +12,12 @@ Created: 2010-01-12
 <!--- Associate with CF_DMQuery if called from within it --->
 <cfif ThisTag.ExecutionMode EQ "Start">
 	<cfset isNestedTag = false>
-	<cfif ListFindNoCase(getBaseTagList(),"CF_DMQuery")>
+	<cfif ListFindNoCase(getBaseTagList(),"CF_DMSQL") GT 0 AND ListFindNoCase(getBaseTagList(),"CF_DMSQL") LT ListLen(getBaseTagList())>
+		<cfassociate basetag="CF_DMSQL" dataCollection="aSQLs">
+		<!--- The second argument is instancenumber. The default is 1, which would just refer to the same CF_DMSQL. Have to use 2 to get the parent --->
+		<cfset ParentData = getBaseTagData("CF_DMSQL",2)>
+		<cfset isNestedTag = true>
+	<cfelseif ListFindNoCase(getBaseTagList(),"CF_DMQuery")>
 		<cfassociate basetag="cf_DMQuery" dataCollection="aSQLs">
 		<cfset ParentData = getBaseTagData("cf_DMQuery")>
 		<cfset isNestedTag = true>
@@ -20,6 +25,10 @@ Created: 2010-01-12
 </cfif>
 
 <cfif isNestedTag>
+	<cfif NOT StructKeyExists(ParentData.attributes,"DataMgr")>
+		<cfdump var="#ParentData.attributes#" />
+		<cfabort />
+	</cfif>
 	<cfset Variables.DataMgr = ParentData.attributes.DataMgr>
 <cfelse>
 	<cfif StructKeyExists(Attributes,"DataMgr")>
@@ -35,6 +44,7 @@ Created: 2010-01-12
 		<cfthrow message="Unable to determine DataMgr">
 	</cfif>
 </cfif>
+<cfset Attributes.DataMgr = Variables.DataMgr>
 
 <cfparam name="Attributes.method" default="getRecordsSQL">
 
