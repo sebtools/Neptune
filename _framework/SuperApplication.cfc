@@ -7,19 +7,22 @@
 </cfif>
 
 <cfscript>
-sSuper = getMetaData(This);
 This["ClientManagement"] = "Yes";
 This["SessionManagement"] = "Yes";
-setMappings(getDirectoryFromPath(sSuper.Path));
 </cfscript>
 
 <cffunction name="onRequestStart">
-	<cfset var sLocal = getMetaData(This)>
 	
+	<cfif NOT ( StructKeyExists(Variables,"useMappings") AND NOT Variables.useMappings )>
+		<cfset sSuper = getMetaData(This)>
+		<cfset setMappings(getDirectoryFromPath(sSuper.Path))>
+	</cfif>
+
 	<cfinclude template="/_config/invoke.cfm">
 	<cfif ListFirst(CGI.SCRIPT_NAME,"/") EQ "admin">
 		<cf_layout switch="Admin">
 	</cfif>
+	
 </cffunction>
 
 <cffunction name="onRequest"><cfinclude template="#arguments[1]#"></cffunction>
