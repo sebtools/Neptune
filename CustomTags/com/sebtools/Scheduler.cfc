@@ -18,7 +18,13 @@
 	<cfset variables.tasks = StructNew()>
 	<cfset variables.sComponents = StructNew()>
 	<cfset variables.sRunningTasks = StructNew()>
-	
+
+	<!--- Initialize Date of run from last action if there is one. --->
+	<cfset Variables.DateLastRunTasks = getDateOfLastAction()>
+	<cfif NOT isDate(Variables.DateLastRunTasks)>
+		<cfset StructDelete(Variables,"DateLastRunTasks")>
+	</cfif>
+
 	<cfreturn This>
 </cffunction>
 
@@ -31,6 +37,20 @@
 	
 </cffunction>
 
+<cffunction name="failsafe" access="public" returntype="void" output="no">
+	
+	<!--- So long as runTasks is called every three hours, then all is well. --->
+	<cfif NOT ( StructKeyExists(Variables,"DateLastRunTasks") AND DateDiff("h",Variables.DateLastRunTasks,now()) LTE 3 )>
+		<!--- Otherwise, raise the alerm and call the method to keep things running. --->
+		<cf_scaledAlert><cfoutput>
+		Scheduler runTasks hasn't run since <cfif isDate(Variables.DateLastRunTasks)>#DateFormat(Variables.DateLastRunTasks,'mmm d yyy')# at #TimeFormat(Variables.DateLastRunTasks,'hh:mm:ss tt')#<cfelse>it was loaded</cfif>.
+		Running now...
+		</cfoutput></cf_scaledAlert>
+		<cfset runTasks()>
+	</cfif>
+	
+</cffunction>
+
 <cffunction name="getActionRecords" access="public" returntype="query" output="no">
 	
 	<cfif StructKeyExists(Arguments,"TaskName")>
@@ -38,6 +58,18 @@
 	</cfif>
 	
 	<cfreturn variables.DataMgr.getRecords("schActions",arguments)>
+</cffunction>
+
+<cffunction name="getDateOfLastAction" access="public" returntype="string" output="no">
+
+	<cfset var qLastAction = 0>
+	
+	<cfquery name="qLastAction" datasource="#variables.datasource#">
+	SELECT	Max(DateRun) AS DateLastRun
+	FROM	schActions
+	</cfquery>
+	
+	<cfreturn qLastAction.DateLastRun>
 </cffunction>
 
 <cffunction name="getTaskRecords" access="public" returntype="query" output="no">
@@ -324,18 +356,27 @@
 
 <cffunction name="runTasks" access="public" returntype="void" output="no">
 	
-	<cfset var aTasks = getCurrentTasks(now())>
+	<cfset var aTasks = 0>
 	<cfset var ii = 0>
-	
-	<cfloop index="ii" from="1" to="#ArrayLen(aTasks)#" step="1">
-		<cfif StructKeyExists(aTasks[ii],"name") AND NOT StructKeyExists(variables.sRunningTasks,aTasks[ii].name)>
-			<cfif aTasks[ii].interval EQ "once">
-				<cfset runTask(ExpandTaskName(aTasks[ii].name,aTasks[ii].jsonArgs),true)>
-			<cfelse>
-				<cfset runTask(ExpandTaskName(aTasks[ii].name,aTasks[ii].jsonArgs))>
+
+	<!--- Don't do this more than once every 3 minutes --->
+	<cfif NOT ( StructKeyExists(Variables,"DateLastRunTasks") AND DateDiff("n",Variables.DateLastRunTasks,now()) LTE 3 )>
+
+		<cfset Variables.DateLastRunTasks = now()>
+
+		<cfset aTasks = getCurrentTasks(now())>
+		
+		<cfloop index="ii" from="1" to="#ArrayLen(aTasks)#" step="1">
+			<cfif StructKeyExists(aTasks[ii],"name") AND NOT StructKeyExists(variables.sRunningTasks,aTasks[ii].name)>
+				<cfif aTasks[ii].interval EQ "once">
+					<cfset runTask(ExpandTaskName(aTasks[ii].name,aTasks[ii].jsonArgs),true)>
+				<cfelse>
+					<cfset runTask(ExpandTaskName(aTasks[ii].name,aTasks[ii].jsonArgs))>
+				</cfif>
 			</cfif>
-		</cfif>
-	</cfloop>
+		</cfloop>
+
+	</cfif>
 	
 </cffunction>
 
