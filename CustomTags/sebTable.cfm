@@ -944,8 +944,8 @@ function seb#sfx##attributes.Table##sfx#Off(obj) {
 $(document).ready(function() {$(".sebTable").find("td:not('.sebTable-pager-pages,.sebTable-pager-prev,.sebTable-pager-next')").hover(function(e) {$(this).parent().addClass("hover");},function(e) {$(this).parent().removeClass("hover");});});
 <cfset request["sebTable_jqhover"] = true></cfif><cfif hasSorter>
 $(document).ready(function() {
-	sfx = "#sfx#";
-	sebTableId = '##sebTable' + sfx;
+	var sfx = "#sfx#";
+	var sebTableId = '##sebTable' + sfx;
 	if ( "tableDnD" in jQuery ) {
     	// Initialize the table
 		$(sebTableId + '-table').tableDnD({
