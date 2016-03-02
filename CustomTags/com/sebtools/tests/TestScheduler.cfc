@@ -88,6 +88,34 @@
 	
 </cffunction>
 
+<cffunction name="shouldRunMatchingOneTimeTasksWithSameJSON" access="public" returntype="void" output="no"
+	hint="One-time tasks with matching name, comp method and jsonArgs should succeed if created and run back to back."
+	mxunit:transaction="rollback"
+>
+	<cfset var TaskName = CreateUUID()>
+	<cfset var sTaskArgs = {PKID=100,"resend"=false}>
+	<cfset var TaskID1 = loadTask(Name=TaskName,args=sTaskArgs)>
+	<cfset var TaskID2 = 0>
+	<cfset var TaskID3 = 0>
+
+	<cfset runTasks(true)>
+
+	<cfset assertTrue(hasTaskRun(TaskID1),"The first one-time task failed to run.")>
+
+	<cfset TaskID2 = loadTask(Name=TaskName,args=sTaskArgs)>
+
+	<cfset runTasks(true)>
+
+	<cfset assertTrue(hasTaskRun(TaskID2),"The second one-time task failed to run.")>
+
+	<cfset TaskID3 = loadTask(Name=TaskName,args=sTaskArgs)>
+
+	<cfset runTasks(true)>
+
+	<cfset assertTrue(hasTaskRun(TaskID3),"The third one-time task failed to run.")>
+	
+</cffunction>
+
 <cffunction name="shouldRunSameNameOneTimeTasksAfterReinitWithSFDef" access="public" returntype="void" output="no"
 	hint="Identically named one-time tasks should succeed if created back to back and then run after Scheduler reinit with a defined Service Factory component."
 	mxunit:transaction="rollback"
@@ -300,6 +328,21 @@
 	
 </cffunction>
 
+<cffunction name="shouldPreverseArgs" access="public" returntype="void" output="no"
+	hint="Simple arguments should be preserved across Scheduler restarts."
+	mxunit:transaction="rollback"
+>
+	
+	<!--- I don't need to do anything. --->
+	<cfset var sArgs = StructFromArgs(a="Apple",b="Banana")>
+	<cfset var TaskID = loadTask(args=sArgs)>
+	
+	<cfset dropScheduler()>
+	<cfset loadScheduler()>
+	
+	<cfset stub()>
+</cffunction>
+
 <cffunction name="assertTaskRan" access="public" returntype="void" output="no" hint="I assert that given date is recent, as defined by the arguments provided.">
 	<cfargument name="TaskID" type="numeric" required="true">
 	<cfargument name="message" type="string" default="The task did not run.">
@@ -374,8 +417,9 @@
 </cffunction>
 
 <cffunction name="runTasks" access="private" returntype="void" output="no">
+	<cfargument name="force" type="boolean" default="false">
 	
-	<cfset Variables.Scheduler.runTasks()>
+	<cfset Variables.Scheduler.runTasks(Arguments.force)>
 	
 </cffunction>
 

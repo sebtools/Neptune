@@ -355,12 +355,13 @@
 </cffunction>
 
 <cffunction name="runTasks" access="public" returntype="void" output="no">
+	<cfargument name="force" type="boolean" default="false">
 	
 	<cfset var aTasks = 0>
 	<cfset var ii = 0>
 
 	<!--- Don't do this more than once every 3 minutes --->
-	<cfif NOT ( StructKeyExists(Variables,"DateLastRunTasks") AND DateDiff("n",Variables.DateLastRunTasks,now()) LTE 3 )>
+	<cfif Arguments.force OR NOT ( StructKeyExists(Variables,"DateLastRunTasks") AND DateDiff("n",Variables.DateLastRunTasks,now()) LTE 3 )>
 
 		<cfset Variables.DateLastRunTasks = now()>
 
