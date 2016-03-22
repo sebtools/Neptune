@@ -321,6 +321,7 @@
 <cffunction name="sendEmail" access="private" returntype="boolean" output="no">
 	
 	<cfset var sent = false>
+	<cfset var Attachment = "">
 	
 	<cfif StructKeyExists(variables,"port") AND Len(variables.port) AND isNumeric(variables.port)>
 		<cfparam name="arguments.port" default="#variables.port#">
