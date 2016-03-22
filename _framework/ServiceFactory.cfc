@@ -363,18 +363,20 @@
 	
 	<!--- The services array won't change unless more components are loaded, so cache it. --->
 	<cfif NOT StructKeyExists(Variables.sInternalCache,"aServices")>
-		<cfloop index="ii" from="1" to="#ArrayLen(Variables.xComponents.site.components.component)#">
-			<cfset xComponent = Variables.xComponents.site.components.component[ii]>
-			<cfif StructKeyExists(xComponent.XmlAttributes,"name")>
-				<cfset ServiceName = xComponent.XmlAttributes["name"]>
-				<cfset getService(ServiceName)>
-				<cfif StructKeyExists(Variables.cache,ServiceName)>
-					<cfset sService = StructNew()>
-					<cfset sService["name"] = ServiceName>
-					<cfset ArrayAppend(aResult,sService)>
+		<cfif StructKeyExists(Variables.xComponents,"site") AND StructKeyExists(Variables.xComponents.site,"components")>
+			<cfloop index="ii" from="1" to="#ArrayLen(Variables.xComponents.site.components.component)#">
+				<cfset xComponent = Variables.xComponents.site.components.component[ii]>
+				<cfif StructKeyExists(xComponent.XmlAttributes,"name")>
+					<cfset ServiceName = xComponent.XmlAttributes["name"]>
+					<cfset getService(ServiceName)>
+					<cfif StructKeyExists(Variables.cache,ServiceName)>
+						<cfset sService = StructNew()>
+						<cfset sService["name"] = ServiceName>
+						<cfset ArrayAppend(aResult,sService)>
+					</cfif>
 				</cfif>
-			</cfif>
-		</cfloop>
+			</cfloop>
+		</cfif>
 		<cfset Variables.sInternalCache.aServices = aResult>
 	</cfif>
 	
