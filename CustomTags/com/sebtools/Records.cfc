@@ -788,6 +788,7 @@
 </cffunction>
 
 <cfscript>
+function ListIntegers(list) { return ReReplaceNoCase(ReReplaceNoCase(list,'[^0-9]',',','ALL'),',{2,}',',','ALL'); }
 function makeCompName(str) { return variables.Manager.makeCompName(str); }
 </cfscript>
 
