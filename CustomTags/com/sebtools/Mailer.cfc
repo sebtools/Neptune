@@ -125,11 +125,11 @@
 <cffunction name="fixEmail" access="public" returntype="string" output="no" hint="I fix an email address (or attempt to).">
 	<cfargument name="email" type="string" required="yes">
 	
-	<cfif Len(Arguments.email)>
-		<cfif REFind("(\[|\(|<)",Arguments.email)>
-			<cfset Arguments.email = Left(Arguments.email,REFind("(\[|\(|<)",Arguments.email) -1).concat(ReplaceNoCase(ReplaceNoCase(Mid(Arguments.email,REFind("(\[|\(|<)",Arguments.email),Len(Arguments.email)),',','.','ALL'),' ','','ALL'))>
-		</cfif>
-	</cfif>
+	<!--- <cfif Len(Arguments.email)>
+			<cfif REFind("(\[|\(|<)",Arguments.email)>
+				<cfset Arguments.email = Left(Arguments.email,REFind("(\[|\(|<)",Arguments.email) -1).concat(ReplaceNoCase(ReplaceNoCase(Mid(Arguments.email,REFind("(\[|\(|<)",Arguments.email),Len(Arguments.email)),',','.','ALL'),' ','','ALL'))>
+			</cfif>
+		</cfif> --->
 	
 	<cfreturn Arguments.email>
 </cffunction>
