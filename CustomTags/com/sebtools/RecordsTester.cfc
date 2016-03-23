@@ -387,19 +387,19 @@
 	<cfset var sLenPos = 0>
 	<cfset var emailAddress = "">
 	
-	<cfif REFind("([a-zA-Z0-9_\.=-]+@[a-zA-Z0-9_\.-]+\.[[:alpha:]]{2,6})",string)>
-		<cfset sLenPos = REFind("([a-zA-Z0-9_\.=-]+@[a-zA-Z0-9_\.-]+\.[[:alpha:]]{2,6})",string,1,true) />
-		<cfset emailAddress = mid(string, sLenPos.pos[1], sLenPos.len[1]) />
-		<cfif NOT ListFindNoCase(EmailAddresses,emailAddress)>
-			<cfset EmailAddresses = ListAppend(EmailAddresses, emailAddress)>
+	<cfif REFind("([a-zA-Z0-9_\.=-]+@[a-zA-Z0-9_\.-]+\.[[:alpha:]]{2,6})",arguments.string)>
+		<cfset sLenPos = REFind("([a-zA-Z0-9_\.=-]+@[a-zA-Z0-9_\.-]+\.[[:alpha:]]{2,6})",arguments.string,1,true) />
+		<cfset emailAddress = mid(arguments.string, sLenPos.pos[1], sLenPos.len[1]) />
+		<cfif NOT ListFindNoCase(arguments.EmailAddresses,emailAddress)>
+			<cfset arguments.EmailAddresses = ListAppend(arguments.EmailAddresses, emailAddress)>
 		</cfif>
-		<cfset string = Mid(string, sLenPos.pos[1] + sLenPos.len[1], len(string))>
-		<cfif REFind("([a-zA-Z0-9_\.=-]+@[a-zA-Z0-9_\.-]+\.[[:alpha:]]{2,6})",string)>
-			<cfset EmailAddresses = getEmailAddresses(string, EmailAddresses)>
+		<cfset arguments.string = Mid(arguments.string, sLenPos.pos[1] + sLenPos.len[1], len(arguments.string))>
+		<cfif REFind("([a-zA-Z0-9_\.=-]+@[a-zA-Z0-9_\.-]+\.[[:alpha:]]{2,6})",arguments.string)>
+			<cfset arguments.EmailAddresses = getEmailAddresses(arguments.string, arguments.EmailAddresses)>
 		</cfif>
 	</cfif>
 	
-	<cfreturn EmailAddresses>
+	<cfreturn arguments.EmailAddresses>
 </cffunction>
 
 <cfscript>

@@ -93,6 +93,7 @@
 	<cfargument name="data" type="struct" required="yes">
 	<cfargument name="maxpoints" type="numeric" default="0">
 	
+	<cfset var langPoints = 0>
 	<cfset var pointval = 0>
 	<cfset var qWords = variables.DataMgr.getRecords("spamWords")>
 	<cfset var qRegExs = variables.DataMgr.getRecords("spamRegExs")>

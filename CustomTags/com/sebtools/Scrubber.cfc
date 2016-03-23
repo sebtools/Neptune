@@ -68,23 +68,23 @@ Type
 	<cfargument name="data" type="string" required="yes">
 	<cfargument name="checks" type="struct" required="yes">
 	
-	<cfif Len(data)>
+	<cfif Len(arguments.data)>
 	
 		<!--- Clear non-digits for digits only --->
 
 		<cfif StructKeyIsTrue(checks,"digitsonly")>
-			<cfset data = digitize(data)>
+			<cfset arguments.data = digitize(arguments.data)>
 		</cfif>
 	
 		<cfif StructKeyExists(checks,"type") AND Len(checks.type)>
 			<cfif StructKeyIsTrue(variables.Types[checks.type],"digitsonly")>
-				<cfset data = digitize(data)>
+				<cfset arguments.data = digitize(arguments.data)>
 			</cfif>
 		</cfif>
 
 	</cfif>
 	
-	<cfreturn data>
+	<cfreturn arguments.data>
 </cffunction>
 
 <cffunction name="checkField" access="public" returntype="boolean" output="no" hint="I check a field.">
@@ -185,31 +185,31 @@ Type
 	
 	<!--- Clear non-digits for digits only --->
 	<cfif StructKeyIsTrue(checks,"digitsonly")>
-		<cfset data = digitize(data)>
+		<cfset arguments.data = digitize(arguments.data)>
 	</cfif>
 	
 	<!--- Check regex --->
-	<cfif StructKeyExists(checks,"regex") AND Len(checks.regex) AND Not ReFindNoCase(checks.regex, data)>
+	<cfif StructKeyExists(checks,"regex") AND Len(checks.regex) AND Not ReFindNoCase(checks.regex, arguments.data)>
 		<cfset isOK = false>
 	</cfif>
 	
 	<!--- check isBoolean --->
-	<cfif StructKeyIsTrue(checks,"isBoolean") AND Not isBoolean(data)>
+	<cfif StructKeyIsTrue(checks,"isBoolean") AND Not isBoolean(arguments.data)>
 		<cfset isOK = false>
 	</cfif>
 	
 	<!--- check isDate --->
-	<cfif StructKeyIsTrue(checks,"isDate") AND Not isDate(data)>
+	<cfif StructKeyIsTrue(checks,"isDate") AND Not isDate(arguments.data)>
 		<cfset isOK = false>
 	</cfif>
 	
 	<!--- check isNumeric --->
-	<cfif StructKeyIsTrue(checks,"isNumeric") AND Not isNumeric(data)>
+	<cfif StructKeyIsTrue(checks,"isNumeric") AND Not isNumeric(arguments.data)>
 		<cfset isOK = false>
 	</cfif>
 	
 	<!--- check isInteger --->
-	<cfif StructKeyIsTrue(checks,"isinteger") AND NOT  ( isNumeric(data) AND Int(data) EQ data )>
+	<cfif StructKeyIsTrue(checks,"isinteger") AND NOT  ( isNumeric(arguments.data) AND Int(arguments.data) EQ arguments.data )>
 		<cfset isOK = false>
 	</cfif>
 	
@@ -261,6 +261,8 @@ Type
 	<cfargument name="errMessage" type="string" default="This form has errors.">
 	<cfargument name="urlvar" type="string" default="errFields">
 	<cfargument name="errClass" type="string" default="err">
+
+	<cfset var result = "">
 	
 	<cfif Not StructKeyExists(variables.Forms,arguments.formfile)>
 		<cfset addFormXML(arguments.formfile,arguments.fieldsXML)>
@@ -363,27 +365,3 @@ Type
 </cffunction>
 
 </cfcomponent>
-<!--- 
-<cffunction name="phone" access="public" returntype="string" output="no">
-	<cfargument name="text" type="string" required="yes">
-	
-	<cfset var 1 = 0>
-	<cfset var nums = 0>
-	<cfset var thisChar = "">
-	<cfset var result = "">
-	
-	<cfloop index="i" from="1" to="#Len(arguments.text)#" step="1">
-		<cfset thisChar = Mid(arguments.text,i,1)>
-		<cfif isNumeric(thisChar)>
-			<cfset num = nums + 1>
-			<cfset result = result & thisChar>
-		</cfif>
-	</cfloop>
-	
-	<cfif Len(result) neq 10>
-		<cfthrow message="Phone Number must have ten digits." type="ScrubError" errorcode="ScrubError:PhoneNumber">
-	</cfif>
-	
-	<cfreturn result>
-</cffunction>
- --->

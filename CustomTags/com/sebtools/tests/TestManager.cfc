@@ -44,7 +44,7 @@
 	var childid5 = oManager.saveRecord('unitCascadeChildren',sChild5);
 	</cfscript>
 	
-	<cfset sParent = {ParentID=1}>
+	<cfset var sParent = {ParentID=1}>
 	<cfset oManager.removeRecord('testParents',sParent)>
 	
 	<!--- ToDo: Still writing test --->

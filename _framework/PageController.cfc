@@ -202,6 +202,7 @@
 	<cfset var permissions = "">
 	<cfset var sProgram = 0>
 	<cfset var oSecurity = 0>
+	<cfset var sCompMeta = StructNew()>
 	
 	<cfif hasSecurityService() AND isSecuredPage()>
 		<cfset oSecurity = getSecurityService()>
@@ -616,6 +617,7 @@
 	<cfargument name="component" type="any" required="yes">
 	
 	<cfset var key = "">
+	<cfset var me = {}>
 	
 	<cfif isSimpleValue(arguments.component) AND StructKeyExists(variables,arguments.component)>
 		<cfset arguments.component = variables[arguments.component]>

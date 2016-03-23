@@ -58,6 +58,7 @@
 <cffunction name="getMetaStruct" access="public" returntype="struct" output="no">
 	
 	<cfset var sResult = Super.getMetaStruct(argumentCollection=arguments)>
+	<cfset var sImporteeStruct = {}>
 	
 	<cfset sResult["method_save"] = "importRecords">
 	
@@ -181,6 +182,7 @@
 	<cfset var sImport = StructNew()>
 	<cfset var sArgs = Duplicate(arguments)>
 	<cfset var sFields = StructNew()>
+	<cfset var sData = {}>
 	
 	<cfset StructDeleteKeys(sArgs,"component,method,ExcelFile,RequiredColumns,CatchErrTypes")>
 	
@@ -545,7 +547,7 @@
 	<cfargument name="struct" type="struct" required="true">
 	<cfargument name="keys" type="string" required="true">
 	
-	<cfset key = "">
+	<cfset var key = "">
 	
 	<cfloop list="#arguments.keys#" index="key">
 		<cfset StructDelete(arguments.struct,key)>

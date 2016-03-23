@@ -56,9 +56,9 @@
 	<cfargument name="formname" type="string" required="yes" hint="A name to uniquely identify this form.">
 	<cfargument name="usertoken" type="string" required="no" hint="Any unique string (maybe cfid_cftoken) to identify the user. Required only if using DataMgr.">
 	
-	<cfset wddxData = "">
-	<cfset qRecord = 0>
-	<cfset result = StructNew()>
+	<cfset var wddxData = "">
+	<cfset var qRecord = 0>
+	<cfset var result = StructNew()>
 	
 	<!--- usertoken is required when using DataMgr --->
 	<cfif isDefined("variables.DataMgr") AND NOT StructKeyExists(arguments,"usertoken")>

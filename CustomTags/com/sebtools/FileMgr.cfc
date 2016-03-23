@@ -235,10 +235,10 @@
 	
 	<cfset var exts = arguments.extensions>
 	<cfset var result = "">
-	<cfset var ext = ListLast(string,".")>
+	<cfset var ext = ListLast(arguments.string,".")>
 	
-	<cfif Len(ext) AND ListFindNoCase(exts,ext) AND (Len(string)-Len(ext)-1) GT 0>
-		<cfset string = Left(string,Len(string)-Len(ext)-1)>
+	<cfif Len(ext) AND ListFindNoCase(exts,ext) AND (Len(arguments.string)-Len(ext)-1) GT 0>
+		<cfset arguments.string = Left(arguments.string,Len(arguments.string)-Len(ext)-1)>
 	</cfif>
 	
 	<cfset result = PathNameFromString(arguments.string)>
@@ -393,6 +393,7 @@
 	<cfargument name="Folder" type="string" required="no">
 	
 	<cfset var destination = getFilePath(argumentCollection=arguments)>
+	<cfset var result = "">
 	
 	<cffile action="READ" file="#destination#" variable="result">
 	
@@ -582,6 +583,8 @@ Copies a directory.
 	<cfscript>
 	var extension = "";
 	var thePath = "";
+	var dir = "";
+	var filebase = "";
 	var result = arguments.fullPath;
 	var counter = 0;
 	if ( FileExists(Arguments.fullPath) ) {

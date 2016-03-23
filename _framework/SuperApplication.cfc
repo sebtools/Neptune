@@ -12,6 +12,8 @@ This["SessionManagement"] = "Yes";
 </cfscript>
 
 <cffunction name="onRequestStart">
+
+	<cfset var sSuper = StructNew()>
 	
 	<cfif NOT ( StructKeyExists(Variables,"useMappings") AND NOT Variables.useMappings )>
 		<cfset sSuper = getMetaData(This)>

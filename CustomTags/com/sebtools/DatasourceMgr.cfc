@@ -95,6 +95,7 @@
 	<cfset var qDatasources = QueryNew("name,driver,type,nameu")>
 	<cfset var Datasources = variables.Factory.DataSourceService.getDatasources()>
 	<cfset var dsn = "">
+	<cfset var driver = "">
 	<cfset var type = "">
 	
 	<cfloop collection="#Datasources#" item="dsn">

@@ -119,7 +119,7 @@ veto
 <cffunction name="isESPluralWord" access="private" returntype="boolean" output="false" hint="">
 	<cfargument name="string" type="string" required="yes">
 	
-	<cfset result = false>
+	<cfset var result = false>
 	
 	<cfif
 			Right(arguments.string,1) EQ "s"

@@ -97,7 +97,7 @@
 		<cfset axTypes = getTypes(ArgumentCollection=Arguments)>
 		<cfif ArrayLen(axTypes) EQ 1>
 			<cfset result = axTypes[1].XmlAttributes>
-			<cfset sTypesData[key] = result>
+			<cfset Variables.sTypesData[key] = result>
 		<cfelse>
 			<cfset result = StructNew()>
 		</cfif>
@@ -220,6 +220,7 @@
 	<cfset var sFields = getFieldsStruct(tablename=arguments.tablename)>
 	<cfset var ii = 0>
 	<cfset var in = Duplicate(arguments.data)>
+	<cfset var myImage = "">
 	
 	<!--- If cfimage is available and image is passed in, fit any images into box --->
 	<cfif StructKeyExists(variables,"CFIMAGE") AND ArrayLen(aFields)>
@@ -1306,23 +1307,23 @@
 	<cfset var ii = 0>
 	<cfset var incCount = 0>
 	
-	<cfloop index="ii" from="1" to="#ArrayLen(aFields)#" step="1">
+	<cfloop index="ii" from="1" to="#ArrayLen(arguments.aFields)#" step="1">
 		<cfif
-				( StructKeyExists(aFields[ii],"Increment") AND aFields[ii].Increment IS true )
-			OR	( StructKeyExists(aFields[ii],"PrimaryKey") AND aFields[ii].PrimaryKey IS true )
+				( StructKeyExists(arguments.aFields[ii],"Increment") AND arguments.aFields[ii].Increment IS true )
+			OR	( StructKeyExists(arguments.aFields[ii],"PrimaryKey") AND arguments.aFields[ii].PrimaryKey IS true )
 		>
 			<cfset incCount = incCount + 1>
 		</cfif>
 	</cfloop>
 	<cfif incCount GT 1>
-		<cfloop index="ii" from="1" to="#ArrayLen(aFields)#" step="1">
-			<cfif StructKeyExists(aFields[ii],"Increment") AND aFields[ii].Increment EQ 1>
-				<cfset aFields[ii]["Increment"] = false>
+		<cfloop index="ii" from="1" to="#ArrayLen(arguments.aFields)#" step="1">
+			<cfif StructKeyExists(arguments.aFields[ii],"Increment") AND arguments.aFields[ii].Increment EQ 1>
+				<cfset arguments.aFields[ii]["Increment"] = false>
 			</cfif>
 		</cfloop>
 	</cfif>
 	
-	<cfreturn aFields>
+	<cfreturn arguments.aFields>
 </cffunction>
 
 <cffunction name="getWidth" access="private" returntype="string" output="no">
@@ -1559,23 +1560,23 @@
 	<cfif StructKeyExists(arguments,"type") OR StructKeyExists(arguments,"relation")>
 		<!--- Make sure a table exists for this field --->
 		<cfset setTable(arguments.tablename)>
-		<cfif ListFindNoCase(sMetaData[arguments.tablename]["fieldlist"],arguments.fieldname)>
+		<cfif ListFindNoCase(variables.sMetaData[arguments.tablename]["fieldlist"],arguments.fieldname)>
 			<!--- Update field --->
-			<cfloop index="ii" from="1" to="#ArrayLen(sMetaData[arguments.tablename].fields)#">
-				<cfif sMetaData[arguments.tablename].fields[ii].name EQ arguments.fieldname>
-					<cfset sMetaData[arguments.tablename].fields[ii] = sField>
+			<cfloop index="ii" from="1" to="#ArrayLen(variables.sMetaData[arguments.tablename].fields)#">
+				<cfif variables.sMetaData[arguments.tablename].fields[ii].name EQ arguments.fieldname>
+					<cfset variables.sMetaData[arguments.tablename].fields[ii] = sField>
 				</cfif>
 			</cfloop>
 		<cfelse>
 			<!--- Add field --->
-			<cfset ArrayAppend(sMetaData[arguments.tablename]["fields"],sField)>
-			<cfset sMetaData[arguments.tablename]["fieldlist"] = ListAppend(sMetaData[arguments.tablename]["fieldlist"],arguments.fieldname)>
+			<cfset ArrayAppend(variables.sMetaData[arguments.tablename]["fields"],sField)>
+			<cfset variables.sMetaData[arguments.tablename]["fieldlist"] = ListAppend(variables.sMetaData[arguments.tablename]["fieldlist"],arguments.fieldname)>
 			<cfif StructKeyExists(arguments,"isOnList") AND isBoolean(arguments.isOnList) AND arguments.isOnList>
-				<cfset sMetaData[arguments.tablename]["listfields"] = ListAppend(sMetaData[arguments.tablename]["listfields"],arguments.fieldname)>
+				<cfset variables.sMetaData[arguments.tablename]["listfields"] = ListAppend(variables.sMetaData[arguments.tablename]["listfields"],arguments.fieldname)>
 			</cfif>
 		</cfif>
-		<cfset sMetaData[arguments.tablename]["sFields"][arguments.fieldname] = sField>
-		<cfset StructDelete(sMetaData[arguments.tablename]["sFields"][arguments.fieldname],"isInTableCreation")>
+		<cfset variables.sMetaData[arguments.tablename]["sFields"][arguments.fieldname] = sField>
+		<cfset StructDelete(variables.sMetaData[arguments.tablename]["sFields"][arguments.fieldname],"isInTableCreation")>
 		
 		<cfif NOT ( StructKeyExists(arguments,"isInTableCreation") AND isBoolean(arguments.isInTableCreation) AND arguments.isInTableCreation )>
 			<cfset sDataMgrField = transformField(Duplicate(sField),"DataMgr")>
@@ -1640,6 +1641,7 @@
 	<cfset var ff = 0>
 	<cfset var ll = 0>
 	<cfset var sField = "">
+	<cfset var xField = "">
 	<cfset var special = "">
 	<cfset var xType = 0>
 	<cfset var insertAt = 0>
@@ -2118,45 +2120,6 @@
 					<cfset variables.sMetaData[ftable]["childtables"] = ListAppend(variables.sMetaData[ftable]["childtables"],table)>
 				</cfif>
 			</cfif>
-			
-			<!--- Add list fields if indicated --->
-			<!---<cfif StructKeyExists(xField.XmlAttributes,"withListFields") AND xField.XmlAttributes["withListFields"] IS true>
-				<cfset ListValueFieldName = xTable.XmlAttributes.methodPlural>
-				<cfset ListNamesFieldName = "#xTable.XmlAttributes.SingularPlural#Names">
-				<cfif table EQ ftable>
-					<cfset ListValueFieldName = "Child#ListValueFieldName#">
-					<cfset ListNamesFieldName = "Child#ListNamesFieldName#">
-				</cfif>
-				<cfif NOT ArrayLen(XmlSearch(xFTable,"//field[@name='#ListValueFieldName#']"))>
-					<cfset xListField = XmlElemNew(xDef,"field")>
-					<cfset xListField.XmlAttributes["name"] = ListValueFieldName>
-					<cfset xListField.XmlAttributes["label"] = xListField.XmlAttributes.labelPlural>
-					<cfif table EQ ftable>
-						<cfset xListField.XmlAttributes.label = "Child #xListField.XmlAttributes.label#">
-					</cfif>
-					<cfset ArrayAppend(xListField.XmlChildren,XmlElemNew(xDef,"relation"))>
-					<cfset xListField.XmlChildren[1].XmlAttributes["type"] = "list">
-					<cfset xListField.XmlChildren[1].XmlAttributes["table"] = ftable>
-					<cfset xListField.XmlChildren[1].XmlAttributes["field"] = getPrimaryKeyFields(ftable,xDef)>
-					<cfset xListField.XmlChildren[1].XmlAttributes["join-field-local"] = getPrimaryKeyFields(ftable,xDef)>
-					<cfset xListField.XmlChildren[1].XmlAttributes["join-field-remote"] = xField.XmlAttributes["name"]>
-					<cfset ArrayAppend(xFTable.XmlChildren,xListField)>
-				</cfif>
-				<cfif NOT ArrayLen(XmlSearch(xFTable,"//field[@name='#ListNamesFieldName#']"))>
-					<cfset xListNamesField = XmlElemNew(xDef,"field")>
-					<cfset xListField.XmlAttributes["name"] = ListNamesFieldName>
-					<cfset xListNamesField.XmlAttributes["label"] = xListField.XmlAttributes.labelPlural>
-					<cfif table EQ ftable>
-						<cfset xListNamesField.XmlAttributes.label = "Child #xListNamesField.XmlAttributes.label#">
-					</cfif>
-					<cfset ArrayAppend(xListNamesField.XmlChildren,XmlElemNew(xDef,"relation"))>
-					<cfset xListNamesField.XmlChildren[1].XmlAttributes["type"] = "list">
-					<cfset xListNamesField.XmlChildren[1].XmlAttributes["field"] = variables.sMetaData[ftable]["labelField"]>
-					<cfset xListNamesField.XmlChildren[1].XmlAttributes["join-field-local"] = getPrimaryKeyFields(ftable,xDef)>
-					<cfset xListNamesField.XmlChildren[1].XmlAttributes["join-field-remote"] = xField.XmlAttributes["name"]>
-					<cfset ArrayAppend(xFTable.XmlChildren,xListNamesField)>
-				</cfif>
-			</cfif>--->
 		</cfif>
 	</cfloop>
 	
@@ -2172,6 +2135,7 @@
 	<cfset var result = "">
 	<cfset var axTables = 0>
 	<cfset var xpath = "">
+	<cfset var table = "">
 	
 	<!--- TODO: find without prefix --->
 	

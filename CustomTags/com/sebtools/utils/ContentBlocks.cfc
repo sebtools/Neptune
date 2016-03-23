@@ -195,25 +195,6 @@
 	<cfreturn sFields>
 </cffunction>
 
-<!---<cffunction name="getContentBlocksEditQuery" access="public" returntype="string" output="no">
-	<cfargument name="ContentBlockNames" type="string" required="yes">
-	
-	<cfset var qContentBlock = getContentBlocks(ContentBlockNames=Arguments.ContentBlockNames,fieldlist="ContentBlockID,isHTML,ContentBlockText")>
-	<cfset var result = "">
-	
-	<cfif qContentBlock.RecordCount>
-		<cfset result = qContentBlock.ContentBlockText>
-		<cfif qContentBlock.isHTML IS true>
-			<cfset result = HTMLEditFormat(qContentBlock.ContentBlockText)>
-		</cfif>
-		<cfif StructKeyExists(Variables,"Settings") AND StructKeyExists(Variables.Settings,"populate")>
-			<cfset output = Variables.Settings.populate(result)>
-		</cfif>
-	</cfif>
-	
-	<cfreturn result>
-</cffunction>--->
-
 <cffunction name="populate" access="public" returntype="any" output="no" hint="I populate the values within the string from the given structure (and from Settings, if available).">
 	<cfargument name="string" type="string" required="true">
 	<cfargument name="data" type="struct" required="false">

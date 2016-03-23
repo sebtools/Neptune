@@ -34,7 +34,9 @@
 	<cfset var table = "">
 	<cfset var column = 0>
 	<cfset var qRecords = 0>
+	<cfset var rtable = "">
 	<cfset var col = "">
+	<cfset var result = "">
 	<cfset var fdata = StructNew()>
 	<cfset var fcol = StructNew()>
 	<cfset var fromtablelist = "">
@@ -266,6 +268,7 @@
 	<cfargument name="value" type="string" required="yes">
 	
 	<cfset var data = StructNew()>
+	<cfset var qRecord = 0>
 	<cfset var colname = Field["ColumnName"]>
 	<cfset var table = arguments.tablename>
 	<cfset var result = StructNew()>
@@ -321,9 +324,10 @@
 	<cfargument name="rownum" type="numeric" default="1">
 	
 	<cfset var result = StructNew()>
+	<cfset var col = "">
 	
-	<cfloop index="col" list="#query.ColumnList#">
-		<cfset result[col] = query[col][rownum]>
+	<cfloop index="col" list="#arguments.query.ColumnList#">
+		<cfset result[col] = arguments.query[col][rownum]>
 	</cfloop>
 	
 	<cfreturn result>

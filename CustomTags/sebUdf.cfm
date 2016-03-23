@@ -390,8 +390,8 @@ function QueryStringDeleteVar(variable) {
 	<cfset var result = "">
 	
 	<!--- Make sure the destination exists. --->
-	<cfif NOT DirectoryExists(destination)>
-		<cfthrow type="InvalidDestination" message="Destination directory ""#HtmlEditFormat(destination)#"" does not exist.">
+	<cfif NOT DirectoryExists(Arguments.destination)>
+		<cfthrow type="InvalidDestination" message="Destination directory ""#HtmlEditFormat(Arguments.destination)#"" does not exist.">
 	</cfif>
 	
 	<!--- Set default extensions --->
@@ -420,7 +420,7 @@ function QueryStringDeleteVar(variable) {
 	
 	<cfset sOrigFile = Duplicate(CFFILE)>
 	
-	<cfset serverPath = ListAppend(destination, "#CFFILE.clientFileName#.#CFFILE.clientFileExt#", dirdelim)>
+	<cfset serverPath = ListAppend(Arguments.destination, "#CFFILE.clientFileName#.#CFFILE.clientFileExt#", dirdelim)>
 	<cfif FileExists(serverPath)>
 		<!--- Handle name conflict --->
 		<cfswitch expression="#Arguments.NameConflict#">
@@ -435,7 +435,7 @@ function QueryStringDeleteVar(variable) {
 				
 				<cfset sOrigFile.ServerFileName = cffile.ServerFileName>
 				<cfset sOrigFile.ServerFile = cffile.ServerFile>
-				<cfset destination = cffile.ServerDirectory>
+				<cfset Arguments.destination = cffile.ServerDirectory>
 			</cfcase>
 			<cfcase value="Error">
 				<cffile action="Delete" file="#tempPath#">
@@ -459,7 +459,7 @@ function QueryStringDeleteVar(variable) {
 		<cffile action="rename" source="#tempPath#" destination="#serverPath#" result="CFFILE">
 		<cfset cffile.ServerFileName = sOrigFile.ServerFileName>
 		<cfset cffile.ServerFile = sOrigFile.ServerFile>
-		<cfset cffile.ServerDirectory = destination>
+		<cfset cffile.ServerDirectory = Arguments.destination>
 	</cfif>
 	
 	<cfif StructKeyExists(arguments,"return") AND isSimpleValue(arguments.return)>

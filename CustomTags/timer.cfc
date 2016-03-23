@@ -29,7 +29,7 @@
 		<cfset StructDelete(Arguments,"data")>
 	</cfif>
 	
-	<cfset result = Variables.DataMgr.insertRecord(
+	<cfset Variables.DataMgr.insertRecord(
 		tablename="cf_timer",
 		OnExists="insert",
 		data=Arguments

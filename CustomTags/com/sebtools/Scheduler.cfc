@@ -510,7 +510,7 @@
 	<cfargument name="ComponentPath" type="string" required="yes" hint="The path to your component (example com.sebtools.NoticeMgr).">
 	<cfargument name="Component" type="any" required="yes">
 	
-	<cfset sComponents[arguments.ComponentPath] = arguments.Component>
+	<cfset variables.sComponents[arguments.ComponentPath] = arguments.Component>
 	
 </cffunction>
 

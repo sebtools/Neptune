@@ -469,11 +469,11 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebcolumn-general-attributes.cfm
 					<cfset link = populateMarkers(link,qTableData,rownum)>
 				</cfif>
 				
-				<cfif StructKeyExists(atts,"text") AND Len(atts.text) AND NOT Len(value)>
-					<cfset value = atts.text>
+				<cfif StructKeyExists(atts,"text") AND Len(atts.text) AND NOT Len(arguments.value)>
+					<cfset arguments.value = atts.text>
 				</cfif>
 				
-				<cfsavecontent variable="result"><cfoutput><a href="#link#"<cfloop index="linkatt" list="#linkatts#"><cfif StructKeyExists(atts,linkatt)> #linkatt#="#atts[linkatt]#"</cfif></cfloop>>#value#</a></cfoutput></cfsavecontent>
+				<cfsavecontent variable="result"><cfoutput><a href="#link#"<cfloop index="linkatt" list="#linkatts#"><cfif StructKeyExists(atts,linkatt)> #linkatt#="#atts[linkatt]#"</cfif></cfloop>>#arguments.value#</a></cfoutput></cfsavecontent>
 				
 				<cfreturn result>
 			</cffunction>

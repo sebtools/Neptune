@@ -116,6 +116,7 @@
 	<cfset var Hours = 0>
 	<cfset var Minutes = 0>
 	<cfset var Remainder = 0>
+	<cfset var Floor = 0>
 	<cfset var RoundedTime = "">
 	
 	<cfset Hours = Hour(Arguments.Time)>

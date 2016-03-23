@@ -14,6 +14,7 @@
 <cffunction name="getPrimaryKeyValues" access="public" returntype="string" output="no">
 	
 	<cfset var sMetaStruct = getMetaStruct()>
+	<cfset var result = 0>
 	
 	<cfif StructKeyExists(sMetaStruct,"arg_pk")>
 		<cfset Arguments.field = sMetaStruct["arg_pk"]>
