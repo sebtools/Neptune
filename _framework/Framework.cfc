@@ -139,6 +139,7 @@
 	</cfif>
 	
 	<cfif doLoad>
+		<cfset StructDelete(Application,"ServiceFactory")>
 		<cfset This.Loader = CreateObject("component","ServiceFactory").init()>
 		<cfset This.Loader.loadXml(variables.instance.ComponentsFilePath)>
 		<cfset This.Loader.setScope(Application)>
@@ -187,6 +188,8 @@
 
 	<!--- Initialization --->
 	<cfset this.Config.runConfigFiles("#variables.instance.ConfigFolder#config.cfm")>
+
+	<cfset Arguments.refresh = ReReplaceNoCase(Arguments.refresh,"\bframework\b","")>
 	
 	<!--- Registration --->
 	<!--- If any components are being refreshed, check for changes to XML --->
@@ -196,7 +199,7 @@
 		OR	( Len(arguments.refresh) AND arguments.refresh NEQ false )
 	>
 		<cfset ChangedSettings = loadConfigSettings()>
-		<cfset This.Loader.removeServices(arguments.refresh)>
+		<cfset This.Loader.refreshServices(arguments.refresh)>
 		<cfset isAnyProgramRegistered = registerAllPrograms(false)>
 	</cfif>
 	<cfset isLocalProgramRegistered = registerProgram(GetDirectoryFromPath(GetBaseTemplatePath()))>
