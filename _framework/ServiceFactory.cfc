@@ -576,6 +576,7 @@
 
 	<cfset getAllServices()>
 
+	<cfreturn Variables.cache>
 </cffunction>
 
 <cffunction name="refreshStaleServices" access="public" returntype="struct" output="no" hint="I refresh all stale services (those )for which the files have changed since they were instantiated).">
@@ -775,7 +776,7 @@
 	
 </cffunction>
 
-<cffunction name="getDependants" access="private" returntype="string" output="no" hint="I get a list of services that directly depend on the given service.">
+<cffunction name="getDependants" access="public" returntype="string" output="no" hint="I get a list of services that directly depend on the given service.">
 	<cfargument name="ServiceName" type="string" required="no">
 	<cfargument name="recurse" type="boolean" default="false">
 	<cfargument name="listed" type="string" default="">
@@ -787,8 +788,9 @@
 	<cfset var result = Arguments.listed>
 	
 	<cfloop index="service" list="#Arguments.ServiceName#">
-		<!--- Find services dependent on this service and call refreshService (make sure not to refresh the same component more than once) --->
+		<!--- Find services dependent on this service with component attribute --->
 		<cfset axDependants = XmlSearch(Variables.xLCaseComponents,"//component[@name][argument[@component='#LCase(service)#']]")>
+		
 		<cfloop index="ii" from="1" to="#ArrayLen(axDependants)#">
 			<cfset comp = axDependants[ii].XmlAttributes["name"]>
 			<cfif NOT ListFindNoCase(result,comp)>
@@ -798,6 +800,29 @@
 				</cfif>
 			</cfif>
 		</cfloop>
+
+		<!--- Find services dependent on this service with name attribute only --->
+		<cfset axDependants = XmlSearch(Variables.xLCaseComponents,"//component[@name][argument[@name='#LCase(service)#']]")>
+		
+		<cfloop index="ii" from="1" to="#ArrayLen(axDependants)#">
+			<cfif
+				NOT (
+							StructKeyExists(axDependants[ii].XmlAttributes,"component")
+						OR	StructKeyExists(axDependants[ii].XmlAttributes,"value")
+						OR	StructKeyExists(axDependants[ii].XmlAttributes,"config")
+						OR	StructKeyExists(axDependants[ii].XmlAttributes,"arg")
+				)
+			>
+				<cfset comp = axDependants[ii].XmlAttributes["name"]>
+				<cfif NOT ListFindNoCase(result,comp)>
+					<cfset result = ListAppend(result,comp)>
+					<cfif Arguments.recurse>
+						<cfset result = getDependants(comp,true,result)>
+					</cfif>
+				</cfif>
+			</cfif>
+		</cfloop>
+
 	</cfloop>
 	
 	<cfreturn result>
@@ -897,7 +922,7 @@
 		<cfset Variables.sScope[Arguments.ServiceName] = oService>
 		
 		<!--- Store metadata about service (include when it was loaded and how long it took to initialize) --->
-		<cfset Variables.metadata[Arguments.ServiceName] = getMetaData(oService)>
+		<cfset Variables.metadata[Arguments.ServiceName] = StructCopy(getMetaData(oService))>
 	</cflock>
 	
 </cffunction>
