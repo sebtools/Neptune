@@ -12,7 +12,39 @@
 	<cfargument name="vars" type="struct" required="false">
 	<cfargument name="Proxy" type="any" required="false">
 	<cfargument name="ExcludeDirs" type="string" required="false">
+
+	<cfset var me = 0>
+
+	<cfif StructKeyExists(Application,"FrameworkLoadBegin") AND NOT StructKeyExists(Application,"FrameworkLoadEnd")>
+		<!--- If Framework is loading, single thread the request. --->
+		Site is currently loading. Please check back in a few seconds...
+		<cfabort>
+	</cfif>
+
+	<cfset Application.FrameworkLoadBegin = now()>
+
+	<cftry>
+		<cfset me = initInternal(ArgumentCollection=Arguments)>
+	<cfcatch>
+		<cfset StructDelete(Application,"FrameworkLoadBegin")>
+		<cfrethrow>
+	</cfcatch>
+	</cftry>
+
+	<cfset Application.FrameworkLoadEnd = now()>
 	
+	<cfreturn me>
+</cffunction>
+
+<cffunction name="initInternal" access="Public" returnType="Framework" output="false" hint="I return the Framework component.">
+	<cfargument name="RootPath" type="string" required="yes" hint="the root file path of the site.">
+	<cfargument name="scopes" type="string" required="yes" hint="Any scopes to shich configuration data should be copied.">
+	<cfargument name="ConfigFolder" default="/_config/" hint="The folder holding site-wide configuration data.">
+	<cfargument name="ComponentsFile" default="components.cfm" hint="The file (in the config folder) holding component data.">
+	<cfargument name="vars" type="struct" required="false">
+	<cfargument name="Proxy" type="any" required="false">
+	<cfargument name="ExcludeDirs" type="string" required="false">
+
 	<cfset variables.CFServer = Server.ColdFusion.ProductName>
 	<cfset variables.CFVersion = ListFirst(Server.ColdFusion.ProductVersion)>
 	
@@ -139,14 +171,33 @@
 	</cfif>
 	
 	<cfif doLoad>
-		<cfset StructDelete(Application,"ServiceFactory")>
-		<cfset This.Loader = CreateObject("component","ServiceFactory").init()>
-		<cfset This.Loader.loadXml(variables.instance.ComponentsFilePath)>
-		<cfset This.Loader.setScope(Application)>
-		<cfset This.Loader.Framework = This>
-		<cfset variables.instance.LoaderLoaded = now()>
-	</cfif>
-	<cfif NOT StructKeyExists(This.Loader,"Config")>
+		<cfif StructKeyExists(Variables,"LoaderBegin") AND NOT StructKeyExists(Variables,"LoaderEnd")>
+			<!--- If Service Factory is loading all services, single thread the request. --->
+			Site is currently loading. Please check back in a few seconds...
+			<cfabort>
+		</cfif>
+
+		<cfset Variables.LoaderBegin = now()>
+		
+		<cftry>
+			<cfset StructDelete(Application,"ServiceFactory")>
+			<cfset This.Loader = CreateObject("component","ServiceFactory").init()>
+			<cfset This.Loader.loadXml(variables.instance.ComponentsFilePath)>
+			
+			<cfset This.Loader.loadConfig(This.Config)>
+			
+			<cfset This.Loader.seedServices()>
+			<cfset This.Loader.setScope(Application)>
+			<cfset This.Loader.Framework = This>
+			<cfset variables.instance.LoaderLoaded = now()>
+		<cfcatch>
+			<cfset StructDelete(Variables,"LoaderBegin")>
+			<cfrethrow>
+		</cfcatch>
+		</cftry>
+
+		<cfset Variables.LoaderEnd = now()>
+	<cfelse>
 		<cfset This.Loader.loadConfig(This.Config)>
 	</cfif>
 	
@@ -199,6 +250,7 @@
 		OR	( Len(arguments.refresh) AND arguments.refresh NEQ false )
 	>
 		<cfset ChangedSettings = loadConfigSettings()>
+		<cfset runConfigFiles()>
 		<cfset This.Loader.refreshServices(arguments.refresh)>
 		<cfset isAnyProgramRegistered = registerAllPrograms(false)>
 	</cfif>
@@ -725,7 +777,7 @@ function getPageController(path) {
 	<cfset var FileLabel = ListFirst(file,"-")>
 	<cfset var key = "#dir#:#FileLabel#">
 	
-	<cflock name="Framework_PathServices" timeout="120" throwontimeout="yes">
+	<cflock name="Framework_PathServices_#Hash(Arguments.path)#" timeout="120" throwontimeout="yes">
 		<cfif
 				NOT	StructKeyExists(variables.instance.NoPathServices,key)
 			AND	NOT (

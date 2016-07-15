@@ -191,19 +191,40 @@
 	
 </cffunction>
 
+<cffunction name="seedServices" access="public" returntype="struct" output="no" hint="I return all of the service components as a structure.">
+	
+	<cfif StructKeyExists(Variables,"DateSeededBegin") AND NOT StructKeyExists(Variables,"DateSeededEnd")>
+		<!--- If Service Factory is loading all services, single thread the request. --->
+		Site is currently loading. Please check back in a few seconds...
+		<cfabort>
+	</cfif>
+
+	<cfif NOT StructKeyExists(Variables,"DateSeededEnd")>
+		<cfset Variables.DateSeededBegin = now()>
+		<cftry>
+			<cfset getAllServices()>
+		<cfcatch>
+			<cfset StructDelete(Variables,"DateSeededBegin")>
+			<cfrethrow>
+		</cfcatch>
+		</cftry>
+		<cfset Variables.DateSeededEnd = now()>
+	</cfif>
+	
+	<cfreturn Variables.cache>
+</cffunction>
+
 <cffunction name="getAllServices" access="public" returntype="struct" output="no" hint="I return all of the service components as a structure.">
 	
 	<cfset var ii = 0>
 	<cfset var xComponent = 0>
 	
-	<cflock name="#getLockNamePrefix()#:GetAllServices" timeout="300">
-		<cfloop index="ii" from="1" to="#ArrayLen(Variables.xComponents.site.components.component)#">
-			<cfset xComponent = Variables.xComponents.site.components.component[ii]>
-			<cfif StructKeyExists(xComponent.XmlAttributes,"name")>
-				<cfset getService(xComponent.XmlAttributes["name"])>
-			</cfif>
-		</cfloop>
-	</cflock>
+	<cfloop index="ii" from="1" to="#ArrayLen(Variables.xComponents.site.components.component)#">
+		<cfset xComponent = Variables.xComponents.site.components.component[ii]>
+		<cfif StructKeyExists(xComponent.XmlAttributes,"name")>
+			<cfset getService(xComponent.XmlAttributes["name"])>
+		</cfif>
+	</cfloop>
 	
 	<cfreturn Variables.cache>
 </cffunction>
@@ -360,12 +381,14 @@
 	<cfset var ServiceName = "">
 	<cfset var aResult = ArrayNew(1)>
 	<cfset var sService = 0>
+	<cfset var xLocalComponents = 0><!--- So that we can copy to local scope in case the value changes while we are looking at it. --->
 	
 	<!--- The services array won't change unless more components are loaded, so cache it. --->
 	<cfif NOT StructKeyExists(Variables.sInternalCache,"aServices")>
-		<cfif StructKeyExists(Variables.xComponents,"site") AND StructKeyExists(Variables.xComponents.site,"components")>
-			<cfloop index="ii" from="1" to="#ArrayLen(Variables.xComponents.site.components.component)#">
-				<cfset xComponent = Variables.xComponents.site.components.component[ii]>
+		<cfset xLocalComponents = Duplicate(Variables.xComponents)>
+		<cfif StructKeyExists(xLocalComponents,"site") AND StructKeyExists(xLocalComponents.site,"components")>
+			<cfloop index="ii" from="1" to="#ArrayLen(xLocalComponents.site.components.component)#">
+				<cfset xComponent = xLocalComponents.site.components.component[ii]>
 				<cfif StructKeyExists(xComponent.XmlAttributes,"name")>
 					<cfset ServiceName = xComponent.XmlAttributes["name"]>
 					<cfset getService(ServiceName)>
@@ -404,7 +427,7 @@
 	<cfset var service = "">
 
 	<cfif NOT StructKeyExists(Variables.sInternalCache,"sSpecialsNames")>
-		<cflock name="#getLockNamePrefix()#:sSpecialsNames" timeout="10">
+		<cflock name="#getLockNamePrefix()#:sSpecialsNames:#Arguments.type#" timeout="10">
 			<cfset Variables.sInternalCache["sSpecialsNames"] = StructNew()>
 			<cfset axSpecialComponents = XmlSearch(variables.xLCaseComponents,"//component[string-length(@name)>0][string-length(@special)>0]")>
 			<cfloop index="ii" from="1" to="#ArrayLen(axSpecialComponents)#">
