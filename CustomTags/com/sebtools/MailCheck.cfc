@@ -38,7 +38,7 @@
 		username="#variables.username#"
 		password="#variables.password#"
 		action="delete"
-		uid="#arguments.uid#"
+		uid="#Trim(arguments.uid)#"
 	>
 	
 </cffunction>
