@@ -219,12 +219,14 @@
 	<cfset var ii = 0>
 	<cfset var xComponent = 0>
 	
-	<cfloop index="ii" from="1" to="#ArrayLen(Variables.xComponents.site.components.component)#">
-		<cfset xComponent = Variables.xComponents.site.components.component[ii]>
-		<cfif StructKeyExists(xComponent.XmlAttributes,"name")>
-			<cfset getService(xComponent.XmlAttributes["name"])>
-		</cfif>
-	</cfloop>
+	<cflock name="#getLockNamePrefix()#:GetAllServices" timeout="30">
+		<cfloop index="ii" from="1" to="#ArrayLen(Variables.xComponents.site.components.component)#">
+			<cfset xComponent = Variables.xComponents.site.components.component[ii]>
+			<cfif StructKeyExists(xComponent.XmlAttributes,"name")>
+				<cfset getService(xComponent.XmlAttributes["name"])>
+			</cfif>
+		</cfloop>
+	</cflock>
 	
 	<cfreturn Variables.cache>
 </cffunction>
@@ -385,22 +387,27 @@
 	
 	<!--- The services array won't change unless more components are loaded, so cache it. --->
 	<cfif NOT StructKeyExists(Variables.sInternalCache,"aServices")>
-		<cfset xLocalComponents = Duplicate(Variables.xComponents)>
-		<cfif StructKeyExists(xLocalComponents,"site") AND StructKeyExists(xLocalComponents.site,"components")>
-			<cfloop index="ii" from="1" to="#ArrayLen(xLocalComponents.site.components.component)#">
-				<cfset xComponent = xLocalComponents.site.components.component[ii]>
-				<cfif StructKeyExists(xComponent.XmlAttributes,"name")>
-					<cfset ServiceName = xComponent.XmlAttributes["name"]>
-					<cfset getService(ServiceName)>
-					<cfif StructKeyExists(Variables.cache,ServiceName)>
-						<cfset sService = StructNew()>
-						<cfset sService["name"] = ServiceName>
-						<cfset ArrayAppend(aResult,sService)>
-					</cfif>
+		<cflock name="#getLockNamePrefix()#:getServicesArray" timeout="30">
+			<!--- Variable could have gotten set while waiting for lock. --->
+			<cfif NOT StructKeyExists(Variables.sInternalCache,"aServices")>
+				<cfset xLocalComponents = Variables.xComponents>
+				<cfif StructKeyExists(xLocalComponents,"site") AND StructKeyExists(xLocalComponents.site,"components")>
+					<cfloop index="ii" from="1" to="#ArrayLen(xLocalComponents.site.components.component)#">
+						<cfset xComponent = xLocalComponents.site.components.component[ii]>
+						<cfif StructKeyExists(xComponent.XmlAttributes,"name")>
+							<cfset ServiceName = xComponent.XmlAttributes["name"]>
+							<cfset getService(ServiceName)>
+							<cfif StructKeyExists(Variables.cache,ServiceName)>
+								<cfset sService = StructNew()>
+								<cfset sService["name"] = ServiceName>
+								<cfset ArrayAppend(aResult,sService)>
+							</cfif>
+						</cfif>
+					</cfloop>
 				</cfif>
-			</cfloop>
-		</cfif>
-		<cfset Variables.sInternalCache.aServices = aResult>
+				<cfset Variables.sInternalCache.aServices = aResult>
+			</cfif>
+		</cflock>
 	</cfif>
 	
 	<cfreturn Variables.sInternalCache.aServices>
