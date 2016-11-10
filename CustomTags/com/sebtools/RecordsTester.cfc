@@ -533,7 +533,7 @@ function isListInList(l1,l2) {
 	</cfif>
 </cffunction>
 
-<cffunction name="stub" access="public" returntype="voi" output="no">
+<cffunction name="stub" access="public" returntype="void" output="no">
 	<cfset fail("No test written yet.")>
 </cffunction>
 

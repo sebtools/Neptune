@@ -125,6 +125,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 	setDefaultAtt("isEditable","");
 	setDefaultAtt("minimize","true");
 	setDefaultAtt("isSubmitting","false");
+	setDefaultAtt("isHandlingFiles",true);
 	
 	Referrer = CGI.HTTP_REFERER;
 	
@@ -289,6 +290,9 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 				</cfif>
 				<cfif StructKeyExists(sCompMeta,"property_deletable") AND Len(sCompMeta.property_deletable)>
 					<cfset attributes.isDeletable = sCompMeta.property_deletable>
+				</cfif>
+				<cfif StructKeyExists(sCompMeta,"property_handles_files") AND isBoolean(sCompMeta.property_handles_files)>
+					<cfset attributes.isHandlingFiles = NOT sCompMeta.property_handles_files>
 				</cfif>
 				<cfif StructKeyExists(sCompMeta,"property_pktype") AND Len(sCompMeta.property_pktype)>
 					<cfif attributes.pktype NEQ "identity" AND attributes.pktype NEQ "GUID">
@@ -794,9 +798,9 @@ if ( isDefined("ThisTag.subforms") ) {
 							WHERE	#attributes.pkfield# <> <cfqueryparam value="#sForm.pkfield#" cfsqltype="#datatype#">
 								AND	#arrFields[thisField].dbfield# = '#arrFields[thisField].value#'
 							</cfquery>
-							<cfif sebformGetDeleteFiles.RecordCount eq 0 AND FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+							<cfif sebformGetDeleteFiles.RecordCount EQ 0><cfset deleteFile(thisFile,attributes.isHandlingFiles)></cfif>
 						<cfelse>
-							<cfif FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+							<cfset deleteFile(thisFile,attributes.isHandlingFiles)>
 						</cfif>
 					</cfif>
 					<!--- /If this is a file field, delete the file (unless it is still in use) --->
@@ -837,10 +841,10 @@ if ( isDefined("ThisTag.subforms") ) {
 										AND	#ThisTag.subforms[i].qfields[thisField].dbfield# = '#ThisTag.subforms[i].qfields[thisField].value#'
 									</cfquery>
 									<cfif qsubformdeletedfile.RecordCount>
-										<cfif FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+										<cfset deleteFile(thisFile,attributes.isHandlingFiles)>
 									</cfif>
 								<cfelse>
-									<cfif FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+									<cfset deleteFile(thisFile,attributes.isHandlingFiles)>
 								</cfif>
 							</cfif>
 						</cfloop>
@@ -1091,10 +1095,10 @@ if ( isDefined("ThisTag.subforms") ) {
 								AND	#attributes.pkfield# <> <cfqueryparam value="#sForm.pkfield#" cfsqltype="#datatype#">
 							</cfquery>
 							<cfif qsebformGetDeleteFile.RecordCount eq 0>
-								<cfif FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+								<cfset deleteFile(thisFile,attributes.isHandlingFiles)>
 							</cfif>
 						<!---<cfelse>
-							<cfif FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>--->
+							<cfset deleteFile(thisFile,attributes.isHandlingFiles)>--->
 						</cfif>
 					</cfif>
 					<!---  If form contains uploaded file --->
@@ -1126,12 +1130,8 @@ if ( isDefined("ThisTag.subforms") ) {
 									</cfif>
 									<cfinvokeargument name="extensions" value="#arrFields[thisField].extensions#">
 									<cfinvokeargument name="Mode" value="#arrFields[thisField].mode#">
+									<cfinvokeargument name="isHandlingFiles" value="#attributes.isHandlingFiles#">
 								</cfinvoke>
-								<!---<cfif Len(arrFields[thisField].accept)>
-									<cffile action="UPLOAD" filefield="#thisName#" destination="#Trim(arrFields[thisField].destination)#" nameconflict="#arrFields[thisField].nameconflict#" accept="#arrFields[thisField].accept#" mode="#arrFields[thisField].mode#">
-								<cfelse>
-									<cffile action="UPLOAD" filefield="#thisName#" destination="#Trim(arrFields[thisField].destination)#" nameconflict="#arrFields[thisField].nameconflict#" mode="#arrFields[thisField].mode#">
-								</cfif>--->
 							<cfcatch>
 								<!--- If failed file was rejected because it is same file as being used for this record, try again with overwrite --->
 								<cfif
@@ -1158,22 +1158,21 @@ if ( isDefined("ThisTag.subforms") ) {
 										</cfif>
 										<cfinvokeargument name="extensions" value="#arrFields[thisField].extensions#">
 										<cfinvokeargument name="Mode" value="#arrFields[thisField].mode#">
+										<cfinvokeargument name="isHandlingFiles" value="#attributes.isHandlingFiles#">
 									</cfinvoke>
-									<!---<cfif Len(arrFields[thisField].accept)>
-										<cffile action="UPLOAD" filefield="#thisName#" destination="#Trim(arrFields[thisField].destination)#" nameconflict="overwrite" accept="#arrFields[thisField].accept#" mode="#arrFields[thisField].mode#">
-									<cfelse>
-										<cffile action="UPLOAD" filefield="#thisName#" destination="#Trim(arrFields[thisField].destination)#" nameconflict="overwrite" mode="#arrFields[thisField].mode#">
-									</cfif>--->
 								<cfelse>
 									<cfrethrow>
 								</cfif>
 							</cfcatch>
 							</cftry>
-							<!--- Set form field (unless it has an unaccepted extension) --->
-							<cfif Len(sFile.ServerFile) AND NOT ( Len(Trim(arrFields[thisField].extensions)) AND NOT ListFindNoCase(Trim(arrFields[thisField].extensions),ListLast(sFile.ServerFile,".")) )>
-								<cfset sForm[thisName] = fixFileName(sFile.ServerFile,Trim(arrFields[thisField].destination))>
-							<cfelse>
-								<cfset StructDelete(sForm,thisName)>
+							<!--- Only mess with the file for field if sebForm is handling files. --->
+							<cfif attributes.isHandlingFiles>
+								<!--- Set form field (unless it has an unaccepted extension) --->
+								<cfif Len(sFile.ServerFile) AND NOT ( Len(Trim(arrFields[thisField].extensions)) AND NOT ListFindNoCase(Trim(arrFields[thisField].extensions),ListLast(sFile.ServerFile,".")) )>
+									<cfset sForm[thisName] = fixFileName(sFile.ServerFile,Trim(arrFields[thisField].destination))>
+								<cfelse>
+									<cfset StructDelete(sForm,thisName)>
+								</cfif>
 							</cfif>
 						<cfcatch>
 							<cfscript>
@@ -1235,10 +1234,10 @@ if ( isDefined("ThisTag.subforms") ) {
 												AND	#ThisTag.subforms[i].qfields[thisField].dbfield# = '#ThisTag.subforms[i].qfields[thisField].value#'
 											</cfquery>
 											<cfif qsebformGetDeleteFile.RecordCount eq 0>
-												<cfif FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+												<cfset deleteFile(thisFile,attributes.isHandlingFiles)>
 											</cfif>
 										<cfelse>
-											<cfif FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+											<cfset deleteFile(thisFile,attributes.isHandlingFiles)>
 										</cfif>
 									</cfif>
 									<!--- If file is uploaded for this field --->
@@ -1247,11 +1246,11 @@ if ( isDefined("ThisTag.subforms") ) {
 											<cfif ListFindNoCase(ThisTag.subforms[i].qfields[thisField].accept,"application/msword") AND NOT ListFindNoCase(ThisTag.subforms[i].qfields[thisField].accept,"application/unknown")>
 												<cfset arrFields[thisField].accept = ListAppend(arrFields[thisField].accept,"application/unknown")>
 											</cfif>
-											<cfset sFile = uploadFile(filefield="#FormFieldName#",destination="#ThisTag.subforms[i].qfields[thisField].destination#",nameconflict="#ThisTag.subforms[i].qfields[thisField].nameconflict#",accept="#ThisTag.subforms[i].qfields[thisField].accept#",extensions="#ThisTag.subforms[i].qfields[thisField].extensions#",mode="#ThisTag.subforms[i].qfields[thisField].mode#")>
-											<!---<cfset sForm[FormFieldName] = sFile.ServerFile>--->
-											<cfset sForm[FormFieldName] = fixFileName(sFile.ServerFile,Trim(ThisTag.subforms[i].qfields[thisField].destination))>
-											<!---<cffile action="UPLOAD" filefield="#FormFieldName#" destination="#ThisTag.subforms[i].qfields[thisField].destination#" nameconflict="#ThisTag.subforms[i].qfields[thisField].nameconflict#" accept="#ThisTag.subforms[i].qfields[thisField].accept#" mode="#ThisTag.subforms[i].qfields[thisField].mode#">--->
-											<!---<cfset sForm[FormFieldName] = cffile.ServerFile>--->				
+											<cfset sFile = uploadFile(filefield="#FormFieldName#",destination="#ThisTag.subforms[i].qfields[thisField].destination#",nameconflict="#ThisTag.subforms[i].qfields[thisField].nameconflict#",accept="#ThisTag.subforms[i].qfields[thisField].accept#",extensions="#ThisTag.subforms[i].qfields[thisField].extensions#",mode="#ThisTag.subforms[i].qfields[thisField].mode#",isHandlingFiles=attributes.isHandlingFiles)>
+											<!--- Only mess with the file for field if sebForm is handling files. --->
+											<cfif attributes.isHandlingFiles>
+												<cfset sForm[FormFieldName] = fixFileName(sFile.ServerFile,Trim(ThisTag.subforms[i].qfields[thisField].destination))>
+											</cfif>
 										<cfcatch>
 											<cfscript>
 											sForm[thisName] = "";
@@ -1298,11 +1297,11 @@ if ( isDefined("ThisTag.subforms") ) {
 											<cfset arrFields[thisField].accept = ListAppend(arrFields[thisField].accept,"application/unknown")>
 										</cfif>
 										<cftry>
-											<cfset sFile = uploadFile(filefield="#FormFieldName#",destination="#ThisTag.subforms[i].qfields[thisField].destination#",nameconflict="#ThisTag.subforms[i].qfields[thisField].nameconflict#",accept="#ThisTag.subforms[i].qfields[thisField].accept#",extensions="#ThisTag.subforms[i].qfields[thisField].extensions#",mode="#ThisTag.subforms[i].qfields[thisField].mode#")>
-											<!---<cfset sForm[FormFieldName] = sFile.ServerFile>--->
-											<cfset sForm[FormFieldName] = fixFileName(sFile.ServerFile,Trim(ThisTag.subforms[i].qfields[thisField].destination))>
-											<!---<cffile action="UPLOAD" filefield="#FormFieldName#" destination="#ThisTag.subforms[i].qfields[thisField].destination#" nameconflict="#ThisTag.subforms[i].qfields[thisField].nameconflict#" accept="#ThisTag.subforms[i].qfields[thisField].accept#" mode="#ThisTag.subforms[i].qfields[thisField].mode#">--->
-											<!---<cfset sForm[FormFieldName] = cffile.ServerFile>--->				
+											<cfset sFile = uploadFile(filefield="#FormFieldName#",destination="#ThisTag.subforms[i].qfields[thisField].destination#",nameconflict="#ThisTag.subforms[i].qfields[thisField].nameconflict#",accept="#ThisTag.subforms[i].qfields[thisField].accept#",extensions="#ThisTag.subforms[i].qfields[thisField].extensions#",mode="#ThisTag.subforms[i].qfields[thisField].mode#",isHandlingFiles=attributes.isHandlingFiles)>
+											<!--- Only mess with the file for field if sebForm is handling files. --->
+											<cfif attributes.isHandlingFiles>
+												<cfset sForm[FormFieldName] = fixFileName(sFile.ServerFile,Trim(ThisTag.subforms[i].qfields[thisField].destination))>
+											</cfif>
 										<cfcatch>
 											<cfscript>
 											sForm[thisName] = "";
@@ -1819,7 +1818,7 @@ if ( isDefined("ThisTag.subforms") ) {
 	<cfset ThisTag.output.ErrorHeader = "">
 </cfif>
 <cfoutput><cfsavecontent variable="MyHead">
-<cfif NOT request.isQformLoaded><script src="#attributes.librarypath#qforms.js" type="text/javascript"></script>
+<cfif NOT request.isQformLoaded><script src="#attributes.librarypath#qforms.js?lu=20140714a" type="text/javascript"></script>
 <style type="text/css"><cfif Len(attributes.skin)>@import url(#attributes.skinpath##attributes.skin#.css);<cfelse>@import url(#attributes.librarypath#calendar/calendar-win2k-1.css);</cfif><!--- <cfloop list="#TagInfo.liErrFields#" index="tfn">input###tfn# {background-color:red;}input###tfn#:focus {background-color:white;}</cfloop> ---></style><cfif hasDateField>
 <script type="text/javascript" src="#attributes.librarypath#calendar/calendar.js"></script>
 <script type="text/javascript" src="#attributes.librarypath#calendar/lang/calendar-en.js"></script>

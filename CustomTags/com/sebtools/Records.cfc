@@ -610,6 +610,7 @@
 	</cfif>
 	<cfset sMethods["property_hidecols"] = true>
 	<cfset sMethods["property_pktype"] = variables.Manager.getPrimaryKeyType(getTableVariable())>
+	<cfset sMethods["property_handles_files"] = true>
 	<cfset sMethods["message_save"] = "#variables.labelSingular# Saved.">
 	<cfset sMethods["message_remove"] = "#variables.labelSingular# Deleted.">
 	<cfset sMethods["message_sort"] = "#variables.labelPlural# Sorted.">

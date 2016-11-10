@@ -367,6 +367,20 @@ function QueryStringDeleteVar(variable) {
 	
 	<cfreturn arguments.string>
 </cffunction>
+<cffunction name="deleteFile" returntype="any" output="false" hint="Replaces cffile delete.">
+	<cfargument name="FilePath" type="string" required="true" hint="The full path of the file to be deleted.">
+	<cfargument name="isHandlingFiles" type="boolean" default="true" hint="Indicates if this tag should be handling files itself.">
+	
+	<cfset var thisFile = Attributes.FilePath>
+
+	<cfif NOT Attributes.isHandlingFiles>
+		<cfreturn false>
+	</cfif>
+
+	<cfif FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+
+	<cfreturn true>
+</cffunction>
 <!---
  @author David Hammond (dave@modernsignal.com) 
  @version 1, November 26, 2010 
@@ -380,6 +394,7 @@ function QueryStringDeleteVar(variable) {
 	<cfargument name="TempDirectory" type="string" default="#getTempDirectory()#" hint="Temporary directory used for uploads.">
 	<cfargument name="Accept" type="string" required="no" hint="A list of acceptable mime-types.">
 	<cfargument name="Mode" type="string" default="644" hint="The mode value for the uploaded file.">
+	<cfargument name="isHandlingFiles" type="boolean" default="true" hint="Indicates if this tag should be handling files itself.">
 	
 	<cfset var CFFILE = StructNew()>
 	<cfset var sOrigFile = 0>
@@ -388,6 +403,10 @@ function QueryStringDeleteVar(variable) {
 	<cfset var skip = false>
 	<cfset var dirdelim = CreateObject("java", "java.io.File").separator>
 	<cfset var result = "">
+
+	<cfif NOT Attributes.isHandlingFiles>
+		<cfreturn StructNew()>
+	</cfif>
 	
 	<!--- Make sure the destination exists. --->
 	<cfif NOT DirectoryExists(Arguments.destination)>
