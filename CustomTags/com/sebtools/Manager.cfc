@@ -1063,6 +1063,7 @@
 	
 	<!--- Take actions on any file fields --->
 	<cfif ArrayLen(aFileFields) AND StructCount(in)>
+		<cfset qRecord = getPKRecord(tablename=arguments.tablename,data=in,fieldlist=getFieldListFromArray(aFileFields))>
 		
 		<cfloop index="ii" from="1" to="#ArrayLen(aFileFields)#">
 			<cfset FormField = aFileFields[ii].name>
@@ -1090,6 +1091,8 @@
 				</cfif>
 			</cfif>
 			<cfif isUpload>
+				<!--- Ditch old file if it is being replaced my new upload. --->
+				<cfset variables.FileMgr.deleteFile(qRecord[aFileFields[ii].name][1],aFileFields[ii].Folder)>
 				<cfif isFormUpload>
 					<cfinvoke returnvariable="FileResult" component="#variables.FileMgr#" method="uploadFile">
 						<cfif isFormUpload>
@@ -1132,7 +1135,6 @@
 		<cfset in = adjustImages(tablename=arguments.tablename,data=in)>
 		
 		<!--- Delete any files that are cleared out --->
-		<cfset qRecord = getPKRecord(tablename=arguments.tablename,data=in,fieldlist=getFieldListFromArray(aFileFields))>
 		<cfif qRecord.RecordCount>
 			<cfloop index="ii" from="1" to="#ArrayLen(aFileFields)#" step="1">
 				<cfif Len(qRecord[aFileFields[ii].name][1]) AND StructKeyExists(in,aFileFields[ii].name) AND NOT Len(Trim(in[aFileFields[ii].name]))>
