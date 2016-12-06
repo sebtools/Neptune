@@ -618,12 +618,14 @@
 	<cfset var sLogArgs = {}>
 	<cfset var aFilters = ArrayNew(1)>
 	<cfset var sFilter = {}>
+	<cfset var currentTime = now()>
+	<cfset var fiveMinAgo = dateAdd("n", -5, currentTime)>
 	<!---
 	Set BeforeSend to 5 minutes ago so we can check if the email was sent in the last five minutes.
 	This should avoid conflict with previous similar emails.
 	--->
-	<cfset var BeforeSend = CreateDateTime(Year(now()),Month(now()),Day(now()),Hour(now()),Minute(now())-5,Second(now()))>
-	<cfset var RightNow = CreateDateTime(Year(now()),Month(now()),Day(now()),Hour(now()),Minute(now()),Second(now()))>
+	<cfset var BeforeSend = CreateDateTime(Year(fiveMinAgo),Month(fiveMinAgo),Day(fiveMinAgo),Hour(fiveMinAgo),Minute(fiveMinAgo),Second(fiveMinAgo))>
+	<cfset var RightNow = CreateDateTime(Year(currentTime),Month(currentTime),Day(currentTime),Hour(currentTime),Minute(currentTime),Second(currentTime))>
 	
 	<cfset sLogArgs["To"] = Arguments.To>
 	<cfset sLogArgs["Subject"] = Arguments.Subject>
