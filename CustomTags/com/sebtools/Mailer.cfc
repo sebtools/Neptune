@@ -23,20 +23,11 @@
 	<cfargument name="Scheduler" type="any" required="false">
 	<cfargument name="Observer" type="any" required="false">
 	
-	<cfset variables.MailServer = arguments.MailServer>
-	<cfset variables.DefaultFrom = arguments.From>
-	<cfset variables.DefaultTo = arguments.To>
-	<cfset variables.username = arguments.username>
-	<cfset variables.password = arguments.password>
-	<cfset variables.RootData = arguments.RootData>
-	<cfset variables.ReplyTo = arguments.ReplyTo>
-	<cfset variables.Sender = arguments.Sender>
-	<cfset variables.logtable = arguments.logtable>
-	<cfset variables.ErrorTo = arguments.ErrorTo>
-	<cfset variables.verify = arguments.verify>
-	<cfif StructKeyExists(arguments,"Scheduler")>
-		<cfset variables.Scheduler = arguments.Scheduler>
-		<cfinvoke component="#variables.Scheduler#" method="setTask">
+	<cfset setUpVariables(ArgumentCollection=Arguments)>
+
+	<!--- If Scheduler is passed is, make sure it regularly checks the mail service. --->
+	<cfif StructKeyExists(Variables,"Scheduler")>
+		<cfinvoke component="#Variables.Scheduler#" method="setTask">
 			<cfinvokeargument name="Name" value="Mailer: Check Mail Server">
 			<cfinvokeargument name="ComponentPath" value="com.sebtools.Mailer">
 			<cfinvokeargument name="Component" value="#This#">
@@ -44,27 +35,57 @@
 			<cfinvokeargument name="interval" value="hourly">
 		</cfinvoke>
 	</cfif>
-	<cfif StructKeyExists(arguments,"Observer")>
-		<cfset variables.Observer = arguments.Observer>
-	</cfif>
+
+	<cfset checkMailService()>
+	
+	<cfreturn This>
+</cffunction>
+
+<cffunction name="setUpVariables" access="private" returntype="void" output="no">
+	<cfargument name="MailServer" type="string" default="">
+	<cfargument name="From" type="string" default="">
+	<cfargument name="To" type="string" default="">
+	<cfargument name="username" type="string" default="">
+	<cfargument name="password" type="string" default="">
+	<cfargument name="RootData" type="struct" default="#StructNew()#">
+	<cfargument name="ReplyTo" type="string" default="">
+	<cfargument name="Sender" type="string" default="">
+	<cfargument name="logtable" type="string" default="mailerLogs">
+	<cfargument name="mode" type="string" required="false">
+	<cfargument name="log" type="boolean" default="false">
+	<cfargument name="port" type="string" required="false">
+	<cfargument name="useTLS" type="boolean" required="false">
+	<cfargument name="ErrorTo" type="string" default="">
+	<cfargument name="verify" type="boolean" default="false">
+	<cfargument name="Scheduler" type="any" required="false">
+	<cfargument name="Observer" type="any" required="false">
+
+	<cfset var key = "">
+
+	<!--- Convert init arguments into variables. --->
+	<cfloop collection="#Arguments#" item="key">
+		<cfset variables[key] = Arguments[key]>
+		<cfif isObject(Arguments[key])>
+			<cfset This[key] = Arguments[key]>
+		</cfif>
+	</cfloop>
+
+	<!--- From and To are only defaults. --->
+	<cfset StructDelete(Variables,"From")>
+	<cfset StructDelete(Variables,"To")>
+	<cfset variables.DefaultFrom = arguments.From>
+	<cfset variables.DefaultTo = arguments.To>
 	
 	<cfset variables.Notices = StructNew()>
 	<cfset variables.isLogging = false>
 	
+
 	<cfif NOT (
 			Len(arguments.MailServer)
 		AND	Len(arguments.From)
 	)>
 		<cfset arguments.mode = "Sim">
 	</cfif>
-	
-	<cfif StructKeyExists(arguments,"port")>
-		<cfset variables.port = arguments.port>
-	</cfif>
-	<cfif StructKeyExists(arguments,"useTLS")>
-		<cfset variables.useTLS = arguments.useTLS>
-	</cfif>
-	
 	<cfif NOT StructKeyExists(arguments,"mode")>
 		<cfif getMetaData(this).name CONTAINS "Sim">
 			<cfset arguments.mode = "Sim">
@@ -75,16 +96,12 @@
 	
 	<cfset setMode(arguments.mode)>
 	
-	<cfif StructKeyExists(arguments,"DataMgr")>
-		<cfset variables.DataMgr = arguments.DataMgr>
+	<cfif StructKeyExists(Variables,"DataMgr")>
 		<cfif Arguments.log OR variables.mode EQ "Sim" OR variables.verify>
 			<cfset startLogging(variables.DataMgr)>
 		</cfif>
 	</cfif>
 
-	<cfset checkMailService()>
-	
-	<cfreturn This>
 </cffunction>
 
 <cffunction name="addNotice" access="public" returntype="void" output="no" hint="I add a notice to the mailer.">
@@ -318,7 +335,7 @@
 	<cfreturn sent>
 </cffunction>
 
-<cffunction name="sendEmail" access="private" returntype="boolean" output="no">
+<cffunction name="sendEmail" access="package" returntype="boolean" output="no">
 	
 	<cfset var sent = false>
 	<cfset var Attachment = "">

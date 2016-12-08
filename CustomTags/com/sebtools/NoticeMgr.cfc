@@ -13,8 +13,8 @@
 <cfcomponent displayname="Notices Manager" output="no" hint="I manage sending and editing notice email messages.">
 
 <cffunction name="init" access="public" returntype="NoticeMgr" output="no" hint="I instantiate and return this component.">
-	<cfargument name="DataMgr" type="DataMgr" required="yes">
-	<cfargument name="Mailer" type="Mailer" required="yes">
+	<cfargument name="DataMgr" type="any" required="yes">
+	<cfargument name="Mailer" type="any" required="yes">
 	
 	<cfscript>
 	variables.DataMgr = arguments.DataMgr;
