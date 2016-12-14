@@ -263,6 +263,14 @@
 				</cfloop>
 			</cfif>
 			<cfif doLoad>
+				
+				<!--- Notify Observer (if available) --->
+				<cfif StructKeyExists(Variables.cache,"Observer") AND StructKeyExists(Variables.cache["Observer"],"announceEvent")>
+					<cfset sObserverArgs = StructNew()>
+					<cfset sObserverArgs["ServiceName"] = Arguments.ServiceName>
+					<cfset Variables.cache.Observer.announceEvent(EventName="ServiceFactory:beforeLoadService",Args=sObserverArgs)>
+				</cfif>
+
 				<!--- Initialize service (and track init time) --->
 				<cfset BeginTime = getTickCount()>
 				<cfset oService = initService(ServiceName=Arguments.ServiceName,sArgs=sArgs)>
