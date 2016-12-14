@@ -25,6 +25,13 @@
 	<cfreturn This>
 </cffunction>
 
+<cffunction name="convertFolder" access="public" returntype="string" output="no">
+	<cfargument name="Folder" type="string" required="yes">
+	<cfargument name="delimiter" type="string" default="/">
+	
+	<cfreturn LCase(Super.convertFolder(ArgumentCollection=Arguments))>
+</cffunction>
+
 <cffunction name="getDirDelim" acess="public" returntype="string" output="no">
 	
 	<cfif NOT StructKeyExists(variables,"dirdelim")>
