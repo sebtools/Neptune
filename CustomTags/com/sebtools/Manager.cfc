@@ -1092,7 +1092,9 @@
 			</cfif>
 			<cfif isUpload>
 				<!--- Ditch old file if it is being replaced my new upload. --->
-				<cfset variables.FileMgr.deleteFile(qRecord[aFileFields[ii].name][1],aFileFields[ii].Folder)>
+				<cfif qRecord.RecordCount AND Len(qRecord[aFileFields[ii].name][1])>
+					<cfset variables.FileMgr.deleteFile(qRecord[aFileFields[ii].name][1],aFileFields[ii].Folder)>
+				</cfif>
 				<cfif isFormUpload>
 					<cfinvoke returnvariable="FileResult" component="#variables.FileMgr#" method="uploadFile">
 						<cfif isFormUpload>
