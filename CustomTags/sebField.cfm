@@ -262,7 +262,12 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 	if ( ( StructKeyExists(attributes,"folder") AND Len(attributes.folder) ) OR ( isDefined("attributes.type") AND attributes.type eq "file" ) ) {
 		liReqAtts = ListAppend(liReqAtts, "destination");
 		liReqAtts = ListAppend(liReqAtts, "nameconflict");
-		DirDelim = CreateObject("java", "java.io.File").separator;
+		if ( ListFindNoCase("/,\",Right(attributes.destination,1)) ) {
+			DirDelim = Right(attributes.destination,1);
+		} else {
+			DirDelim = CreateObject("java", "java.io.File").separator;
+		}
+		
 		/* If thumbfield is passed, get thumbfolder */
 		if ( StructKeyExists(attributes,"thumbfield") AND Len(attributes.thumbfield) ) {
 			if ( NOT ( StructKeyExists(attributes,"thumbfolder") AND Len(attributes.thumbfolder) ) ) {
@@ -272,6 +277,9 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 			}
 		}
 		if ( Len(ParentAtts.UploadFilePath) AND Len(ParentAtts.UploadBrowserPath) ) {
+			if ( ListFindNoCase("/,\",Right(ParentAtts.UploadBrowserPath,1)) ) {
+				DirDelim = Right(ParentAtts.UploadBrowserPath,1);
+			}
 			if ( StructKeyExists(attributes,"folder") AND Len(attributes.folder) ) {
 				attributes.folder = ListChangeDelims(attributes.folder,",","/");
 				attributes.folder = ListChangeDelims(attributes.folder,",","\");
