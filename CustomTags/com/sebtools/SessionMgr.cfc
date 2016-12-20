@@ -29,11 +29,30 @@
 <cffunction name="deleteVar" access="public" returntype="void" output="no" hint="I delete the given variable.">
 	<cfargument name="variablename" type="string" required="yes">
 	
-	<cflock timeout="20" throwontimeout="Yes" name="SessionMgr" type="READONLY">
-		<cfset StructDelete(Evaluate(variables.scope), arguments.variablename)>
-	</cflock>
+	<cfif hasSessionManagement()>
+		<cflock timeout="20" throwontimeout="Yes" name="SessionMgr" type="READONLY">
+			<cfset StructDelete(Evaluate(variables.scope), arguments.variablename)>
+		</cflock>
+	</cfif>
 	<cfset updateRequestVar()>
 
+</cffunction>
+
+<cffunction name="hasSessionManagement" access="public" returntype="boolean" output="no" hint="I indicate if session scope is enabled.">
+	
+	<cfset var foo = "">
+
+	<cfif NOT StructKeyExists(request,"SessionMgr_hasSessionManagement")>
+		<cftry>
+			<cfset foo = Evaluate(variables.scope)>
+			<cfset request["SessionMgr_hasSessionManagement"] = true>
+		<cfcatch>
+			<cfset request["SessionMgr_hasSessionManagement"] = false>
+		</cfcatch>
+		</cftry>
+	</cfif>
+
+	<cfreturn request["SessionMgr_hasSessionManagement"]>
 </cffunction>
 
 <cffunction name="killSession" access="public" returntype="void" output="no" hint="I delete all of the variables from this session.">
@@ -57,7 +76,11 @@
 </cffunction>
 
 <cffunction name="dump" access="public" returntype="struct" output="no" hint="I dump the scope holding SessionMgr data.">
-	<cfreturn Duplicate(Evaluate(variables.scope))>
+	<cfif hasSessionManagement()>
+		<cfreturn Duplicate(Evaluate(variables.scope))>
+	<cfelse>
+		<cfreturn StructNew()>
+	</cfif>
 </cffunction>
 
 <cffunction name="getSessionData" access="public" returntype="struct" output="no" hint="I return session data ( deprecated in favor of dump() ).">
@@ -69,9 +92,11 @@
 
 	<cfset var result = 0>
 	
-	<cflock timeout="20" throwontimeout="Yes" name="SessionMgr" type="READONLY">
-		<cfset result = Evaluate(variables.scope & "." & arguments.variablename)>
-	</cflock>
+	<cfif hasSessionManagement()>
+		<cflock timeout="20" throwontimeout="Yes" name="SessionMgr" type="READONLY">
+			<cfset result = Evaluate(variables.scope & "." & arguments.variablename)>
+		</cflock>
+	</cfif>
 	
 	<cfif IsWDDX(result)>
 		<cfwddx action="WDDX2CFML" input="#result#" output="result">
@@ -86,8 +111,17 @@
 
 <cffunction name="exists" access="public" returntype="boolean" output="no" hint="I check if the given variable exists in the SessionMgr scope.">
 	<cfargument name="variablename" type="string" required="yes">
-	
-	<cfreturn StructKeyExists(Evaluate(variables.scope),arguments.variablename)>
+	<cfif hasSessionManagement()>
+		<cftry>
+			<cfreturn StructKeyExists(Evaluate(variables.scope),arguments.variablename)>
+		<cfcatch>
+			<cfset request["SessionMgr_hasSessionManagement"] = false>
+			<cfreturn false>
+		</cfcatch>
+		</cftry>
+	<cfelse>
+		<cfreturn false>
+	</cfif>
 </cffunction>
 
 <cffunction name="setValue" access="public" returntype="void" output="no" hint="I set the value of the given user-specific variable.">
