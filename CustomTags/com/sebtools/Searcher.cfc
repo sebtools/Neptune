@@ -281,6 +281,30 @@ Optionally run search through google
 	
 </cffunction>
 
+<cffunction name="correctURL" access="private" returntype="string" output="no">
+	<cfargument name="ResultURL" type="string" required="yes">
+	<cfargument name="Key" type="string" required="yes">
+
+	<cfset var CorrectedURL = Arguments.ResultURL>
+		
+	<!--- If relative URL, start from site root --->
+	<cfif Len(Arguments.ResultURL) AND NOT Arguments.ResultURL CONTAINS "dummy.txt">
+		<cfif FileExists(Arguments.Key)>
+			<cfset CorrectedURL = GetFileFromPath(Arguments.Key)>
+		<cfelseif Left(Arguments.ResultURL,1) neq "/" AND Left(Arguments.ResultURL,7) neq "http://">
+			<cfset CorrectedURL = "/#Arguments.ResultURL#">
+		</cfif>
+	<cfelse>
+		<cfif FileExists(Arguments.Key)>
+			<cfset CorrectedURL = GetFileFromPath(Arguments.Key)>
+		<cfelse>
+			<cfset CorrectedURL = "/#Arguments.Key#">
+		</cfif>
+	</cfif>
+	
+	<cfreturn CorrectedURL>
+</cffunction>
+
 <cffunction name="runSearch" access="private" returntype="query" output="no">
 	<cfargument name="searchterm" type="string" required="yes">
 	<cfargument name="searchid" type="numeric" required="yes">
@@ -319,7 +343,6 @@ Optionally run search through google
 		<cfset arguments.searchterm = Left(arguments.searchterm,Len(arguments.searchterm)-1)>
 	</cfif>
 	
-	
 	<cfif NOT Len(Trim(arguments.searchterm))>
 		<cfreturn qSearch>
 	</cfif>
@@ -340,21 +363,11 @@ Optionally run search through google
 	</cftry>
 	
 	<cfloop query="qSearch">
-		
-		<!--- If relative URL, start from site root --->
-		<cfif Len(URL) AND NOT URL CONTAINS "dummy.txt">
-			<cfif FileExists(key)>
-				<cfset QuerySetCell(qSearch,"URL",GetFileFromPath(key),CurrentRow)>
-			<cfelseif Left(URL,1) neq "/" AND Left(URL,7) neq "http://">
-				<cfset QuerySetCell(qSearch,"URL","/#URL#",CurrentRow)>
-			</cfif>
-		<cfelse>
-			<cfif FileExists(key)>
-				<cfset QuerySetCell(qSearch,"URL",GetFileFromPath(key),CurrentRow)>
-			<cfelse>
-				<cfset QuerySetCell(qSearch,"URL","/#Key#",CurrentRow)>
-			</cfif>
-		</cfif>
+		<cfset QuerySetCell(qSearch,"URL",correctURL(URL,key),CurrentRow)>
+	
+		<!--- Escape any ampersands in URL --->
+		<cfset QuerySetCell(qSearch,"URL",ReplaceNoCase(URL,"&","%26","ALL"),CurrentRow)>
+		<cfset QuerySetCell(qSearch,"URL",ReplaceNoCase(URL,"[Key]",KEY,"ALL"),CurrentRow)>
 
 		<!--- If any directories should be excluded from the results --->
 		<cfif Len(variables.excludedirs)>
@@ -382,24 +395,19 @@ Optionally run search through google
 		<cfif NOT ListFindNoCase(liDeleteRows, CurrentRow) AND FindNoCase("<meta name=#chr(34)#robots#chr(34)# content=#chr(34)#noindex", Summary)>
 			<cfset liDeleteRows = ListAppend(liDeleteRows,CurrentRow)>
 		</cfif>
-
-		<!--- If not Title, set title to file name --->
-		<cfif NOT Len(Title)>
-			<cfset QuerySetCell(qSearch,"Title",ListLast(URL,"/"),CurrentRow)>
-		</cfif>
-		
-		<!--- Escape any ampersands in URL --->
-		<cfset QuerySetCell(qSearch,"URL",ReplaceNoCase(URL,"&","%26","ALL"),CurrentRow)>
-		<cfset QuerySetCell(qSearch,"URL",ReplaceNoCase(URL,"[Key]",KEY,"ALL"),CurrentRow)>
 		
 		<!--- Send to this component for tracking and redirection --->
 		<cfif Len(Trim(variables.sendpage))>
 			<cfset QuerySetCell(qSearch,"URL","#variables.sendpage#?searchid=#arguments.searchid#&to=#URL#",CurrentRow)>
 		</cfif>
 
+		<!--- If not Title, set title to file name --->
+		<cfif NOT Len(Title)>
+			<cfset QuerySetCell(qSearch,"Title",ListLast(URL,"/"),CurrentRow)>
+		</cfif>
 	</cfloop>
+
 	<cfset qSearch = QueryDeleteRows(qSearch,liDeleteRows)>
-	
 	
 	<cfloop query="qSearch">
 		<cfset ArrayAppend(aSearchID,arguments.searchid)>

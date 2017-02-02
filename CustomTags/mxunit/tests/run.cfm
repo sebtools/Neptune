@@ -13,7 +13,7 @@ NOTE: these tests take a long time to run. A lot of the time is in a subset of t
 <cfset DTS = createObject("component","mxunit.runner.DirectoryTestSuite")>
 
 
-<cfset excludes = "fixture,samples,install">
+<cfset excludes = "fixture,samples,install,runner,mightymock,framework,compatability,bugs,ant">
 
 <cfinvoke component="#DTS#" 
 	method="run"
