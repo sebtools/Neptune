@@ -1251,10 +1251,9 @@
 <cffunction name="alterArgs" access="public" returntype="struct" output="false" hint="">
 	<cfargument name="alterargs_for" type="string" default="get">
 	
-	<cfset var sMetaData = getMetaStruct()>
 	<cfset var sArgs = StructFromArgs(arguments)>
-	<cfset var sTableData = sMetaData[sArgs.tablename]>
-	<cfset var sFields = getFieldsStruct(sArgs.tablename)>
+	<cfset var sMetaData = 0>
+	<cfset var sTableData = 0>
 	<cfset var sSort = 0>
 	<cfset var dmargs = 0>
 	<cfset var dmarg = "">
@@ -1278,6 +1277,8 @@
 	</cfif>
 	
 	<cfif arguments.alterargs_for EQ "get">
+		<cfset sMetaData = getMetaStruct()>
+		<cfset sTableData = sMetaData[sArgs.tablename]>
 		<!--- Default list to fields marked "isOnList=true" for multi-record queries (if none are marked, empty string will retrieve all fields) --->
 		<cfif NOT StructKeyExists(sArgs,"fieldlist")>
 			<cfif StructKeyExists(arguments,"isGetRecord")>
