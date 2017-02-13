@@ -665,18 +665,27 @@ Copies a directory.
  */
 </cfscript>
 
+<cffunction name="cleanFileName" access="public" returntype="string" output="false">
+	<cfargument name="name" type="string" required="yes">
+	<cfargument name="maxlength" type="numeric" default="0">
+
+	<cfset var result = ReReplaceNoCase(arguments.name,"[^a-zA-Z0-9_\-\.]","_","ALL")><!--- Remove special characters from file name --->
+
+	<cfset result = ReReplaceNoCase(result,"_{2,}","_","ALL")>
+
+	<cfset result = LimitFileNameLength(arguments.maxlength,result)>
+
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="fixFileName" access="private" returntype="string" output="false">
 	<cfargument name="name" type="string" required="yes">
 	<cfargument name="dir" type="string" required="yes">
 	<cfargument name="maxlength" type="numeric" default="0">
 	
 	<cfset var dirdelim = getDirDelim()>
-	<cfset var result = ReReplaceNoCase(arguments.name,"[^a-zA-Z0-9_\-\.]","_","ALL")><!--- Remove special characters from file name --->
-	<cfset var path = "">
-	
-	<cfset result = LimitFileNameLength(arguments.maxlength,result)>
-	
-	<cfset path = "#dir##dirdelim##result#">
+	<cfset var result = cleanFileName(name=Arguments.name,maxlength=Arguments.maxlength)>
+	<cfset var path = "#dir##dirdelim##result#">
 	
 	<!--- If corrected file name doesn't match original, rename it --->
 	<cfif arguments.name NEQ result AND FileExists("#arguments.dir##dirdelim##arguments.name#")>

@@ -83,9 +83,9 @@
 	<!--- Upload to temp directory. --->
 	<cfif StructKeyExists(Form,Arguments.FieldName)>
 		<cfif StructKeyExists(arguments,"accept")>
-			<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#destination##getClientFileName(Arguments.FieldName)#" nameconflict="#Arguments.NameConflict#" result="CFFILE" accept="#arguments.accept#">
+			<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#destination##cleanFileName(getClientFileName(Arguments.FieldName))#" nameconflict="#Arguments.NameConflict#" result="CFFILE" accept="#arguments.accept#">
 		<cfelse>
-			<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#destination##getClientFileName(Arguments.FieldName)#" nameconflict="#Arguments.NameConflict#" result="CFFILE">
+			<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#destination##cleanFileName(getClientFileName(Arguments.FieldName))#" nameconflict="#Arguments.NameConflict#" result="CFFILE">
 		</cfif>
 		<cfset serverPath = ListAppend(CFFILE.ServerDirectory, CFFILE.ServerFile, getDirDelim())>
 	<cfelse>
