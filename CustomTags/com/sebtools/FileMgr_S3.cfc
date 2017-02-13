@@ -5,7 +5,7 @@
 	<cfargument name="UploadURL" type="string" default="http://s3.amazonaws.com/" hint="The URL path for uploads.">
 	<cfargument name="Bucket" type="string" required="true" hint="AWS S3 Bucket name.">
 	<cfargument name="Credentials" type="any" required="true" hint="AWS Credentials.">
-	
+
 	<cfset setUpVariables(ArgumentCollection=Arguments)>
 	<cfset Variables.StorageMechanism = "S3">
 
@@ -21,38 +21,38 @@
 	<cfif Variables.UploadURL CONTAINS "s3.amazonaws.com" AND NOT Variables.UploadURL CONTAINS Arguments.Bucket>
 		<cfset Variables.UploadURL = UploadURL & Arguments.Bucket & "/">
 	</cfif>
-	
+
 	<cfreturn This>
 </cffunction>
 
 <cffunction name="convertFolder" access="public" returntype="string" output="no">
 	<cfargument name="Folder" type="string" required="yes">
 	<cfargument name="delimiter" type="string" default="/">
-	
+
 	<cfreturn LCase(Super.convertFolder(ArgumentCollection=Arguments))>
 </cffunction>
 
 <cffunction name="getDirDelim" acess="public" returntype="string" output="no">
-	
+
 	<cfif NOT StructKeyExists(variables,"dirdelim")>
 		<cfset variables.dirdelim = "/">
 	</cfif>
-	
+
 	<cfreturn variables.dirdelim>
 </cffunction>
 
 <cffunction name="makedir" access="public" returntype="any" output="no" hint="I make a directory (if it doesn't exist already).">
 	<cfargument name="Directory" type="string" required="yes">
-	
+
 	<cfset Super.makedir(ArgumentCollection=Arguments)>
-	
+
 </cffunction>
 
 <cffunction name="makedir_private" access="private" returntype="any" output="no" hint="I make a directory.">
 	<cfargument name="Directory" type="string" required="yes">
-	
+
 	<cfdirectory action="CREATE" directory="#Arguments.Directory#">
-	
+
 </cffunction>
 
 <cffunction name="uploadFile" access="public" returntype="any" output="no">
@@ -102,7 +102,7 @@
 		<cffile action="DELETE" file="#serverPath#">
 		<cfreturn StructNew()>
 	</cfif>
-	
+
 	<cfset StoreSetMetadata("#serverPath#",convertS3MetaFromCFFILE(CFFILE))>
 
 	<!--- set permissions on the newly created file on S3 --->
@@ -142,6 +142,19 @@
 	<cfreturn destination>
 </cffunction>
 
+<cffunction name="writeBinaryFile" access="public" returntype="string" output="no" hint="I save a file.">
+	<cfargument name="FileName" type="string" required="yes">
+	<cfargument name="Contents" type="binary" required="yes">
+	<cfargument name="Folder" type="string" required="no">
+
+	<cfset var destination = Super.writeBinaryFile(ArgumentCollection=Arguments)>
+
+	<!--- set permissions on the newly created file on S3 --->
+	<cfset StoreSetACL("#destination#",getStandardS3Permissions())>
+
+	<cfreturn destination>
+</cffunction>
+
 <cffunction name="getStandardS3Permissions" access="private" returntype="array" output="no">
 	<cfset var perms = [{group="all", permission="read"},{id="#Variables.Credentials.get('CanonicalUserID')#", permission="full_control"}]>
 	<cfreturn perms>
@@ -149,7 +162,7 @@
 
 <cffunction name="convertS3MetaFromCFFILE" access="private" returntype="struct" output="no">
 	<cfargument name="CFFILE" type="struct" required="yes">
-	
+
 	<cfset var sResult = {
 		last_modified=GetHTTPTimeString(Arguments.CFFILE.TIMELASTMODIFIED),
 		date=GetHTTPTimeString(Arguments.CFFILE.TIMECREATED),

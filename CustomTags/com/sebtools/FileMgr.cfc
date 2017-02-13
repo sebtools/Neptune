@@ -6,12 +6,12 @@
 <cffunction name="init" access="public" returntype="FileMgr" output="no" hint="I instantiate and return this object.">
 	<cfargument name="UploadPath" type="string" required="yes" hint="The file path for uploads.">
 	<cfargument name="UploadURL" type="string" default="" hint="The URL path for uploads.">
-	
+
 	<cfset setUpVariables(ArgumentCollection=Arguments)>
 	<cfset Variables.StorageMechanism = "local">
-	
+
 	<cfset makedir(Variables.UploadPath)>
-	
+
 	<cfreturn This>
 </cffunction>
 
@@ -25,15 +25,15 @@
 			<cfset This[key] = Arguments[key]>
 		</cfif>
 	</cfloop>
-	
+
 	<cfset getDirDelim()>
 	<cfset variables.TempDir = GetTempDirectory()>
-	
+
 	<cfset This["getDirectoryList"] = getMyDirectoryList>
 	<cfset variables["getDirectoryList"] = getMyDirectoryList>
 	<cfset This["DirectoryList"] = getMyDirectoryList>
 	<cfset variables["DirectoryList"] = getMyDirectoryList>
-	
+
 	<cfset variables.DefaultExtensions = "ai,asx,avi,bmp,csv,dat,doc,docx,eps,fla,flv,gif,html,ico,jpeg,jpg,m4a,mov,mp3,mp4,mpa,mpg,mpp,pdf,png,pps,ppsx,ppt,pptx,ps,psd,qt,ra,ram,rar,rm,rtf,svg,swf,tif,txt,vcf,vsd,wav,wks,wma,wps,xls,xlsx,xml">
 </cffunction>
 
@@ -42,9 +42,9 @@
 </cffunction>
 
 <cffunction name="getDirDelim" acess="public" returntype="string" output="no">
-	
+
 	<cfset var result = "/">
-	
+
 	<cfif NOT StructKeyExists(variables,"dirdelim")>
 		<cftry>
 			<cfset variables.dirdelim = CreateObject("java", "java.io.File").separator>
@@ -66,9 +66,9 @@
 		</cfcatch>
 		</cftry>
 	</cfif>
-	
+
 	<cfset result = variables.dirdelim>
-	
+
 	<cfreturn result>
 </cffunction>
 
@@ -80,29 +80,29 @@
 	<cfargument name="Length" type="numeric" required="true">
 	<cfargument name="Root" type="string" required="true">
 	<cfargument name="Suffix" type="string" default="">
-	
+
 	<cfset var FileName = "">
 	<cfset var Dir = "">
 	<cfset var result = "">
 	<cfset var LeftLength = 0>
-	
+
 	<cfif arguments.Length GT 0>
 		<cfif Len(arguments.Suffix) EQ 0 AND ListLen(arguments.Root,".") GT 1>
 			<cfset arguments.Suffix = "." & ListLast(arguments.Root,".")>
 			<cfset arguments.Root = ListDeleteAt(arguments.Root,ListLen(arguments.Root,"."),".")>
 		</cfif>
-		
+
 		<cfset result = "#arguments.Root##arguments.Suffix#">
 		<cfset FileName = getFileFromPath(result)>
 		<cfif ( result NEQ FileName )>
 			<cfset arguments.Root = getFileFromPath(arguments.Root)>
 			<cfset Dir = getDirectoryFromPath(result)>
 		</cfif>
-		
+
 		<cfif Len(arguments.Suffix) GTE arguments.Length>
 			<cfthrow message="Suffix (#arguments.Suffix#) is too long for file length limit (#arguments.Length#)">
 		</cfif>
-		
+
 		<cfif Len(FileName) GT arguments.Length>
 			<cfset LeftLength = arguments.Length - Len(arguments.Suffix) - 1>
 			<cfif LeftLength GT 0>
@@ -111,12 +111,12 @@
 				<cfset FileName = "~" & arguments.Suffix>
 			</cfif>
 		</cfif>
-		
+
 		<cfset result = Dir & FileName>
 	<cfelse>
 		<cfset result = arguments.Root & arguments.Suffix>
 	</cfif>
-	
+
 	<cfreturn result>
 </cffunction>
 
@@ -128,7 +128,7 @@
 	<cfset var path_new = createUniqueFileName(path_old)>
 
 	<cffile action="copy" source="#path_old#" destination="#path_new#">
-	
+
 	<cfreturn ListLast(path_new,variables.dirdelim)>
 </cffunction>
 
@@ -136,17 +136,17 @@
 	<cfargument name="from" type="string" required="yes">
 	<cfargument name="to" type="string" required="yes">
 	<cfargument name="overwrite" type="boolean" default="false">
-	
+
 	<cfset var dir_from = getDirectory(arguments.from)>
 	<cfset var dir_to = getDirectory(arguments.to)>
 	<cfset var qFiles = getDirectoryList(directory=dir_from)>
-	
+
 	<cfloop query="qFiles">
 		<cfif arguments.overwrite OR NOT FileExists("#dir_to##name#")>
 			<cffile action="copy" source="#dir_from##name#" destination="#dir_to#">
 		</cfif>
 	</cfloop>
-	
+
 </cffunction>
 
 <cffunction name="deleteFile" access="public" returntype="any" output="no" hint="I delete the given file.">
@@ -154,24 +154,24 @@
 	<cfargument name="Folder" type="string" required="no">
 
 	<cfset var destination = getFilePath(argumentCollection=arguments)>
-	
+
 	<cfif FileExists(destination)>
 		<cfset FileDelete(destination)>
 	</cfif>
-	
+
 </cffunction>
 <!---
  Mimics the cfdirectory, action=&quot;list&quot; command.
  Updated with final CFMX var code.
  Fixed a bug where the filter wouldn't show dirs.
- 
+
  @param directory 	 The directory to list. (Required)
  @param filter 	 Optional filter to apply. (Optional)
  @param sort 	 Sort to apply. (Optional)
  @param recurse 	 Recursive directory list. Defaults to false. (Optional)
- @return Returns a query. 
- @author Raymond Camden (ray@camdenfamily.com) 
- @version 2, April 8, 2004 
+ @return Returns a query.
+ @author Raymond Camden (ray@camdenfamily.com)
+ @version 2, April 8, 2004
 --->
 <cffunction name="getMyDirectoryList" output="false" returnType="query">
     <cfargument name="directory" type="string" required="true">
@@ -183,7 +183,7 @@
     <cfargument name="thisDir" type="query" required="false">
 	<!--- more vars --->
 	<cfargument name="exclude" type="string" default="">
-	
+
 	<cfset var delim = variables.dirdelim>
 	<cfset var ScriptName = 0>
 	<cfset var isExcluded = false>
@@ -191,17 +191,17 @@
 	<cfset var qDirs = 0>
 	<cfset var qFiles = 0>
 	<cfset var cols = "attributes,datelastmodified,mode,name,size,type,directory">
-	
+
 	<cfif Right(arguments.directory,1) NEQ delim>
 		<cfset arguments.directory = "#arguments.directory##delim#">
 	</cfif>
-	
+
     <cfif NOT StructKeyExists(arguments,"dirInfo")>
         <cfset arguments.dirInfo = QueryNew(cols)>
     </cfif>
-    
+
 	<cfdirectory name="qFiles" directory="#arguments.directory#" sort="#sort#" filter="#arguments.filter#" type="file">
-	
+
 	<cfif arguments.recurse>
 		<cfdirectory name="qDirs" directory="#arguments.directory#" sort="#sort#" type="dir">
 		<cfloop query="qDirs">
@@ -238,22 +238,22 @@
 		<cfset QuerySetCell(arguments.dirInfo,"type",type)>
 		<cfset QuerySetCell(arguments.dirInfo,"directory",arguments.directory)>
 	</cfoutput>
-	
+
     <cfreturn arguments.dirInfo>
 </cffunction>
 
 <cffunction name="FileNameFromString" access="public" returntype="string" output="no">
 	<cfargument name="string" type="string" required="yes">
 	<cfargument name="extensions" type="string" default="cfm,htm,html">
-	
+
 	<cfset var exts = arguments.extensions>
 	<cfset var result = "">
 	<cfset var ext = ListLast(arguments.string,".")>
-	
+
 	<cfif Len(ext) AND ListFindNoCase(exts,ext) AND (Len(arguments.string)-Len(ext)-1) GT 0>
 		<cfset arguments.string = Left(arguments.string,Len(arguments.string)-Len(ext)-1)>
 	</cfif>
-	
+
 	<cfset result = PathNameFromString(arguments.string)>
 
 	<cfif Len(result)>
@@ -263,7 +263,7 @@
 			<cfset result = "#result#.#ListFirst(exts)#">
 		</cfif>
 	</cfif>
-	
+
 	<cfreturn LCase(result)>
 </cffunction>
 
@@ -273,9 +273,9 @@
 
 <cffunction name="getDirectory" access="public" returntype="string" output="no">
 	<cfargument name="Folder" type="string" required="no">
-	
+
 	<cfset var result = variables.UploadPath>
-	
+
 	<cfif StructKeyExists(arguments,"Folder")>
 		<cfset arguments.Folder = convertFolder(arguments.Folder,variables.dirdelim)>
 		<cfif len(result) gt 1>
@@ -289,62 +289,62 @@
 			<cfset result = ListAppend(result,arguments.Folder,variables.dirdelim)>
 		</cfif>
 	</cfif>
-	
+
 	<cfif Right(result,1) NEQ variables.dirdelim>
 		<cfset result = "#result##variables.dirdelim#">
 	</cfif>
-	
+
 	<cfreturn result>
 </cffunction>
 
 <cffunction name="getFileLen" access="public" returntype="numeric" output="no">
 	<cfargument name="FileName" type="string" required="yes">
 	<cfargument name="Folder" type="string" required="no">
-	
+
 	<cfset var result = 0>
 	<cfset var path = getDirectory(argumentCollection=arguments)>
 	<cfset var qFiles = 0>
-	
+
 	<cfdirectory action="LIST" directory="#path#" name="qFiles" filter="#arguments.FileName#">
-	
+
 	<cfloop query="qFiles">
 		<cfif Name EQ arguments.FileName>
 			<cfset result = size>
 		</cfif>
 	</cfloop>
-	
+
 	<cfreturn result>
 </cffunction>
 
 <cffunction name="getFilePath" access="public" returntype="string" output="no">
 	<cfargument name="FileName" type="string" required="yes">
 	<cfargument name="Folder" type="string" default="">
-	
+
 	<cfset var result = "">
-	
+
 	<cfif ListLen(Arguments.FileName,variables.dirdelim) GT 1 AND FileExists(Arguments.FileName)>
 		<cfset result = Arguments.FileName>
 	<cfelse>
 		<cfset result = getDirectory(arguments.Folder) & arguments.FileName>
 	</cfif>
-	
+
 	<cfreturn result>
 </cffunction>
 
 <cffunction name="getFileURL" access="public" returntype="string" output="no">
 	<cfargument name="FileName" type="string" required="yes">
 	<cfargument name="Folder" type="string" required="no">
-	
+
 	<cfset var result = variables.UploadURL>
-	
+
 	<cfif StructKeyExists(arguments,"Folder")>
 		<cfset result = ListAppend(result,convertFolder(arguments.Folder,"/"),"/")>
 	</cfif>
 	<cfset result = ListAppend(result,arguments.FileName,"/")>
-	
+
 	<cfset result = ReplaceNoCase(result,"//","/","ALL")>
 	<cfset result = ReReplaceNoCase(result,"^(\w+:)/","\1//","ALL")>
-	
+
 	<cfreturn result>
 </cffunction>
 
@@ -358,7 +358,7 @@
 
 <cffunction name="makedir" access="public" returntype="any" output="no" hint="I make a directory (if it doesn't exist already).">
 	<cfargument name="Directory" type="string" required="yes">
-	
+
 	<cfset var parent = "">
 
 	<cfif NOT DirectoryExists(Arguments.Directory) AND ListLen(Arguments.Directory,variables.dirdelim)>
@@ -368,30 +368,30 @@
 		</cfif>
 		<cfset makedir_private(Arguments.Directory)>
 	</cfif>
-	
+
 </cffunction>
 
 <cffunction name="makedir_private" access="private" returntype="any" output="no" hint="I make a directory.">
 	<cfargument name="Directory" type="string" required="yes">
-	
+
 	<cfdirectory action="CREATE" directory="#Arguments.Directory#">
-	
+
 </cffunction>
 
 <cffunction name="makeFolder" access="public" returntype="void" output="no">
 	<cfargument name="Folder" type="string" required="yes">
-	
+
 	<cfset makedir(getDirectory(Arguments.Folder))>
-	
+
 </cffunction>
 
 <cffunction name="PathNameFromString" access="public" returntype="string" output="false" hint="">
 	<cfargument name="string" type="string" required="yes">
-	
+
 	<cfset var reChars = "([0-9]|[a-z]|[A-Z])">
 	<cfset var ii = 0>
 	<cfset var result = "">
-	
+
 	<cfloop index="ii" from="1" to="#Len(string)#" step="1">
 		<cfif REFindNoCase(reChars, Mid(string,ii,1))>
 			<cfset result = result & Mid(string,ii,1)>
@@ -399,25 +399,37 @@
 			<cfset result = result & "-">
 		</cfif>
 	</cfloop>
-	
+
 	<cfset result = REReplaceNoCase(result, "_{2,}", "_", "ALL")>
 	<cfset result = REReplaceNoCase(result, "-{2,}", "-", "ALL")>
-	
+
 	<cfset result = ReplaceNoCase(result,"-"," ","ALL")>
 	<cfset result = ReplaceNoCase(Trim(result)," ","-","ALL")>
-	
+
 	<cfreturn LCase(result)>
+</cffunction>
+
+<cffunction name="readBinaryFile" access="public" returntype="binary" output="no" hint="I return the contents of a file.">
+	<cfargument name="FileName" type="string" required="yes">
+	<cfargument name="Folder" type="string" required="no">
+
+	<cfset var destination = getFilePath(argumentCollection=arguments)>
+	<cfset var result = "">
+
+	<cffile action="readBinary" file="#destination#" variable="result">
+
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="readFile" access="public" returntype="string" output="no" hint="I return the contents of a file.">
 	<cfargument name="FileName" type="string" required="yes">
 	<cfargument name="Folder" type="string" required="no">
-	
+
 	<cfset var destination = getFilePath(argumentCollection=arguments)>
 	<cfset var result = "">
-	
+
 	<cffile action="READ" file="#destination#" variable="result">
-	
+
 	<cfreturn result>
 </cffunction>
 
@@ -425,15 +437,31 @@
 	<cfargument name="FileName" type="string" required="yes">
 	<cfargument name="Contents" type="string" required="yes">
 	<cfargument name="Folder" type="string" required="no">
-	
+
 	<cfset var destination = getFilePath(argumentCollection=arguments)>
-	
+
 	<cfif StructKeyExists(arguments,"Folder")>
 		<cfset makeFolder(arguments.Folder)>
 	</cfif>
-	
+
 	<cffile action="WRITE" file="#destination#" output="#arguments.Contents#" addnewline="no">
-	
+
+	<cfreturn destination>
+</cffunction>
+
+<cffunction name="writeBinaryFile" access="public" returntype="string" output="no" hint="I save a file.">
+	<cfargument name="FileName" type="string" required="yes">
+	<cfargument name="Contents" type="binary" required="yes">
+	<cfargument name="Folder" type="string" required="no">
+
+	<cfset var destination = getFilePath(argumentCollection=arguments)>
+
+	<cfif StructKeyExists(arguments,"Folder")>
+		<cfset makeFolder(arguments.Folder)>
+	</cfif>
+
+	<cffile action="WRITE" file="#destination#" output="#arguments.Contents#" addnewline="no">
+
 	<cfreturn destination>
 </cffunction>
 
@@ -441,11 +469,11 @@
 	<cfargument name="FileName" type="string" required="yes">
 	<cfargument name="Contents" type="string" required="yes">
 	<cfargument name="Folder" type="string" required="no">
-	
+
 	<cfset var result = "">
 	<cfset var cr = "
 ">
-	
+
 	<cfset Arguments.Contents = Trim(Arguments.Contents)>
 
 	<cfif Len(Arguments.Contents)>
@@ -454,7 +482,7 @@
 	<cfelse>
 		<cfset result = getFilePath(argumentCollection=arguments)>
 	</cfif>
-	
+
 	<cfreturn result>
 </cffunction>
 
@@ -463,7 +491,7 @@
 	<cfargument name="Folder" type="string" required="no">
 	<cfargument name="NameConflict" type="string" default="Error">
 	<cfargument name="TempDirectory" default="#variables.TempDir#">
-	
+
 	<cfset var destination = getDirectory(argumentCollection=arguments)>
 	<cfset var CFFILE = StructNew()>
 	<cfset var sOrigFile = 0>
@@ -472,17 +500,17 @@
 	<cfset var skip = false>
 	<cfset var dirdelim = getDirDelim()>
 	<cfset var result = "">
-	
+
 	<!--- Make sure the destination exists. --->
 	<cfif StructKeyExists(arguments,"Folder")>
 		<cfset makeFolder(arguments.Folder)>
 	</cfif>
-	
+
 	<!--- Set default extensions --->
 	<cfif NOT StructKeyExists(arguments,"extensions")>
 		<cfset arguments.extensions = variables.DefaultExtensions>
 	</cfif>
-	
+
 	<!--- Upload to temp directory. --->
 	<cfif StructKeyExists(Form,Arguments.FieldName)>
 		<cfif StructKeyExists(arguments,"accept")>
@@ -493,9 +521,9 @@
 	<cfelse>
 		<cffile destination="#Arguments.TempDirectory#" source="#Arguments.FieldName#" action="copy">
 	</cfif>
-	
+
 	<cfset tempPath = ListAppend(CFFILE.ServerDirectory, CFFILE.ServerFile, dirdelim)>
-	
+
 	<!--- Check file extension --->
 	<cfif
 			Len(arguments.extensions)
@@ -505,22 +533,22 @@
 		<cffile action="DELETE" file="#tempPath#">
 		<cfreturn StructNew()>
 	</cfif>
-	
+
 	<cfset sOrigFile = Duplicate(CFFILE)>
-	
+
 	<cfset serverPath = ListAppend(destination, "#CFFILE.clientFileName#.#CFFILE.clientFileExt#", dirdelim)>
 	<cfif FileExists(serverPath)>
 		<!--- Handle name conflict --->
 		<cfswitch expression="#Arguments.NameConflict#">
 			<cfcase value="MakeUnique">
 				<cfset serverPath = createUniqueFileName(serverPath)>
-				
+
 				<cfset CFFILE.FileWasRenamed = true>
 				<cfset CFFILE.ServerDirectory = getDirectoryFromPath(serverPath)>
 				<cfset CFFILE.ServerFile = getFileFromPath(serverPath)>
 				<cfset CFFILE.ServerFileExt = ListLast(CFFILE.ServerFile,".")>
 				<cfset CFFILE.ServerFileName = ListDeleteAt(CFFILE.ServerFile,ListLen(CFFILE.ServerFile,"."),".")>
-				
+
 				<cfset sOrigFile.ServerFileName = cffile.ServerFileName>
 				<cfset sOrigFile.ServerFile = cffile.ServerFile>
 				<cfset destination = cffile.ServerDirectory>
@@ -540,7 +568,7 @@
 			</cfcase>
 		</cfswitch>
 	</cfif>
-	
+
 	<cfif NOT skip>
 		<!---<cfset serverPath = fixFileName(getFileFromPath(serverPath),getDirectoryFromPath(serverPath))>--->
 		<!--- Rename and move file to destination directory --->
@@ -549,7 +577,7 @@
 		<cfset cffile.ServerFile = sOrigFile.ServerFile>
 		<cfset cffile.ServerDirectory = destination>
 	</cfif>
-	
+
 	<cfif StructKeyExists(arguments,"return") AND isSimpleValue(arguments.return)>
 		<cfif arguments.return EQ "name">
 			<cfset arguments.return = "ServerFile">
@@ -563,21 +591,21 @@
 	<cfelse>
 		<cfset result = CFFILE>
 	</cfif>
-	
+
 	<cfreturn result>
 </cffunction>
 
 <cffunction name="convertFolder" access="public" returntype="string" output="no">
 	<cfargument name="Folder" type="string" required="yes">
 	<cfargument name="delimiter" type="string" default="/">
-	
+
 	<cfset var result = arguments.Folder>
-	
+
 	<cfset result = ListChangeDelims(result,"/",",")>
 	<cfset result = ListChangeDelims(result,variables.dirdelim,"/")>
 
 	<cfset result = ListChangeDelims(result,arguments.delimiter,variables.dirdelim)>
-	
+
 	<cfreturn result>
 </cffunction>
 
@@ -587,9 +615,9 @@ Copies a directory.
 @param source      Source directory. (Required)
 @param destination      Destination directory. (Required)
 @param nameConflict      What to do when a conflict occurs (skip, overwrite, makeunique). Defaults to overwrite. (Optional)
-@return Returns nothing. 
-@author Joe Rinehart (joe.rinehart@gmail.com) 
-@version 1, July 27, 2005 
+@return Returns nothing.
+@author Joe Rinehart (joe.rinehart@gmail.com)
+@version 1, July 27, 2005
 --->
 <cffunction name="copyDirectories" output="true">
     <cfargument name="source" required="true" type="string">
@@ -598,13 +626,13 @@ Copies a directory.
 
     <cfset var contents = "" />
     <cfset var dirDelim = getDelimiter()>
-    
+
     <cfif not(directoryExists(arguments.destination))>
         <cfdirectory action="create" directory="#arguments.destination#">
     </cfif>
-    
+
     <cfdirectory action="list" directory="#arguments.source#" name="contents">
-    
+
     <cfloop query="contents">
         <cfif contents.type eq "file">
             <cffile action="copy" source="#arguments.source##dirDelim##name#" destination="#arguments.destination##dirDelim##name#" nameconflict="#arguments.nameConflict#">
@@ -616,9 +644,9 @@ Copies a directory.
 
 <!---
  * v2, bug found with dots in path, bug found by joseph
- * 
- * @author Marc Esher (marc.esher@cablespeed.com) 
- * @version 2, January 22, 2008 
+ *
+ * @author Marc Esher (marc.esher@cablespeed.com)
+ * @version 2, January 22, 2008
 --->
 <cffunction name="createUniqueFileName" acess="public" returntype="string" output="no" hint="Creates a unique file name; used to prevent overwriting when moving or copying files from one location to another.">
 	<cfargument name="fullPath" type="string" required="true" hint="Full path to file.">
@@ -638,30 +666,30 @@ Copies a directory.
 		filebase = ListLast(arguments.fullPath,getDirDelim());
 		dir = ReReplaceNoCase(arguments.fullPath,"#ReplaceNoCase(filebase,'.','\.','ALL')#$","");
 		filebase = ListDeleteAt(filebase,ListLen(filebase,"."),".");
-		
+
 		if ( arguments.maxfilelength AND Len(filebase & extension) GT arguments.maxfilelength ) {
 			filebase = Left(filebase,arguments.maxfilelength-extension);
 		}
-	
+
 		while( FileExists(result) ) {
 			counter = counter + 1;
-			result = LimitFileNameLength(arguments.maxfilelength,thePath,"_" & counter & extension);			
+			result = LimitFileNameLength(arguments.maxfilelength,thePath,"_" & counter & extension);
 		}
 	}
-	
-	return result;	
+
+	return result;
 	</cfscript>
 </cffunction>
 
 <cfscript>
 /**
  * Makes a row of a query into a structure.
- * 
- * @param query 	 The query to work with. 
- * @param row 	 Row number to check. Defaults to row 1. 
- * @return Returns a structure. 
- * @author Nathan Dintenfass (nathan@changemedia.com) 
- * @version 1, December 11, 2001 
+ *
+ * @param query 	 The query to work with.
+ * @param row 	 Row number to check. Defaults to row 1.
+ * @return Returns a structure.
+ * @author Nathan Dintenfass (nathan@changemedia.com)
+ * @version 1, December 11, 2001
  */
 </cfscript>
 
@@ -682,7 +710,7 @@ Copies a directory.
 	<cfargument name="name" type="string" required="yes">
 	<cfargument name="dir" type="string" required="yes">
 	<cfargument name="maxlength" type="numeric" default="0">
-	
+
 	<cfset var dirdelim = getDirDelim()>
 	<cfset var result = cleanFileName(name=Arguments.name,maxlength=Arguments.maxlength)>
 	<cfset var path = "#dir##dirdelim##result#">
@@ -693,7 +721,7 @@ Copies a directory.
 		<cfset result = ListLast(path,dirdelim)>
 		<cffile action="rename" source="#arguments.dir##dirdelim##arguments.name#" destination="#result#">
 	</cfif>
-	
+
 	<cfreturn result>
 </cffunction>
 
