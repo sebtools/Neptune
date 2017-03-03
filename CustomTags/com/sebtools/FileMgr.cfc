@@ -174,13 +174,13 @@
  @version 2, April 8, 2004
 --->
 <cffunction name="getMyDirectoryList" output="false" returnType="query">
-    <cfargument name="directory" type="string" required="true">
-    <cfargument name="filter" type="string" required="false" default="">
-    <cfargument name="sort" type="string" required="false" default="">
-    <cfargument name="recurse" type="boolean" required="false" default="false">
-    <!--- temp vars --->
-    <cfargument name="dirInfo" type="query" required="false">
-    <cfargument name="thisDir" type="query" required="false">
+	<cfargument name="directory" type="string" required="true">
+	<cfargument name="filter" type="string" required="false" default="">
+	<cfargument name="sort" type="string" required="false" default="">
+	<cfargument name="recurse" type="boolean" required="false" default="false">
+	<!--- temp vars --->
+	<cfargument name="dirInfo" type="query" required="false">
+	<cfargument name="thisDir" type="query" required="false">
 	<!--- more vars --->
 	<cfargument name="exclude" type="string" default="">
 
@@ -191,16 +191,25 @@
 	<cfset var qDirs = 0>
 	<cfset var qFiles = 0>
 	<cfset var cols = "attributes,datelastmodified,mode,name,size,type,directory">
+	<cfset var sDirectoryAttributes = {name="qFiles",directory="#arguments.directory#",type="file"}>
 
 	<cfif Right(arguments.directory,1) NEQ delim>
 		<cfset arguments.directory = "#arguments.directory##delim#">
 	</cfif>
 
-    <cfif NOT StructKeyExists(arguments,"dirInfo")>
-        <cfset arguments.dirInfo = QueryNew(cols)>
-    </cfif>
+	<cfif NOT StructKeyExists(arguments,"dirInfo")>
+		<cfset arguments.dirInfo = QueryNew(cols)>
+	</cfif>
 
-	<cfdirectory name="qFiles" directory="#arguments.directory#" sort="#sort#" filter="#arguments.filter#" type="file">
+	<cfif Len(Arguments.sort)>
+		<cfset sDirectoryAttributes["sort"] = Arguments.sort>
+	</cfif>
+
+	<cfif Len(Arguments.filter)>
+		<cfset sDirectoryAttributes["filter"] = Arguments.filter>
+	</cfif>
+
+	<cfdirectory attributeCollection="#sDirectoryAttributes#">
 
 	<cfif arguments.recurse>
 		<cfdirectory name="qDirs" directory="#arguments.directory#" sort="#sort#" type="dir">
@@ -239,7 +248,7 @@
 		<cfset QuerySetCell(arguments.dirInfo,"directory",arguments.directory)>
 	</cfoutput>
 
-    <cfreturn arguments.dirInfo>
+	<cfreturn arguments.dirInfo>
 </cffunction>
 
 <cffunction name="FileNameFromString" access="public" returntype="string" output="no">
