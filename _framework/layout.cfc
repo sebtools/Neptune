@@ -124,6 +124,14 @@
 	<cfreturn result>
 </cffunction>
 
+<cffunction name="loadLocalServices" access="public" returntype="any" output="no">
+	<cfargument name="VariablesScope" type="struct" required="true">
+	<cfargument name="Services" type="string" required="true">
+
+	<cfset Variables.Factory.Framework.loadLocalServices(ArgumentCollection=Arguments)>
+	
+</cffunction>
+
 <cffunction name="importAdminMenu" access="private" returntype="void" output="no">
 	
 	<cfif

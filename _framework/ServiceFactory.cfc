@@ -243,6 +243,7 @@
 	<cfset var BeginTime = 0>
 	<cfset var EndTime = 0>
 	<cfset var sObserverArgs = 0>
+	<cfset var ArgLen = 0>
 	
 	<cfif Arguments.ServiceName EQ "ServiceFactory">
 		<cfset loadServiceFactory()>
@@ -256,7 +257,8 @@
 			<!--- Make Init Arguments --->
 			<cfset sArgs = StructNew()>
 			<cfif StructKeyExists(axServices[1],"argument")>
-				<cfloop index="ii" from="1" to="#ArrayLen(axServices[1].argument)#">
+				<cfset ArgLen = ArrayLen(axServices[1].argument)>
+				<cfloop index="ii" from="1" to="#ArgLen#">
 					<!--- Separate variable so that we won't have to worry about a short circuit --->
 					<cfset doLoadTemp = makeInitArg(Arguments.ServiceName,sArgs,axServices[1].argument[ii].XmlAttributes)>
 					<cfset doLoad = doLoad AND doLoadTemp>

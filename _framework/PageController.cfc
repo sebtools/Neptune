@@ -280,6 +280,18 @@
 	<cfreturn vars>
 </cffunction>
 
+<cffunction name="loadLocalServices" access="public" returntype="any" output="no">
+	<cfargument name="VariablesScope" type="struct" required="true">
+	<cfargument name="Services" type="string" required="true">
+
+	<cfset var service = "">
+
+	<cfloop index="service" list="#Arguments.Services#">
+		<cfset Arguments.VariablesScope[service] = Application.ServiceFactory.getService(service)>
+	</cfloop>
+	
+</cffunction>
+
 <cffunction name="getDefaultVarArgs" access="private" returntype="struct" output="no">
 	
 	<cfset var pagetype = ListFirst(ListLast(getFileFromPath(variables.ScriptName),"-"),".")>
@@ -347,10 +359,22 @@
 	
 	<cfset var varname = "">
 	<cfset var scopestruct = 0>
+	<cfset var OriginalScope = Arguments.scope>
 	
+	<!--- Scopes that start with a dot are nested within a service. --->
 	<cfif Left(arguments.scope,1) EQ "." AND Len(arguments.scope) GTE 2>
-		<cfset variables[Right(arguments.scope,Len(arguments.scope)-1)] = Application[Right(arguments.scope,Len(arguments.scope)-1)]>
-		<cfset arguments.scope = "Application#arguments.scope#">
+		<!--- To start, drop the leading dot from the scope name since we know what it is within this conditional block. --->
+		<cfset arguments.scope = Right(arguments.scope,Len(arguments.scope)-1)>
+
+		<!--- Get it from ServiceFactory if we can. --->
+		<cfif Application.ServiceFactory.hasService(arguments.scope)>
+			<cfset variables[arguments.scope] = Application.ServiceFactory.getService(arguments.scope)>
+		<cfelse>
+			<!--- If not, try to get it from Application scope (may result in an exception). --->
+			<cfset variables[arguments.scope] = Application[arguments.scope]>
+		</cfif>
+		<!--- Now we can just treat the service we got back as a scope. --->
+		<cfset arguments.scope = "Variables.#arguments.scope#">
 	</cfif>
 	
 	<cfset scopestruct = StructGet(arguments.scope)>
@@ -358,6 +382,8 @@
 	<cfloop index="varname" list="#arguments.varlist#">
 		<cfif StructKeyExists(scopestruct,varname)>
 			<cfset variables[varname] = scopestruct[varname]>
+		<cfelseif StructKeyExists(Application,"ServiceFactory") AND Application.ServiceFactory.hasService(varname)>
+			<cfset variables[varname] = Application.ServiceFactory.getService(varname)>
 		<cfelseif NOT arguments.skipmissing>
 			<cfthrow message="#scope#.#varname# is not defined.">
 		</cfif>

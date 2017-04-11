@@ -12,6 +12,7 @@
 	<cfargument name="vars" type="struct" required="false">
 	<cfargument name="Proxy" type="any" required="false">
 	<cfargument name="ExcludeDirs" type="string" required="false">
+	<cfargument name="lazy" type="boolean" default="false">
 
 	<cfset var me = 0>
 
@@ -44,6 +45,7 @@
 	<cfargument name="vars" type="struct" required="false">
 	<cfargument name="Proxy" type="any" required="false">
 	<cfargument name="ExcludeDirs" type="string" required="false">
+	<cfargument name="lazy" type="boolean" default="false">
 
 	<cfset variables.CFServer = Server.ColdFusion.ProductName>
 	<cfset variables.CFVersion = ListFirst(Server.ColdFusion.ProductVersion)>
@@ -55,6 +57,7 @@
 	<cfset variables.instance["RootPath"] = arguments.RootPath>
 	<cfset variables.instance["Hash"] = Hash(arguments.RootPath)>
 	<cfset variables.instance["scopes"] = arguments.scopes>
+	<cfset variables.instance["lazy"] = arguments.lazy>
 	<cfset variables.instance["dirdelim"] = variables.dirdelim>
 	<cfset variables.instance["programs"] = StructNew()>
 	<cfset variables.instance["ProgramFilePaths"] = "">
@@ -186,10 +189,17 @@
 			
 			<cfset This.Loader.loadConfig(This.Config)>
 			
-			<cfset This.Loader.seedServices()>
+			<!--- Seed all services unless the framework is told to lazy load services. --->
+			<cfif NOT variables.instance["lazy"]>
+				<cfset This.Loader.seedServices()>
+			</cfif>
 			<cfset This.Loader.setScope(Application)>
 			<cfset This.Loader.Framework = This>
 			<cfset variables.instance.LoaderLoaded = now()>
+			<!--- Need ServiceWatcher to watch other services load. Won't be loaded independently. --->
+			<cfif This.Loader.hasService("ServiceWatcher")>
+				<cfset This.Loader.loadService("ServiceWatcher")>
+			</cfif>
 		<cfcatch>
 			<cfset StructDelete(Variables,"LoaderBegin")>
 			<cfrethrow>
@@ -241,6 +251,9 @@
 	<cfset this.Config.runConfigFiles("#variables.instance.ConfigFolder#config.cfm")>
 
 	<cfset Arguments.refresh = ReReplaceNoCase(Arguments.refresh,"\bframework\b","")>
+	<cfif NOT Len(Trim(Arguments.refresh))>
+		<cfset Arguments.refresh = false>
+	</cfif>
 	
 	<!--- Registration --->
 	<!--- If any components are being refreshed, check for changes to XML --->
@@ -249,9 +262,17 @@
 			doLoad
 		OR	( Len(arguments.refresh) AND arguments.refresh NEQ false )
 	>
+		<cfif variables.instance["lazy"]>
+			<cfset This.Loader.removeServices(arguments.refresh)>
+			<cfif This.Loader.hasService("ServiceWatcher")>
+				<cfset This.Loader.loadService("ServiceWatcher")>
+			</cfif>
+		</cfif>
 		<cfset ChangedSettings = loadConfigSettings()>
 		<cfset runConfigFiles()>
-		<cfset This.Loader.refreshServices(arguments.refresh)>
+		<cfif NOT variables.instance["lazy"]>
+			<cfset This.Loader.refreshServices(arguments.refresh)>
+		</cfif>
 		<cfset isAnyProgramRegistered = registerAllPrograms(false)>
 	</cfif>
 	<cfset isLocalProgramRegistered = registerProgram(GetDirectoryFromPath(GetBaseTemplatePath()))>
@@ -266,8 +287,10 @@
 	<cfset this.Config.loadSettings()>
 	
 	<cfif doLoad OR arguments.refresh NEQ false>
-		<cfset Variables.WhenLoadedAllServices = now()>
-		<cfset This.Loader.getAllServices()>
+		<cfif NOT variables.instance["lazy"]>
+			<cfset Variables.WhenLoadedAllServices = now()>
+			<cfset This.Loader.getAllServices()>
+		</cfif>
 		
 		<cfset variables.instance["PathServices"] = StructNew()>
 		<cfset variables.instance["NoPathServices"] = StructNew()> 
@@ -281,14 +304,16 @@
 		</cfif>
 	</cfif>
 	
-	<!--- This is a pretty cheap operation. Will make sure it is called at least once every 20 minutes to verify that all services are loaded. If it doesn't work, no big deal. It probably wasn't needed anyway. --->
-	<cfif NOT ( StructKeyExists(Variables,"WhenLoadedAllServices") AND DateAdd("n",20,Variables.WhenLoadedAllServices) GT now() )>
-		<cfset Variables.WhenLoadedAllServices = now()>
-		<cftry>
-			<cfset This.Loader.getAllServices()>
-		<cfcatch>
-		</cfcatch>
-		</cftry>
+	<cfif NOT variables.instance["lazy"]>
+		<!--- This is a pretty cheap operation. Will make sure it is called at least once every 20 minutes to verify that all services are loaded. If it doesn't work, no big deal. It probably wasn't needed anyway. --->
+		<cfif NOT ( StructKeyExists(Variables,"WhenLoadedAllServices") AND DateAdd("n",20,Variables.WhenLoadedAllServices) GT now() )>
+			<cfset Variables.WhenLoadedAllServices = now()>
+			<cftry>
+				<cfset This.Loader.getAllServices()>
+			<cfcatch>
+			</cfcatch>
+			</cftry>
+		</cfif>
 	</cfif>
 	
 </cffunction>
@@ -1238,6 +1263,18 @@ function getPageController(path) {
 	</cfif>
 	
 	<cfreturn Variables.xPrograms>
+</cffunction>
+
+<cffunction name="loadLocalServices" access="public" returntype="any" output="no">
+	<cfargument name="VariablesScope" type="struct" required="true">
+	<cfargument name="Services" type="string" required="true">
+
+	<cfset var service = "">
+
+	<cfloop index="service" list="#Arguments.Services#">
+		<cfset Arguments.VariablesScope[service] = This.Loader.getService(service)>
+	</cfloop>
+	
 </cffunction>
 
 <cffunction name="registerAllPrograms" access="public" returntype="boolean" output="no">
