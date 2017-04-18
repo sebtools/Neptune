@@ -30,7 +30,13 @@
 		<cfthrow message="AWS region has not been indicated." type="AWS">
 	</cfif>
 
+	<cfset Variables.RateLimiter = CreateObject("component","RateLimiter").init("AWS")>
+
 	<cfreturn This>
+</cffunction>
+
+<cffunction name="getCredentials" access="public" returntype="any" output="false" hint="I get the Amazon credentials.">
+	 <cfreturn Variables.Credentials>
 </cffunction>
 
 <cffunction name="getAccessKey" access="public" returntype="string" output="false" hint="I get the Amazon access key.">
@@ -58,6 +64,30 @@
 	<cfreturn Variables.region>
 </cffunction>
 
+<cffunction name="isCallable" access="public" returntype="boolean" output="false" hint="I determine if the action can be called.">
+	<cfargument name="subdomain" type="string" required="true" hint="The subdomain for the AWS service being used.">
+	<cfargument name="Action" type="string" required="true" hint="The AWS API action being called.">
+
+	<cfreturn Variables.RateLimiter.isCallable("#Arguments.subdomain#_#Arguments.Action#")>
+</cffunction>
+
+<cffunction name="callLimitedAPI" access="public" returntype="any" output="false" hint="I return the results of Amazon REST Call in the form easiest to use.">
+	<cfargument name="subdomain" type="string" required="true" hint="The subdomain for the AWS service being used.">
+	<cfargument name="Action" type="string" required="true" hint="The AWS API action being called.">
+	<cfargument name="default" type="any" required="true" hint="The value to return if within the rate limit.">
+	<cfargument name="method" type="string" default="GET" hint="The HTTP method to invoke.">
+	<cfargument name="parameters" type="struct" default="#structNew()#" hint="An struct of HTTP URL parameters to send in the request.">
+	<cfargument name="timeout" type="numeric" default="20" hint="The default call timeout.">
+
+	<cfreturn Variables.RateLimiter.method(
+		id="#Arguments.subdomain#_#Arguments.Action#",
+		default=Arguments.default,
+		Component=This,
+		MethodName="callAPI",
+		Args=Arguments
+	)>
+</cffunction>
+
 <cffunction name="callAPI" access="public" returntype="any" output="false" hint="I return the results of Amazon REST Call in the form easiest to use.">
 	<cfargument name="subdomain" type="string" required="true" hint="The subdomain for the AWS service being used.">
 	<cfargument name="Action" type="string" required="true" hint="The AWS API action being called.">
@@ -76,6 +106,10 @@
 		if ( StructKeyExists(response["RESPONSE"],"#Arguments.Action#Response") ) {
 			if ( StructKeyExists(response["RESPONSE"]["#Arguments.Action#Response"],"#Arguments.Action#Result") ) {
 				response_result = response["RESPONSE"]["#Arguments.Action#Response"]["#Arguments.Action#Result"];
+				//If the result has no attributes or text and just one child, return that.
+				if ( ArrayLen(response_result.XmlChildren) EQ 1 AND NOT Len(Trim(response_result.XmlText)) AND NOT StructCount(response_result.XmlAttributes) ) {
+					response_result = response_result.XmlChildren[1];
+				}
 			} else {
 				if ( isXml(response["RESPONSE"]["#Arguments.Action#Response"]) AND response["RESPONSE"]["#Arguments.Action#Response"].XmlName EQ "#Arguments.Action#Result" ) {
 					response_result = response["RESPONSE"]["#Arguments.Action#Response"].XmlChildren;
@@ -94,13 +128,31 @@
 	if ( StructKeyExists(response_result,"ErrorResponse") ) {
 		throwError(Message=response_result.ErrorResponse.Error.Message.XmlText,errorcode=response_result.ErrorResponse.Error.Code.XmlText);
 	}
-
+	
 	//If the XML response has children, but no attributes then we can safely return the children as a struct.
-	if ( isXml(response_result) AND StructKeyExists(response_result,"XmlChildren") AND ArrayLen(response_result.XmlChildren) AND NOT StructCount(response_result.XmlAttributes) ) {
-		result = {};
-		for ( ii=1; ii <= ArrayLen(response_result.XmlChildren); ii=ii+1 ) {
-			result[response_result.XmlChildren[ii].XmlName] = response_result.XmlChildren[ii].XmlText;
-		}
+	if (
+				isXml(response_result)
+			AND	StructKeyExists(response_result,"XmlChildren")
+			AND	ArrayLen(response_result.XmlChildren)
+			AND	NOT StructCount(response_result.XmlAttributes)
+			AND	Len(Trim(response_result.XmlChildren[1].XmlText))
+			AND	NOT StructCount(response_result.XmlChildren[1].XmlAttributes)
+		) {
+			//One element, return the string. Otherwise: If every element is the same, then make an array. Otherwise, a structure.
+			if ( ArrayLen(response_result.XmlChildren) EQ 1 ) {
+				result = response_result.XmlChildren[1].XmlText;
+			} else if ( ArrayLen(response_result.XmlChildren) EQ ArrayLen(response_result[response_result.XmlChildren[1].XmlName]) ) {
+				result = [];
+				ArrayResize(result, ArrayLen(response_result.XmlChildren));
+				for ( ii=1; ii <= ArrayLen(response_result.XmlChildren); ii=ii+1 ) {
+					result[ii] = response_result.XmlChildren[ii].XmlText;
+				}
+			} else {
+				result = {};
+				for ( ii=1; ii <= ArrayLen(response_result.XmlChildren); ii=ii+1 ) {
+					result[response_result.XmlChildren[ii].XmlName] = response_result.XmlChildren[ii].XmlText;
+				}
+			}
 	} else {
 		result = response_result;
 	}
@@ -187,7 +239,7 @@
 	</cfscript>
 </cffunction>
 
-<cffunction name="createSignature" returntype="any" access="private" output="false" hint="Create request signature according to AWS standards">
+<cffunction name="createSignature" returntype="any" access="public" output="false" hint="Create request signature according to AWS standards">
 	<cfargument name="string" type="any" required="true" />
 
 	<cfset var fixedData = Replace(Arguments.string,"\n","#chr(10)#","all")>
@@ -225,6 +277,18 @@
 		extendedinfo="#Arguments.extendedinfo#"
 	>
 	
+</cffunction>
+
+<cffunction name="onMissingMethod" access="public" returntype="any" output="false" hint="">
+	<cfif ListLen(Arguments["missingMethodName"],"_") EQ 2>
+		<cfreturn callAPI(
+			subdomain=ListFirst(Arguments["missingMethodName"],"_"),
+			Action=ListLast(Arguments["missingMethodName"],"_"),
+			parameters=Arguments.missingMethodArguments
+		)>
+	<cfelse>
+		<cfthrow message="The method #Arguments.missingMethodName# was not found in component." detail="Ensure that the method is defined, and that it is spelled correctly." type="Application">
+	</cfif>
 </cffunction>
 
 <!---
