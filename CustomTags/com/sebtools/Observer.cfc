@@ -23,10 +23,20 @@
 <cffunction name="announceEvent" access="public" returntype="void" output="no">
 	<cfargument name="EventName" type="string" default="update">
 	<cfargument name="Args" type="struct" required="false">
-	<cfargument name="RecursionLimit" type="numeric" required="false" default="#Variables.RecursionLimit#">
+	<cfargument name="RecursionLimit" type="numeric" required="false">
 	
 	<cfset var key = "">
 	<cfset var ii = 0>
+
+	<!--- In case this is called before init(). --->
+	<cfif NOT StructKeyExists(Variables,"sEvents")>
+		<cfexit>
+	</cfif>
+
+	<!--- Set default for RecursionLimit. Must be after above line in case this is called before init(). --->
+	<cfif NOT StructKeyExists(Arguments,"RecursionLimit")>
+		<cfset Arguments.RecursionLimit = Variables.RecursionLimit>
+	</cfif>
 	
 	<cfset checkEventRecursion(Arguments.EventName,Arguments.RecursionLimit)>
 	
