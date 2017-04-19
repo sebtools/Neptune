@@ -60,6 +60,23 @@
 	<cfreturn CacheGet(qualify(Arguments.id))>
 </cffunction>
 
+<cffunction name="id" access="public" returntype="any" output="false" hint="I make an id from a key and data.">
+	<cfargument name="key" type="string" required="true">
+	<cfargument name="data" type="any" required="false">
+
+	<cfset var result = Arguments.key>
+
+	<cfif StructKeyExists(Arguments,"data")>
+		<cfif isSimpleValue(Arguments.data)>
+			<cfset result = "#result#_" & Arguments.data>
+		<cfelse>
+			<cfset result = "#result#_" & Hash(SerializeJSON(Arguments.data))>	
+		</cfif>
+	</cfif>
+
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="method" access="public" returntype="any" output="false" hint="I get data from the cache (getting the data from the method if isn't there yet).">
 	<cfargument name="id" type="string" required="true">
 	<cfargument name="Component" type="any" required="true">
