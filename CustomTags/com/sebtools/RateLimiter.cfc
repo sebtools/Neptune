@@ -13,7 +13,7 @@
 
 <cffunction name="called" access="public" returntype="void" output="false">
 	<cfargument name="id" type="string" required="true">
-	<cfargument name="result" type="string" required="false">
+	<cfargument name="result" type="any" required="false">
 
 	<cfif NOT StructKeyExists(Arguments,"result")>
 		<cfset Arguments.result = now()>
@@ -31,15 +31,18 @@
 
 <cffunction name="method" access="public" returntype="any" output="false" hint="I call the given method if it hasn't been called within the rate limit time.">
 	<cfargument name="id" type="string" required="true">
-	<cfargument name="default" type="any" required="true">
 	<cfargument name="Component" type="any" required="true">
 	<cfargument name="MethodName" type="string" required="true">
 	<cfargument name="Args" type="struct" required="false">
+	<cfargument name="default" type="any" required="false">
 
 	<cfset var local = StructNew()>
 
 	<cfif NOT isCallable(Arguments.id)>
 		<!--- If MrECache has rate limiter value then we are within the rate limit and must return the default value. --->
+		<cfif NOT StructKeyExists(Arguments,"default")>
+			<cfset Arguments.default = Variables.MrECache.get(Arguments.id)>
+		</cfif>
 		<cfreturn Arguments.default>
 	<cfelse>
 		<!--- If not within the rate limit then call the method and return the value. --->

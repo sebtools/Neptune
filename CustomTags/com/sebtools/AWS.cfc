@@ -30,9 +30,31 @@
 		<cfthrow message="AWS region has not been indicated." type="AWS">
 	</cfif>
 
-	<cfset Variables.RateLimiter = CreateObject("component","RateLimiter").init("AWS")>
+	<cfset Variables.LockID = Hash(getAccessKey())>
+
+	<cfset Variables.MrECache = CreateObject("component","MrECache").init("AWS:#Variables.LockID#")>
+	<cfset This.MrECache = Variables.MrECache>
+
+	<cfset Variables.RateLimiter = CreateObject("component","RateLimiter").init("AWS:#Variables.LockID#")>
+	<cfset This.RateLimiter = Variables.RateLimiter>
+
+	<cfset Variables.sServices = StructNew()>
 
 	<cfreturn This>
+</cffunction>
+
+<cffunction name="getService" access="public" returntype="any" output="false" hint="I get the requested AWS service.">
+	<cfargument name="service" type="string" required="true">
+
+	<cfif NOT StructKeyExists(Variables.sServices,Arguments.service)>
+		<cfset Variables.sServices[Arguments.service] = CreateObject("component","aws.#LCase(Arguments.service)#").init(This)>
+	</cfif>
+
+	 <cfreturn Variables.sServices[Arguments.service]>
+</cffunction>
+
+<cffunction name="getLockID" access="public" returntype="any" output="false" hint="I get the LockID used by this instance of AWS.">
+	 <cfreturn Variables.LockID>
 </cffunction>
 
 <cffunction name="getCredentials" access="public" returntype="any" output="false" hint="I get the Amazon credentials.">
@@ -74,18 +96,23 @@
 <cffunction name="callLimitedAPI" access="public" returntype="any" output="false" hint="I return the results of Amazon REST Call in the form easiest to use.">
 	<cfargument name="subdomain" type="string" required="true" hint="The subdomain for the AWS service being used.">
 	<cfargument name="Action" type="string" required="true" hint="The AWS API action being called.">
-	<cfargument name="default" type="any" required="true" hint="The value to return if within the rate limit.">
+	<cfargument name="default" type="any" required="false" hint="The value to return if within the rate limit.">
 	<cfargument name="method" type="string" default="GET" hint="The HTTP method to invoke.">
 	<cfargument name="parameters" type="struct" default="#structNew()#" hint="An struct of HTTP URL parameters to send in the request.">
 	<cfargument name="timeout" type="numeric" default="20" hint="The default call timeout.">
 
-	<cfreturn Variables.RateLimiter.method(
+	<cfset var sArgs = {
 		id="#Arguments.subdomain#_#Arguments.Action#",
-		default=Arguments.default,
 		Component=This,
 		MethodName="callAPI",
 		Args=Arguments
-	)>
+	}>
+
+	<cfif StructKeyExists(Arguments,"default")>
+		<cfset sArgs["default"] = Arguments.default>
+	</cfif>
+
+	<cfreturn Variables.RateLimiter.method(ArgumentCollection=sArgs)>
 </cffunction>
 
 <cffunction name="callAPI" access="public" returntype="any" output="false" hint="I return the results of Amazon REST Call in the form easiest to use.">
@@ -190,21 +217,21 @@
 	results.responseheader = {};
 	</cfscript>
 	
-	<cfhttp
+	<cf_http
 		method="#arguments.method#"
 		url="#EndPointURL#"
 		charset="utf-8"
 		result="HTTPResults"
 		timeout="#arguments.timeout#"
 	>
-		<cfhttpparam type="header" name="Date" value="#timestamp#" />
-		<cfhttpparam type="header" name="Host" value="#getHost(Arguments.subdomain)#" />
-		<cfhttpparam type="header" name="X-Amzn-Authorization" value="AWS3-HTTPS AWSAccessKeyId=#getAccessKey()#,Algorithm=HmacSHA256,Signature=#createSignature(timestamp)#" />
+		<cf_httpparam type="header" name="Date" value="#timestamp#" />
+		<cf_httpparam type="header" name="Host" value="#getHost(Arguments.subdomain)#" />
+		<cf_httpparam type="header" name="X-Amzn-Authorization" value="AWS3-HTTPS AWSAccessKeyId=#getAccessKey()#,Algorithm=HmacSHA256,Signature=#createSignature(timestamp)#" />
 
 		<cfloop list="#sortedParams#" index="param">
-			<cfhttpparam type="#paramType#" name="#param#" value="#trim(arguments.parameters[param])#" />
+			<cf_httpparam type="#paramType#" name="#param#" value="#trim(arguments.parameters[param])#" />
 		</cfloop>
-	</cfhttp>
+	</cf_http>
 	
 	<cfscript>
 	results["Method"] = Arguments.method;
@@ -297,5 +324,14 @@ https://github.com/anujgakhar/AmazonSESCFC/blob/master/com/anujgakhar/AmazonSES.
 http://webdeveloperpadawan.blogspot.com/2012/02/coldfusion-and-amazon-aws-ses-simple.html
 http://cflove.org/2013/02/using-amazon-ses-api-sendrawemail-with-coldfusion.cfm
 https://gist.github.com/cflove/4716338
+
+More recent finds:
+** https://github.com/jcberquist/aws-cfml
+** https://github.com/simonfree/cfAWSWrapper
+http://www.codegist.net/snippet/coldfusion-cfc/s3wrappercfc_shtakai_coldfusion-cfc
+http://amazonsnscfc.riaforge.org/
+https://www.snip2code.com/Snippet/1180201/Amazon-Web-Services-(AWS)-S3-Wrapper-for
+https://codegists.com/snippet/coldfusion-cfc/s3wrappercfc_malpaso_coldfusion-cfc
+https://www.petefreitag.com/item/833.cfm
 --->
 </cfcomponent>

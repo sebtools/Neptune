@@ -38,9 +38,8 @@
 
 	<cfset setUpVariables(ArgumentCollection=Arguments)>
 
-	<!--- To make sure that we are locking on the same AWS credentials only. --->
-	<cfset Variables.LockID = Hash(Variables.AWS.getAccessKey())>
-	
+	<cfset Variables.SES = Variables.AWS.getService("SES")>
+
 	<cfreturn This>
 </cffunction>
 
@@ -50,76 +49,18 @@
 
 </cffunction>
 
-<cffunction name="GetSendQuota" access="public" returntype="struct" output="no">
-
-	<!--- Make sure that the variables that we need exist. --->
-	<cfif NOT StructKeyExists(Variables,"sSendQuotaCallData")>
-		<cfset Variables.sSendQuotaCallData = StructNew()>
-		<cfset Variables.sSendQuotaCallData["meta"] = StructNew()>
-		<cfset Variables.sSendQuotaCallData["results"] = StructNew()>
-	</cfif>
-
-	<!---
-	Rules on calling AWS API "GetSendQuota":
-	-- Any time we have no data.
-	-- Any time we haven't called it in half a day.
-	-- No more than once per second. (going to ignore this one, however, as it should be safely covered by the next one)
-	-- No more than once per every 10% of quote.
-	--->
-
-	<cfif
-			NOT	StructCount(Variables.sSendQuotaCallData["results"])
-		OR	DateDiff("h",Variables.sSendQuotaCallData["meta"]["LastCalled"],now()) GTE 12
-		OR	(
-					DateDiff("s",Variables.sSendQuotaCallData["meta"]["LastCalled"],now()) GTE 1
-				AND	(Variables.sSendQuotaCallData["meta"]["NumCachedCalls"] * 10) GTE Variables.sSendQuotaCallData["results"]["Max24HourSend"]
-			)
-	>
-		<!--- Get the data and record metadata about it for future caching. --->
-		<cflock name="Mailer:GetSendQuota:#Variables.LockID#" type="exclusive" timeout="3" throwontimeout="false">
-			<cfset Variables.sSendQuotaCallData["results"] = _GetSendQuota()>
-			<cfset Variables.sSendQuotaCallData["meta"]["LastCalled"] = now()>
-			<cfset Variables.sSendQuotaCallData["meta"]["NumCachedCalls"] = 0>
-		</cflock>
-		<!---
-		We don't need any other conditions for the lock, because if it was locked then the data was retrieved in the locking request.
-		In the unlikely event that the locking request failed then this one would as well.
-		--->
-	<cfelse>
-		<!---
-		This number determines how often we actually call out to the AWS API for quota data.
-		No need for locking here because this is really just a rough number anyway.
-		--->
-		<cfset Variables.sSendQuotaCallData["meta"]["NumCachedCalls"] = Variables.sSendQuotaCallData["meta"]["NumCachedCalls"] + 1>
-	</cfif>
-
-	<cfreturn Variables.sSendQuotaCallData["results"]>
-</cffunction>
-
-<cffunction name="isUnderSESLimit" access="public" returntype="boolean" output="no">
-
-	<cfset var sSendQuota = GetSendQuota()>
-	<cfset var PercentOfQuota = sSendQuota["SentLast24Hours"] / sSendQuota["Max24HourSend"]>
-	<cfset var result = true>
-
-	<!--- We don't want to exceed 90% of the limit, before we switch to standard sending. --->
-	<cfif PercentOfQuota GTE 0.9>
-		<cfset result = false>
-	</cfif>
-	
-	<cfreturn result>
-</cffunction>
-
 <cffunction name="sendEmail" access="private" returntype="boolean" output="no">
 	
 	<cfset var sent = false>
+	<cfset var isWithinLimit = Variables.SES.isUnderSESLimit()>
+	<cfset var isFromVerified = Variables.SES.isVerified(getEmailAddress(Arguments.From))>
 
 	<!---
 	Here is one of the key pieces of functionality for Mailer SES.
 	It checks the quota and won't send if the threshold has been it.
 	If it can, it will revert to sending out via the traditional Mailer.
 	--->
-	<cfif isUnderSESLimit()>
+	<cfif isWithinLimit AND isFromVerified>
 		<!---
 		Since this extends com.sebtools.Mailer, the sendMail method there will do what we need.
 		We could have had our own call to the API here, but using cfmail does everything we need without having to recreate it here.
@@ -128,28 +69,18 @@
 		--->
 		<cfset sent = Super.sendEmail(ArgumentCollection=Arguments)>
 	<cfelseif StructKeyExists(Variables,"Mailer")>
-		<!--- If available, send mail out using the backup Mailer after the quota is met. --->
+		<!--- If available, send mail out using the backup Mailer after the quota is met or for from addresses that cannot sent through SES. --->
 		<cfset sent = Variables.Mailer.sendEmail(ArgumentCollection=Arguments)>
 	<cfelse>
-		<cfthrow message="Message will exceed SES limit." type="Mailer" errorcode="SESLimit">
+		<cfif NOT isFromVerified>
+			<cfthrow message="#Arguments.From# is not a verified sender for SES." type="Mailer" errorcode="SESNotVerified">	
+		</cfif>
+		<cfif NOT isWithinLimit>
+			<cfthrow message="Message will exceed SES limit." type="Mailer" errorcode="SESLimit">	
+		</cfif>
 	</cfif>
 	
 	<cfreturn sent>
-</cffunction>
-
-<cffunction name="_GetSendQuota" access="private" returntype="struct" output="no">
-	
-	<cfreturn callAPI("GetSendQuota")>
-</cffunction>
-
-<cffunction name="callAPI" access="private" returntype="struct" output="false" hint="I invoke an Amazon REST Call.">
-	<cfargument name="Action" type="string" required="true" hint="The AWS API action being called.">
-	<cfargument name="method" type="string" default="GET" hint="The HTTP method to invoke.">
-	<cfargument name="parameters" type="struct" default="#structNew()#" hint="An struct of HTTP URL parameters to send in the request.">
-
-	<cfset Arguments.subdomain = "email">
-
-	<cfreturn Variables.AWS.callAPI(ArgumentCollection=Arguments)>
 </cffunction>
 
 </cfcomponent>

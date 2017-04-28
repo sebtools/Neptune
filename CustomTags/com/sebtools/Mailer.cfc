@@ -167,6 +167,11 @@
 	<cfreturn result>
 </cffunction>
 
+<cffunction name="getEmailAddress" access="public" returntype="string" output="no">
+	<cfargument name="string" type="string" required="true">
+	<cfreturn ArrayToList(reMatchNoCase("[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,63}", Arguments.string))>
+</cffunction>
+
 <cffunction name="getFrom" access="public" returntype="string" output="no">
 	<cfreturn variables.DefaultFrom>
 </cffunction>
