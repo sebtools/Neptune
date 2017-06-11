@@ -102,6 +102,24 @@
 	
 </cffunction>
 
+<cffunction name="clearCaches" access="public" returntype="void" output="no">
+	<cfset var aCacheIDs = cacheGetAllIds()>
+	<cfset var ii = 0>
+	<cfset var CacheName = "">
+
+	<!--- Clear all cached queries. --->
+	<cfobjectcache action="clear">
+
+	<!--- Clear all EhCaches except for those used by the Rate Limiter (I'm cheating here by know the implementation details of Rate Limiter). --->
+	<cfloop index="ii" from="1" to="#ArrayLen(aCacheIDs)#">
+		<cfset CacheName = aCacheIDs[ii]>
+		<cfif ListFirst(CacheName,"_") NEQ "LIMIT">
+			<cfset cacheRemove(CacheName)>
+		</cfif>
+	</cfloop>
+
+</cffunction>
+
 <cffunction name="getRandomData" access="public" returntype="struct" output="no">
 	<cfargument name="comp" type="any" required="yes">
 	<cfargument name="data" type="struct" required="no">
@@ -472,16 +490,31 @@ function isListInList(l1,l2) {
 	
 	<cfset var varname = "">
 	<cfset var scopestruct = 0>
-	
+
+	<!--- Scopes that start with a dot are nested within a service. --->
 	<cfif Left(arguments.scope,1) EQ "." AND Len(arguments.scope) GTE 2>
-		<cfset variables[Right(arguments.scope,Len(arguments.scope)-1)] = Application[Right(arguments.scope,Len(arguments.scope)-1)]>
-		<cfset arguments.scope = "Application#arguments.scope#">
+		<!--- To start, drop the leading dot from the scope name since we know what it is within this conditional block. --->
+		<cfset arguments.scope = Right(arguments.scope,Len(arguments.scope)-1)>
+
+		<!--- Get it from ServiceFactory if we can. --->
+		<cfif Application.Framework.Loader.hasService(arguments.scope)>
+			<cfset variables[arguments.scope] = Application.ServiceFactory.getService(arguments.scope)>
+		<cfelse>
+			<!--- If not, try to get it from Application scope (may result in an exception). --->
+			<cfset variables[arguments.scope] = Application[arguments.scope]>
+		</cfif>
+		<!--- Now we can just treat the service we got back as a scope. --->
+		<cfset arguments.scope = "Variables.#arguments.scope#">
 	</cfif>
 	
 	<cfset scopestruct = StructGet(arguments.scope)>
 	
 	<cfloop index="varname" list="#arguments.varlist#">
-		<cfif StructKeyExists(scopestruct,varname)>
+		<!--- Get it from ServiceFactory if we can. --->
+		<cfif StructKeyExists(Application,"Framework") AND Application.Framework.Loader.hasService(varname)>
+			<cfset variables[varname] = Application.ServiceFactory.getService(varname)>
+		<cfelseif StructKeyExists(scopestruct,varname)>
+			<!--- If not, try to get it from the scope (may result in an exception). --->
 			<cfset variables[varname] = scopestruct[varname]>
 		<cfelseif NOT arguments.skipmissing>
 			<cfthrow message="#scope#.#varname# is not defined.">
