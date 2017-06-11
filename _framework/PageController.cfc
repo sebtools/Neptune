@@ -367,7 +367,7 @@
 		<cfset arguments.scope = Right(arguments.scope,Len(arguments.scope)-1)>
 
 		<!--- Get it from ServiceFactory if we can. --->
-		<cfif Application.ServiceFactory.hasService(arguments.scope)>
+		<cfif Application.Framework.Loader.hasService(arguments.scope)>
 			<cfset variables[arguments.scope] = Application.ServiceFactory.getService(arguments.scope)>
 		<cfelse>
 			<!--- If not, try to get it from Application scope (may result in an exception). --->
@@ -380,10 +380,12 @@
 	<cfset scopestruct = StructGet(arguments.scope)>
 	
 	<cfloop index="varname" list="#arguments.varlist#">
-		<cfif StructKeyExists(scopestruct,varname)>
-			<cfset variables[varname] = scopestruct[varname]>
-		<cfelseif StructKeyExists(Application,"ServiceFactory") AND Application.ServiceFactory.hasService(varname)>
+		<!--- Get it from ServiceFactory if we can. --->
+		<cfif StructKeyExists(Application,"Framework") AND Application.Framework.Loader.hasService(varname)>
 			<cfset variables[varname] = Application.ServiceFactory.getService(varname)>
+		<cfelseif StructKeyExists(scopestruct,varname)>
+			<!--- If not, try to get it from the scope (may result in an exception). --->
+			<cfset variables[varname] = scopestruct[varname]>
 		<cfelseif NOT arguments.skipmissing>
 			<cfthrow message="#scope#.#varname# is not defined.">
 		</cfif>
