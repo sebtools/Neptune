@@ -50,7 +50,12 @@
 	<cfset variables.sMetaData = variables.Manager.getMetaStruct()>
 	<cfset variables.cachedata = StructNew()>
 	<cfset variables.datasource = variables.DataMgr.getDatasource()>
-	<cfset variables.table = getTableVariable(metaXml)>
+	<!--- It could exist if it was passed in as an initialization argument. --->
+	<cfif StructKeyExists(Arguments,"table") AND isSimpleValue(Arguments.table) AND Len(Trim(Arguments.table))>
+		<cfset variables.table = Arguments.table>
+	<cfelse>
+		<cfset variables.table = getTableVariable(metaXml)>
+	</cfif>
 	
 	<cfif StructKeyExists(variables.sMetaData,variables.table)>
 		<cfset variables.labelSingular = variables.sMetaData[variables.table].labelSingular>
