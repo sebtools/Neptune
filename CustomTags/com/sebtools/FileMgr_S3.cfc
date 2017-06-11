@@ -55,6 +55,14 @@
 
 </cffunction>
 
+<cffunction name="makeFolder" access="public" returntype="void" output="no">
+	<cfargument name="Folder" type="string" required="yes">
+
+	<!--- We don't actually need to make folders on S3. --->
+	<cfset var foo = "bar">
+
+</cffunction>
+
 <cffunction name="uploadFile" access="public" returntype="any" output="no">
 	<cfargument name="FieldName" type="string" required="yes">
 	<cfargument name="Folder" type="string" required="no">
