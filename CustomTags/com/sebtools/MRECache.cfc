@@ -97,13 +97,15 @@
 			method="#Arguments.MethodName#"
 			argumentcollection="#Arguments.Args#"
 		>
-		<cfif StructKeyExists(local,"result")>
 			<cfset StructDelete(Arguments,"Component")>
 			<cfset StructDelete(Arguments,"MethodName")>
 			<cfset StructDelete(Arguments,"Args")>
-			<cfset Arguments["value"] = local.result>
+			<cfif StructKeyExists(local,"result")>
+				<cfset Arguments["value"] = local.result>
+			<cfelse>
+				<cfset Arguments["value"] = "">
+			</cfif>
 			<cfset put(ArgumentCollection=Arguments)>
-		</cfif>
 	</cfif>
 
 	<cfreturn get(Arguments.id)>
@@ -120,9 +122,9 @@
 	<cfset Arguments = putargs(ArgumentCollection=Arguments)>
 
 	<cfif StructKeyExists(Arguments,"idleTime") AND StructKeyExists(Arguments,"timeSpan")>
-		<cfset CachePut(qualify(Arguments.id),Arguments.value,Arguments.timeSpan,Arguments.idleTime)>
+		<cfset CachePut(qualify(Arguments.id),Arguments.value,convertTimeSpan(Arguments.timeSpan),convertTimeSpan(Arguments.idleTime))>
 	<cfelseif StructKeyExists(Arguments,"timeSpan")>
-		<cfset CachePut(qualify(Arguments.id),Arguments.value,Arguments.timeSpan)>
+		<cfset CachePut(qualify(Arguments.id),Arguments.value,convertTimeSpan(Arguments.timeSpan))>
 	<cfelse>
 		<cfset CachePut(qualify(Arguments.id),Arguments.value)>
 	</cfif>
@@ -167,6 +169,98 @@
 
 	<cfset put(ArgumentCollection=Arguments)>
 
+</cffunction>
+
+<cffunction name="convertTimeSpan" access="public" returntype="numeric" output="false" hint="I return a timespan from an interval string.">
+	<cfargument name="interval" type="string" required="true">
+
+	<cfif isNumeric(Arguments.interval)>
+		<cfreturn Arguments.interval>
+	</cfif>
+
+	<cfreturn getTimeSpanFromInterval(Arguments.interval)>
+</cffunction>
+
+<cffunction name="getTimeSpanFromInterval" access="public" returntype="numeric" output="false" hint="I return a timespan from an interval string.">
+	<cfargument name="interval" type="string" required="true">
+	
+	<cfset var result = 0>
+	<cfset var timespans = "second,minute,hour,day,week,month,quarter,year">
+	<cfset var dateparts = "s,n,h,d,ww,m,q,yyyy">
+	<cfset var vals = "#CreateTimeSpan(0,0,0,1)#,#CreateTimeSpan(0,0,1,0)#,#CreateTimeSpan(0,1,0,0)#,1,7,30,90,365">
+	<cfset var num = 1>
+	<cfset var timespan = "">
+	<cfset var value = 0>
+	<cfset var ordinals = "first,second,third,fourth,fifth,sixth,seventh,eighth,ninth,tenth,eleventh,twelfth">
+	<cfset var ordinal = "">
+	<cfset var numbers = "one,two,three,four,five,six,seven,eight,nine,ten,eleven,twelve">
+	<cfset var number = "">
+	<cfset var instances = "once,twice">
+	<cfset var instance = "">
+	<cfset var thisint = "">
+	<cfset var sNums = 0>
+	
+	<cfif ListLen(arguments.interval) GT 1>
+		<cfloop list="#arguments.interval#" index="thisint">
+			<cfset result += getTimeSpanFromInterval(thisint)>
+		</cfloop>
+	<cfelse>
+		<cfset arguments.interval = ReplaceNoCase(arguments.interval,"annually","yearly","ALL")>
+		<cfset arguments.interval = ReReplaceNoCase(arguments.interval,"\b(\d+)(nd|rd|th)\b","\1","ALL")>
+		<cfset sNums = ReFindNoCase("\b\d+\b",arguments.interval,1,true)>
+		<!--- Figure out number --->
+		<cfif ArrayLen(sNums.pos) AND sNums.pos[1] GT 0>
+			<cfset num = Mid(arguments.interval,sNums.pos[1],sNums.len[1])>
+		</cfif>
+		<cfif ListFindNoCase(arguments.interval,"every"," ")>
+			<cfset arguments.interval = ListDeleteAt(arguments.interval,ListFindNoCase(arguments.interval,"every"," ")," ")>
+		</cfif>
+		<cfloop list="#ordinals#" index="ordinal">
+			<cfif ListFindNoCase(arguments.interval,ordinal," ")>
+				<cfset num = num * ListFindNoCase(ordinals,ordinal)>
+			</cfif>
+		</cfloop>
+		<cfloop list="#numbers#" index="number">
+			<cfif REFindNoCase("\b#number# times\b",arguments.interval)>
+				<cfset num = num / ListFindNoCase(numbers,number)>
+			<cfelseif ListFindNoCase(arguments.interval,number," ")>
+				<cfset num = num * ListFindNoCase(numbers,number)>
+			</cfif>
+		</cfloop>
+		<cfloop list="#instances#" index="instance">
+			<cfif ListFindNoCase(arguments.interval,instance," ")>
+				<cfset num = num / ListFindNoCase(instances,instance)>
+			</cfif>
+		</cfloop>
+		<cfif ListFindNoCase(arguments.interval,"other"," ")>
+			<cfset arguments.interval = ListDeleteAt(arguments.interval,ListFindNoCase(arguments.interval,"other"," ")," ")>
+			<cfset num = num * 2>
+		</cfif>
+		
+		<!--- Figure out timespan --->
+		<cfset timespan = ListLast(arguments.interval," ")>
+		
+		<!--- Ditch ending "s" or "ly" --->
+		<cfif Right(timespan,1) EQ "s">
+			<cfset timespan = Left(timespan,Len(timespan)-1)>
+		</cfif>
+		<cfif Right(timespan,2) EQ "ly">
+			<cfset timespan = Left(timespan,Len(timespan)-2)>
+		</cfif>
+		<cfif timespan EQ "dai">
+			<cfset timespan = "day">
+		</cfif>
+		
+		<cfif ListFindNoCase(timespans,timespan)>
+			<cfset value = ListGetAt(vals,ListFindNoCase(timespans,timespan))>
+		<cfelse>
+			<cfthrow message="#timespan# is not a valid inteval measurement.">
+		</cfif>
+		
+		<cfset result = value * num>
+	</cfif>
+	
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="got" access="private" returntype="void" output="false">
