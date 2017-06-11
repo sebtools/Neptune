@@ -329,9 +329,9 @@
 	
 	<cfif variables.mode EQ "Live">
 		<cfset sent = sendEmail(argumentCollection=arguments)>
+	<cfelse>
+		<cfset logSend(argumentCollection=arguments)>
 	</cfif>
-	
-	<cfset logSend(argumentCollection=arguments)>
 	
 	<cfif Arguments.verify>
 		<cfset verifySent(ArgumentCollection=Arguments)>
@@ -371,6 +371,8 @@
 		<cfmail attributeCollection="#arguments#"><cfif Len(Trim(arguments.ReplyTo))><cfmailparam name="Reply-To" value="#Trim(arguments.ReplyTo)#"></cfif><cfif Len(Trim(arguments.Sender))><cfmailparam name="Sender" value="#Trim(arguments.Sender)#"></cfif>#arguments.Contents#<cfif Len(Trim(arguments.Attachments))><cfloop index="Attachment" list="#arguments.Attachments#"><cfmailparam file="#Attachment#"></cfloop></cfif></cfmail>
 		<cfset sent = true>
 	</cfif>
+
+	<cfset logSend(argumentCollection=arguments)>
 	
 	<cfreturn sent>
 </cffunction>
@@ -538,11 +540,15 @@
 </cffunction>
 
 <cffunction name="logSend" access="private" returntype="void" output="no">
+
+	<cfset var sArgs = StructCopy(Arguments)>
+
+	<cfset StructDelete(sArgs,"password")>
 	
 	<cfif variables.isLogging>
 		<cfset arguments.MailMode = getMode()>
 		<cfset arguments.DateSent = now()>
-		<cfset variables.DataMgr.insertRecord(variables.logtable,variables.DataMgr.truncate(variables.logtable,arguments))>
+		<cfset variables.DataMgr.insertRecord(variables.logtable,variables.DataMgr.truncate(variables.logtable,sArgs))>
 	</cfif>
 	
 </cffunction>
@@ -689,12 +695,12 @@
 			<field ColumnName="html" CF_DataType="CF_SQL_LONGVARCHAR" />
 			<field ColumnName="text" CF_DataType="CF_SQL_LONGVARCHAR" />
 			<field ColumnName="username" CF_DataType="CF_SQL_VARCHAR" Length="180" />
-			<field ColumnName="password" CF_DataType="CF_SQL_VARCHAR" Length="180" />
 			<field ColumnName="FailTo" CF_DataType="CF_SQL_VARCHAR" Length="180" />
 			<field ColumnName="mailerID" CF_DataType="CF_SQL_VARCHAR" Length="250" />
 			<field ColumnName="wraptext" CF_DataType="CF_SQL_VARCHAR" Length="40" />
 			<field ColumnName="notice" CF_DataType="CF_SQL_VARCHAR" Length="180" />
 			<field ColumnName="MailMode" CF_DataType="CF_SQL_VARCHAR" Length="10" />
+			<field ColumnName="Server" CF_DataType="CF_SQL_VARCHAR" Length="180" />
 			<field ColumnName="ResendOfLogID" CF_DataType="CF_SQL_INTEGER" />
 		</table>
 	</tables>

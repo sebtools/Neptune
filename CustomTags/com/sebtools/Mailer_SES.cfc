@@ -49,7 +49,7 @@
 
 </cffunction>
 
-<cffunction name="sendEmail" access="private" returntype="boolean" output="no">
+<cffunction name="sendEmail" access="package" returntype="boolean" output="no">
 	
 	<cfset var sent = false>
 	<cfset var isWithinLimit = Variables.SES.isUnderSESLimit()>
@@ -61,6 +61,11 @@
 	If it can, it will revert to sending out via the traditional Mailer.
 	--->
 	<cfif isWithinLimit AND isFromVerified>
+		<cfif NOT ( StructKeyExists(Arguments,"mailerID") AND NOT Arguments.mailerID CONTAINS "ColdFusion" )>
+			<cfset Arguments.mailerID = "Amazon SES (SMTP)">
+		</cfif>
+		<!--- For now, we're doing a simple shield against an external process setting the mail server wrong. Need a better permanent fix here. --->
+		<cfset Arguments.MailServer = Variables.MailServer>
 		<!---
 		Since this extends com.sebtools.Mailer, the sendMail method there will do what we need.
 		We could have had our own call to the API here, but using cfmail does everything we need without having to recreate it here.
