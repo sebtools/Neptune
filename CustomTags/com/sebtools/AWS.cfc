@@ -130,7 +130,9 @@
 	<cfscript>
 	// Traverse down the response tree to get the most accurate result possible.
 	if ( StructKeyExists(response,"RESPONSE") ) {
-		if ( StructKeyExists(response["RESPONSE"],"#Arguments.Action#Response") ) {
+		if ( isSimpleValue(response["RESPONSE"]) ) {
+			response_result = response["RESPONSE"];
+		} else if ( StructKeyExists(response["RESPONSE"],"#Arguments.Action#Response") ) {
 			if ( StructKeyExists(response["RESPONSE"]["#Arguments.Action#Response"],"#Arguments.Action#Result") ) {
 				response_result = response["RESPONSE"]["#Arguments.Action#Response"]["#Arguments.Action#Result"];
 				//If the result has no attributes or text and just one child, return that.
@@ -151,6 +153,10 @@
 		response_result = response;
 	}
 
+	if ( isSimpleValue(response_result) ) {
+		return response_result;
+	}
+	
 	//If we get an error response from AWS, throw that as an exception.
 	if ( StructKeyExists(response_result,"ErrorResponse") ) {
 		throwError(Message=response_result.ErrorResponse.Error.Message.XmlText,errorcode=response_result.ErrorResponse.Error.Code.XmlText);
@@ -202,6 +208,19 @@
 	var paramtype = "URL";
 	var sortedParams = "";
 	var EndPointURL = getEndPointUrl(Arguments.subdomain);
+	var NamedArgs = "subdomain,Action,method,parameters,timeout";
+	var arg = "";
+
+	for (arg in Arguments) {
+		if ( isSimpleValue(Arguments[arg]) AND Len(Trim(Arguments[arg])) AND NOT ListFindNoCase(NamedArgs,arg) ) {
+			if ( ListLen(EndPointURL,"?") EQ 1 ) {
+				EndPointURL &= "?";
+			} else {
+				EndPointURL &= "&";
+			}
+			EndPointURL &= "#arg#=#Trim(Arguments[arg])#";
+		}
+	}
 
 	Arguments.parameters["Action"] = Arguments.Action;
 
@@ -260,6 +279,26 @@
 			results.error = true;
 			results.message = "Type:#results.response.errorresponse.error.Type.XMLText# Code: #results.response.errorresponse.error.code.XMLText#. Message: #results.response.errorresponse.error.message.XMLText#";
 		}
+	}
+
+	if(
+			NOT results.error
+		AND structKeyExists(HTTPResults,"responseHeader")
+		AND structKeyExists(HTTPResults.responseHeader,"status_code")
+		AND NOT listFindNoCase("200,204",HTTPResults.responseHeader.status_code)
+	) {
+		results.error = true;
+		if ( isXML(HTTPResults.fileContent) ) {
+			results.response = XMLParse(HTTPResults.fileContent);
+			results.aMessage = XmlSearch(results.response,"//Message");
+			if ( ArrayLen(results.aMessage) ) {
+				results.message = results.aMessage[1].XmlText;
+			}
+			StructDelete(results,"aMessage");
+		} else {
+			results.message = HTTPResults.fileContent;
+		}
+		throwError(results.message);
 	}
 
 	return results;
