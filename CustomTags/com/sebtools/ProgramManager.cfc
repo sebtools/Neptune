@@ -412,7 +412,7 @@
 	
 	<cfset StructAppend(Arguments,loadComponentArguments())>
 	
-	<cfinvoke component="#Arguments.path#" method="init" returnvariable="this.#name#" ArgumentCollection="#Arguments#"></cfinvoke>
+	<cfinvoke component="#Arguments.path#" method="init" returnvariable="this.#Arguments.name#" ArgumentCollection="#Arguments#"></cfinvoke>
 	
 	<cfset variables[Arguments.name] = This[Arguments.name]>
 	
