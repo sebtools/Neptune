@@ -31,7 +31,7 @@
 	)>
 </cffunction>
 
-<cffunction name="callAPI" access="private" returntype="struct" output="false" hint="I invoke an Amazon REST Call.">
+<cffunction name="callAPI" access="private" returntype="any" output="false" hint="I invoke an Amazon REST Call.">
 	<cfargument name="Action" type="string" required="true" hint="The AWS API action being called.">
 	<cfargument name="method" type="string" default="GET" hint="The HTTP method to invoke.">
 	<cfargument name="parameters" type="struct" default="#structNew()#" hint="An struct of HTTP URL parameters to send in the request.">
@@ -50,5 +50,15 @@
 
 	<cfreturn Variables.AWS.callLimitedAPI(ArgumentCollection=Arguments)>
 </cffunction>
+
+<cfscript>
+function AWSTime2CFTime(str) {
+	if ( REFindNoCase("^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z",str) ) {
+		return DateAdd("d",0,Trim(REReplaceNoCase(str,"(T|Z)"," ","ALL")));
+	} else {
+		return Trim(str);
+	}
+}
+</cfscript>
 
 </cfcomponent>
