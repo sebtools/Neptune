@@ -491,28 +491,23 @@ function isListInList(l1,l2) {
 	<cfset var varname = "">
 	<cfset var scopestruct = 0>
 
+	<cfset loadServiceFactory()>
+
 	<!--- Scopes that start with a dot are nested within a service. --->
 	<cfif Left(arguments.scope,1) EQ "." AND Len(arguments.scope) GTE 2>
 		<!--- To start, drop the leading dot from the scope name since we know what it is within this conditional block. --->
 		<cfset arguments.scope = Right(arguments.scope,Len(arguments.scope)-1)>
 
-		<!--- Get it from ServiceFactory if we can. --->
-		<cfif Application.Framework.Loader.hasService(arguments.scope)>
-			<cfset variables[arguments.scope] = Application.ServiceFactory.getService(arguments.scope)>
-		<cfelse>
-			<!--- If not, try to get it from Application scope (may result in an exception). --->
-			<cfset variables[arguments.scope] = Application[arguments.scope]>
-		</cfif>
-		<!--- Now we can just treat the service we got back as a scope. --->
-		<cfset arguments.scope = "Variables.#arguments.scope#">
+		<!--- Treat the service we got back as a scope. --->
+		<cfset arguments.scope = getService(arguments.scope)>
 	</cfif>
 	
 	<cfset scopestruct = StructGet(arguments.scope)>
 	
 	<cfloop index="varname" list="#arguments.varlist#">
 		<!--- Get it from ServiceFactory if we can. --->
-		<cfif StructKeyExists(Application,"Framework") AND Application.Framework.Loader.hasService(varname)>
-			<cfset variables[varname] = Application.ServiceFactory.getService(varname)>
+		<cfif Variables.ServiceFactory.hasService(varname)>
+			<cfset variables[varname] = Variables.ServiceFactory.getService(varname)>
 		<cfelseif StructKeyExists(scopestruct,varname)>
 			<!--- If not, try to get it from the scope (may result in an exception). --->
 			<cfset variables[varname] = scopestruct[varname]>
@@ -521,6 +516,42 @@ function isListInList(l1,l2) {
 		</cfif>
 	</cfloop>
 	
+</cffunction>
+
+<cffunction name="getService" access="public" returntype="any" output="no">
+	<cfargument name="ServiceName" type="string" required="yes">
+
+	<cfset loadServiceFactory()>
+
+	<cfif NOT StructKeyExists(Variables,Arguments.ServiceName)>
+		<!--- Get it from ServiceFactory if we can. --->
+		<cfif Variables.ServiceFactory.hasService(Arguments.ServiceName)>
+			<cfset variables[Arguments.ServiceName] = Variables.ServiceFactory.getService(Arguments.ServiceName)>
+		<cfelse>
+			<!--- If not, try to get it from Application scope (may result in an exception). --->
+			<cfset variables[Arguments.ServiceName] = Application[Arguments.ServiceName]>
+		</cfif>
+	</cfif>
+
+	<cfreturn Variables[Arguments.ServiceName]>
+</cffunction>
+
+<cffunction name="loadServiceFactory" access="public" returntype="any" output="no">
+
+	<cfset var RootPath = "">
+	<cfset var CompCFMPath = "">
+
+	<cfif NOT StructKeyExists(Variables,"ServiceFactory")>
+		<cfif NOT StructKeyExists(request,"TestServiceFactory")>
+			<cfset RootPath = Application.Framework.Config.getSetting('RootPath')>
+			<cfset CompCFMPath = RootPath & "_config\components.cfm">
+			
+			<cfset request.TestServiceFactory = CreateObject("component","_framework.ServiceFactory").init(Application.Framework.Config,CompCFMPath)>
+		</cfif>
+		<cfset Variables.ServiceFactory = request.TestServiceFactory>
+	</cfif>
+
+	<cfreturn Variables.ServiceFactory>
 </cffunction>
 
 <cffunction name="RecordObject" access="public" returntype="any" output="no">
