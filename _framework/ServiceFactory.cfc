@@ -232,7 +232,7 @@
 </cffunction>
 
 <cffunction name="getService" access="public" returntype="any" output="no" hint="I return the requested service component.">
-	<cfargument name="ServiceName" type="string" required="no">
+	<cfargument name="ServiceName" type="string" required="yes">
 	
 	<cfset var axServices = 0>
 	<cfset var sArgs = 0>
