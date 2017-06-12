@@ -273,15 +273,19 @@
 	<cfargument name="wraptext" type="string" default="800">
 	<cfargument name="Sender" type="string" default="#variables.Sender#">
 	<cfargument name="MailServer" type="string" default="#variables.MailServer#">
-	<cfargument name="verify" type="boolean" default="false">
+	<cfargument name="verify" type="boolean" required="false">
 	
 	<cfset var sent = false>
 	<cfset var attachment = "">
 	<cfset var e = "">
 	
-	<!--- Need to check for variables.verify here instead of cfargument to maintain backwards compatibility --->
-	<cfif StructKeyExists(Variables,"verify")>
-		<cfset Arguments.verify = Variables.verify>
+	<!--- Only use Variables.verify if Arguments. verify is not explicetly passed in (otherwise sendError could result in a loop of error messages) --->
+	<cfif NOT StructKeyExists(Arguments,"verify")>
+		<cfif StructKeyExists(Variables,"verify")>
+			<cfset Arguments.verify = Variables.verify>
+		<cfelse>
+			<cfset Arguments.verify = false>
+		</cfif>
 	</cfif>
 	
 	<cfif NOT StructKeyExists(arguments,"Contents") AND NOT (Len(arguments.html) OR Len(arguments.text))>
@@ -541,13 +545,21 @@
 
 <cffunction name="logSend" access="private" returntype="void" output="no">
 
-	<cfset var sArgs = StructCopy(Arguments)>
+	<cfset var sArgs = {}>
+	<cfset var key = "">
 
-	<cfset StructDelete(sArgs,"password")>
-	
 	<cfif variables.isLogging>
-		<cfset arguments.MailMode = getMode()>
-		<cfset arguments.DateSent = now()>
+		<!--- StructCopy(Arguments) seems to bomb. This should do what is needed for logging. --->
+		<cfloop collection="#Arguments#" item="key">
+			<cfif StructKeyExists(Arguments,key) AND isSimpleValue(Arguments[key])>
+				<cfset sArgs[key] = Arguments[key]>
+			</cfif>
+		</cfloop>
+
+		<cfset StructDelete(sArgs,"password")>
+
+		<cfset sArgs.MailMode = getMode()>
+		<cfset sArgs.DateSent = now()>
 		<cfset variables.DataMgr.insertRecord(variables.logtable,variables.DataMgr.truncate(variables.logtable,sArgs))>
 	</cfif>
 	
