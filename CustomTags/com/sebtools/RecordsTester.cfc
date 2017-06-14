@@ -538,26 +538,64 @@ function isListInList(l1,l2) {
 
 <cffunction name="loadServiceFactory" access="public" returntype="any" output="no">
 
-	<cfset var RootPath = "">
-	<cfset var CompCFMPath = "">
-
 	<cfif NOT StructKeyExists(Variables,"ServiceFactory")>
 		<cfif NOT StructKeyExists(request,"TestServiceFactory")>
-			<cfif StructKeyExists(Application,"Framework") AND StructKeyExists(Application.Framework,"Config")>
-				<cfset RootPath = Application.Framework.Config.getSetting('RootPath')>
-				<cfset CompCFMPath = RootPath & "_config\components.cfm">
-				
-				<cfset request.TestServiceFactory = CreateObject("component","_framework.ServiceFactory").init(Application.Framework.Config,CompCFMPath)>
-			</cfif>
+			<cfset request.TestServiceFactory = getServiceFactory()>
 		</cfif>
+		<!--- Variable won't exist unless running on Neptune. --->
 		<cfif StructKeyExists(request,"TestServiceFactory")>
 			<cfset Variables.ServiceFactory = request.TestServiceFactory>
 		</cfif>
 	</cfif>
 
+	<!--- Variable won't exist unless running on Neptune. --->
 	<cfif StructKeyExists(Variables,"ServiceFactory")>
 		<cfreturn Variables.ServiceFactory>
 	</cfif>
+</cffunction>
+
+<cffunction name="getServiceFactory" access="public" returntype="any" output="no">
+
+	<cfset var RootPath = "">
+	<cfset var CompCFMPath = "">
+	<cfset var oConfigExisting = 0>
+	<cfset var oConfigNew = 0>
+	<cfset var sConfigData = 0>
+	<cfset var sConfigObject = 0>
+	<cfset var result = 0>
+
+	<cfif StructKeyExists(Application,"Framework") AND StructKeyExists(Application.Framework,"Config")>
+		<!--- Get reference to existing Config object --->
+		<cfset oConfigExisting = Application.Framework.Config>
+		<!--- Get meta data on existing Config object just so we can init it from the same path --->
+		<cfset sConfigObject = GetMetaData(oConfigExisting)>
+		<!--- Get existing settings so we can pass them (perhaps altered) into our new config object --->
+		<cfset sConfigData = StructCopy(oConfigExisting.getSettings())>
+		<!--- Get path to components.cfm file --->
+		<cfset RootPath = oConfigExisting.getSetting('RootPath')>
+		<cfset CompCFMPath = RootPath & "_config\components.cfm">
+		<!--- New config object (should only look in request, not Application) --->
+		<cfset oConfigNew = CreateObject("component","#sConfigObject.Name#").init("request")>
+		<!--- Copy existing settings in --->
+		<cfset oConfigNew.setSettings(ArgumentCollection=sConfigData)>
+		<!---
+		This is our hook to allow RecordsTester to be extended and have extension pass in whatever it needs to new Config.
+		Should be set up so that it will be the same for any test run in the same request.
+		 --->
+		<cfset setSettings(oConfigNew)>
+
+		<!--- Create new service factory from existing one (with potentially changed data) --->
+		<cfset result = CreateObject("component","_framework.ServiceFactory").init(oConfigNew,CompCFMPath)>
+
+		<cfreturn result>
+	</cfif>
+</cffunction>
+
+<cffunction name="setSettings" access="public" returntype="any" output="no">
+	<cfargument name="oConfig" type="any" required="yes">
+
+	<!--- This method can be extended to pass in or change any configuration for testing. --->
+
 </cffunction>
 
 <cffunction name="RecordObject" access="public" returntype="any" output="no">
@@ -909,4 +947,5 @@ function QuerySim(queryData) {
 	<cfdump var="#Arguments#">
 	<cfabort>
 </cffunction>
+
 </cfcomponent>
