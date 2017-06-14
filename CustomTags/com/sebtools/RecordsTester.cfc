@@ -506,7 +506,7 @@ function isListInList(l1,l2) {
 	
 	<cfloop index="varname" list="#arguments.varlist#">
 		<!--- Get it from ServiceFactory if we can. --->
-		<cfif Variables.ServiceFactory.hasService(varname)>
+		<cfif StructKeyExists(Variables,"ServiceFactory") AND Variables.ServiceFactory.hasService(varname)>
 			<cfset variables[varname] = Variables.ServiceFactory.getService(varname)>
 		<cfelseif StructKeyExists(scopestruct,varname)>
 			<!--- If not, try to get it from the scope (may result in an exception). --->
@@ -525,7 +525,7 @@ function isListInList(l1,l2) {
 
 	<cfif NOT StructKeyExists(Variables,Arguments.ServiceName)>
 		<!--- Get it from ServiceFactory if we can. --->
-		<cfif Variables.ServiceFactory.hasService(Arguments.ServiceName)>
+		<cfif StructKeyExists(Variables,"ServiceFactory") AND Variables.ServiceFactory.hasService(Arguments.ServiceName)>
 			<cfset variables[Arguments.ServiceName] = Variables.ServiceFactory.getService(Arguments.ServiceName)>
 		<cfelse>
 			<!--- If not, try to get it from Application scope (may result in an exception). --->
@@ -543,15 +543,21 @@ function isListInList(l1,l2) {
 
 	<cfif NOT StructKeyExists(Variables,"ServiceFactory")>
 		<cfif NOT StructKeyExists(request,"TestServiceFactory")>
-			<cfset RootPath = Application.Framework.Config.getSetting('RootPath')>
-			<cfset CompCFMPath = RootPath & "_config\components.cfm">
-			
-			<cfset request.TestServiceFactory = CreateObject("component","_framework.ServiceFactory").init(Application.Framework.Config,CompCFMPath)>
+			<cfif StructKeyExists(Application,"Framework") AND StructKeyExists(Application.Framework,"Config")>
+				<cfset RootPath = Application.Framework.Config.getSetting('RootPath')>
+				<cfset CompCFMPath = RootPath & "_config\components.cfm">
+				
+				<cfset request.TestServiceFactory = CreateObject("component","_framework.ServiceFactory").init(Application.Framework.Config,CompCFMPath)>
+			</cfif>
 		</cfif>
-		<cfset Variables.ServiceFactory = request.TestServiceFactory>
+		<cfif StructKeyExists(request,"TestServiceFactory")>
+			<cfset Variables.ServiceFactory = request.TestServiceFactory>
+		</cfif>
 	</cfif>
 
-	<cfreturn Variables.ServiceFactory>
+	<cfif StructKeyExists(Variables,"ServiceFactory")>
+		<cfreturn Variables.ServiceFactory>
+	</cfif>
 </cffunction>
 
 <cffunction name="RecordObject" access="public" returntype="any" output="no">
