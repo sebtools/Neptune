@@ -31,9 +31,19 @@
 <cffunction name="exists" access="public" returntype="boolean" output="false" hint="I check to see if the id is in the cache.">
 	<cfargument name="id" type="string" required="true">
 
-	<cfset var result = CacheGet(qualify(Arguments.id))>
+	<cfset var aCacheNames = CacheGetAllIds()>
+	<cfset var key = qualify(Arguments.id)>
+	<cfset var ii = 0>
 
-	<cfreturn NOT isNull(result)>
+	<cfscript>
+	for ( ii=1; ii LTE ArrayLen(aCacheNames); ii=ii+1 ) {
+		if ( aCacheNames[ii] EQ key ) {
+			return true;
+		}
+	}
+	</cfscript>
+
+	<cfreturn false>
 </cffunction>
 
 <cffunction name="func" access="public" returntype="any" output="false" hint="I get data from the cache (getting the data from the function if isn't there yet).">
