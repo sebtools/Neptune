@@ -12,6 +12,22 @@
 	<cfreturn This>
 </cffunction>
 
+<cffunction name="clearCaches" access="public" returntype="any" output="false">
+	<cfargument name="prefix" type="string" default="">
+
+	<cfset var id = qualify(Arguments.prefix)>
+	<cfset var aCacheNames = CacheGetAllIds()>
+	<cfset var ii = 0>
+
+	<cfloop index="ii" from="1" to="#ArrayLen(aCacheNames)#">
+		<cfdump var="#Left(aCacheNames[ii],Len(id))#">
+		<cfif Left(aCacheNames[ii],Len(id)) EQ id>
+			<cfset remove(dequalify(aCacheNames[ii]))>
+		</cfif>
+	</cfloop>
+
+</cffunction>
+
 <cffunction name="exists" access="public" returntype="boolean" output="false" hint="I check to see if the id is in the cache.">
 	<cfargument name="id" type="string" required="true">
 
@@ -77,6 +93,24 @@
 	<cfreturn result>
 </cffunction>
 
+<cffunction name="meth" access="public" returntype="any" output="false" hint="I get data from the cache (getting the data from the method if isn't there yet).">
+	<cfargument name="Component" type="any" required="true">
+	<cfargument name="MethodName" type="string" required="true">
+	<cfargument name="Args" type="struct" required="false">
+	<cfargument name="timeSpan" type="string" required="false">
+	<cfargument name="idleTime" type="string" required="false">
+
+	<cfif NOT StructKeyExists(Arguments,"id")>
+		<cfset Arguments.id = ListFirst(Arguments.MethodName,"_")>
+	</cfif>
+
+	<cfif StructKeyExists(Arguments,"Args")>
+		<cfset Arguments.id = This.id(Arguments.id,Arguments.Args)>
+	</cfif>
+
+	<cfreturn method(ArgumentCollection=Arguments)>
+</cffunction>
+
 <cffunction name="method" access="public" returntype="any" output="false" hint="I get data from the cache (getting the data from the method if isn't there yet).">
 	<cfargument name="id" type="string" required="true">
 	<cfargument name="Component" type="any" required="true">
@@ -131,22 +165,38 @@
 
 </cffunction>
 
+<cffunction name="getPrefix" access="public" returntype="string" output="false" hint="I return the prefix value for the given id.">
+	<cfargument name="id" type="string" required="true">
+
+	<cfset var prefix = "">
+
+	<cfif Len(Trim(Variables.instance.id))>
+		<cfset prefix = Trim(Variables.instance.id)>
+		<cfif Len(Trim(Arguments.id))>
+			<cfset prefix &= ":">
+		</cfif>
+	</cfif>
+
+	<cfreturn prefix>
+</cffunction>
+
+<cffunction name="dequalify" access="public" returntype="string" output="false" hint="I return the localized reference to a fully qualified caching id.">
+	<cfargument name="id" type="string" required="true">
+
+	<cfset var prefix = getPrefix(Arguments.id)>
+
+	<cfif Len(Trim(prefix))>
+		<cfset Arguments.id = ReplaceNoCase(Arguments.id,prefix,"","ONE")>
+	</cfif>
+
+	<cfreturn Arguments.id>
+</cffunction>
+
 <cffunction name="qualify" access="public" returntype="string" output="false" hint="I return the fully qualified id for caching.">
 	<cfargument name="id" type="string" required="true">
 
-	<cfset var result = "">
-
-	<cfif Len(Trim(Variables.instance.id))>
-		<cfset result = Trim(Variables.instance.id)>
-	</cfif>
-
-	<cfif Len(Trim(Variables.instance.id)) AND Len(Trim(Arguments.id))>
-		<cfset result &= ":">
-	</cfif>
-
-	<cfif Len(Trim(Arguments.id))>
-		<cfset result &= Trim(Arguments.id)>
-	</cfif>
+	<cfset var prefix = getPrefix(Arguments.id)>
+	<cfset var result = prefix & Trim(Arguments.id)>
 
 	<cfif NOT Len(Trim(result))>
 		<cfthrow message="An id is required for caching.">
