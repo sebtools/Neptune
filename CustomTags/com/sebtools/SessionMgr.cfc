@@ -77,7 +77,12 @@
 
 <cffunction name="dump" access="public" returntype="struct" output="no" hint="I dump the scope holding SessionMgr data.">
 	<cfif hasSessionManagement()>
-		<cfreturn Evaluate(variables.scope)>
+		<cftry>
+			<cfreturn StructCopy(Evaluate(variables.scope))>
+		<cfcatch>
+			<cfreturn Evaluate(variables.scope)>
+		</cfcatch>
+		</cftry>
 	<cfelse>
 		<cfreturn StructNew()>
 	</cfif>
