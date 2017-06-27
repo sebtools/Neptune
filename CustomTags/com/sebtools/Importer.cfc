@@ -61,6 +61,7 @@
 	<cfset var sImporteeStruct = {}>
 	
 	<cfset sResult["method_save"] = "importRecords">
+	<cfset sResult["property_handles_files"] = false>
 	
 	<cfif StructKeyExists(variables,"Importee")>
 		<cftry>
@@ -219,6 +220,7 @@
 		<cfset StructCompactKeys(sData,arguments.CompactionDelim)>
 		<cfset appendArgDefaults(sData,sArgs)>
 		<cfset StructFormatData(sData,sFields)>
+
 		<cftry>
 			<cfinvoke component="#arguments.component#" method="#arguments.method#" argumentCollection="#sData#"></cfinvoke>
 		<cfcatch>
