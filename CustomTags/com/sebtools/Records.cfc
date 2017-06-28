@@ -100,6 +100,7 @@
 	
 	<cfif StructKeyExists(sMetaStruct,"arg_pk")>
 		<cfset Arguments.field = sMetaStruct["arg_pk"]>
+		<cfset Arguments.useDefault = false>
 		<cfinvoke returnvariable="result" method="getTableFieldValue" argumentcollection="#Arguments#">
 	</cfif>
 	
@@ -107,7 +108,7 @@
 </cffunction>
 
 <cffunction name="getTableFieldValue" access="public" returntype="string" output="no">
-	
+
 	<cfset var sMetaStruct = getMetaStruct()>
 	<cfset var sFields = getFieldsStruct()>
 	<cfset var qRecords= 0>
@@ -121,13 +122,20 @@
 	)>
 		<cfset throwError("getTableFieldValue must have a field argument with one and only one field from this table.")>
 	</cfif>
+
+	<cfif NOT (
+			StructKeyExists(Arguments,"useDefault")
+		AND	isBoolean(arguments.useDefault)
+	)>
+		<cfset Arguments.useDefault = true>
+	</cfif>
 	
 	<cfset Arguments.fieldlist = Arguments.field>
 	<cfinvoke component="#This#" method="getRecords" returnvariable="qRecords" argumentcollection="#Arguments#">
 	
 	<cfif qRecords.RecordCount>
 		<cfset result = ArrayToList(qRecords[Arguments.field])>
-	<cfelseif StructKeyExists(sFields[Arguments.field],"default")>
+	<cfelseif Arguments.useDefault AND StructKeyExists(sFields[Arguments.field],"default")>
 		<cfset result = sFields[Arguments.field]["default"]>
 	</cfif>
 	
