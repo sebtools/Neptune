@@ -103,15 +103,21 @@ http://www.apache.org/licenses/
 </cffunction>
 
 <cffunction name="setSettings" access="Public" returnType="void" output="false">
-	
+
 	<cfset var key = "">
 	<cfset var scope = "">
 	
-	<cfloop collection="#variables.instance#" item="key">
-		<cfloop list="#variables.scope#" index="scope">
-			<cfset "#scope#.#key#" = variables.instance[key]>
+	<cfif StructCount(Arguments)>
+		<cfloop collection="#Arguments#" item="key">
+			<cfset setSetting(key,Arguments[key])>
 		</cfloop>
-	</cfloop>
+	<cfelse>
+		<cfloop collection="#variables.instance#" item="key">
+			<cfloop list="#variables.scope#" index="scope">
+				<cfset "#scope#.#key#" = variables.instance[key]>
+			</cfloop>
+		</cfloop>
+	</cfif>
 	
 </cffunction>
 
