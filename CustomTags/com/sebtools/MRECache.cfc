@@ -4,6 +4,7 @@
 	<cfargument name="id" type="string" default="">
 	<cfargument name="timeSpan" type="string" required="false">
 	<cfargument name="idleTime" type="string" required="false">
+	<cfargument name="Observer" type="any" required="false">
 
 	<cfset Variables.instance = Arguments>
 
@@ -54,12 +55,15 @@
 	<cfargument name="idleTime" type="string" required="false">
 
 	<cfset var local = StructNew()>
+	<cfset var begin = 0>
 	
 	<cfif NOT exists(Arguments.id)>
 		<cfif NOT StructKeyExists(Arguments,"Args")>
 			<cfset Arguments["Args"] = {}>
 		</cfif>
+		<cfset begin = getTickCount()>
 		<cfset local.result = Arguments.Fun(ArgumentCollection=Arguments.Args)>
+		<cfset logCall(type="func",id=Arguments.id,began=begin,args=Arguments)>
 		<cfif StructKeyExists(local,"result")>
 			<cfset StructDelete(Arguments,"Fun")>
 			<cfset StructDelete(Arguments,"Args")>
@@ -130,17 +134,20 @@
 	<cfargument name="idleTime" type="string" required="false">
 
 	<cfset var local = StructNew()>
+	<cfset var begin = 0>
 	
 	<cfif NOT exists(Arguments.id)>
 		<cfif NOT StructKeyExists(Arguments,"Args")>
 			<cfset Arguments["Args"] = {}>
 		</cfif>
+		<cfset begin = getTickCount()>
 		<cfinvoke
 			returnvariable="local.result"
 			component="#Arguments.Component#"
 			method="#Arguments.MethodName#"
 			argumentcollection="#Arguments.Args#"
 		>
+		<cfset logCall(type="method",id=Arguments.id,began=begin,args=Arguments)>
 			<cfset StructDelete(Arguments,"Component")>
 			<cfset StructDelete(Arguments,"MethodName")>
 			<cfset StructDelete(Arguments,"Args")>
@@ -329,6 +336,32 @@
 	<cfset start(Arguments.id)>
 
 	<cfset Variables.meta[Arguments.id]["NumCalls"] += 1>
+
+</cffunction>
+
+<cffunction name="logCall" access="private" returntype="void" output="false">
+	<cfargument name="id" type="string" required="true">
+	<cfargument name="began" type="numeric" required="true">
+	<cfargument name="type" type="string" required="false">
+
+	<!--- Notify Observer (if available) --->
+	<cfif StructKeyExists(Variables.instance,"Observer") AND StructKeyExists(Variables.instance["Observer"],"announceEvent")>
+		<cfset Arguments.args.runTime = getTickCount() - Arguments.began>
+		<cfthread action="run" name="log" args="#Arguments.args#">
+			<cftry>
+				<cfset Variables.instance.Observer.announceEvent(EventName="MrECache:run",Args=args)>
+			<cfcatch>
+			</cfcatch>
+			</cftry>
+			<cfif StructKeyExists(args,"type")>
+				<cftry>
+					<cfset Variables.instance.Observer.announceEvent(EventName="MrECache:#args.type#",Args=args)>
+				<cfcatch>
+				</cfcatch>
+				</cftry>
+			</cfif>
+		</cfthread>
+	</cfif>
 
 </cffunction>
 
