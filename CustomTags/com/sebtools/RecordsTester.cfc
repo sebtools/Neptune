@@ -490,29 +490,35 @@ function isListInList(l1,l2) {
 	
 	<cfset var varname = "">
 	<cfset var scopestruct = 0>
-
-	<cfset loadServiceFactory()>
-
+	<cfset var OriginalScope = Arguments.scope>
+	
 	<!--- Scopes that start with a dot are nested within a service. --->
 	<cfif Left(arguments.scope,1) EQ "." AND Len(arguments.scope) GTE 2>
 		<!--- To start, drop the leading dot from the scope name since we know what it is within this conditional block. --->
 		<cfset arguments.scope = Right(arguments.scope,Len(arguments.scope)-1)>
 
-		<!--- Treat the service we got back as a scope. --->
-		<cfset arguments.scope = getService(arguments.scope)>
+		<!--- Get it from ServiceFactory if we can. --->
+		<cfif Application.Framework.Loader.hasService(arguments.scope)>
+			<cfset variables[arguments.scope] = Application.ServiceFactory.getService(arguments.scope)>
+		<cfelse>
+			<!--- If not, try to get it from Application scope (may result in an exception). --->
+			<cfset variables[arguments.scope] = Application[arguments.scope]>
+		</cfif>
+		<!--- Now we can just treat the service we got back as a scope. --->
+		<cfset arguments.scope = "Variables.#arguments.scope#">
 	</cfif>
 	
 	<cfset scopestruct = StructGet(arguments.scope)>
 	
 	<cfloop index="varname" list="#arguments.varlist#">
-		<!--- Get it from ServiceFactory if we can. --->
-		<cfif StructKeyExists(Variables,"ServiceFactory") AND Variables.ServiceFactory.hasService(varname)>
-			<cfset variables[varname] = Variables.ServiceFactory.getService(varname)>
-		<cfelseif StructKeyExists(scopestruct,varname)>
-			<!--- If not, try to get it from the scope (may result in an exception). --->
+		<cfif StructKeyExists(scopestruct,varname)>
+			<!--- Try to get it from the scope. --->
 			<cfset variables[varname] = scopestruct[varname]>
+		<cfelseif StructKeyExists(Application,"Framework") AND Application.Framework.Loader.hasService(varname)>
+			<!--- Get it from ServiceFactory if we can. --->
+			<cfset variables[varname] = Application.ServiceFactory.getService(varname)>
 		<cfelseif NOT arguments.skipmissing>
-			<cfthrow message="#scope#.#varname# is not defined.">
+			<cfthrow message="#scope#.#varname# is not available.">
 		</cfif>
 	</cfloop>
 	
