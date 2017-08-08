@@ -1,8 +1,8 @@
 <cfsilent>
 <!---
 I supply UDFs for DMQuery/DMSQL/DMParam
-Version 1.0 Beta 1 (build 4)
-Updated: 2010-10-01
+Version 1.0
+Updated: 2017-08-08
 Updated: 2010-05-30
 --->
 <cfscript>
@@ -52,7 +52,7 @@ function convertSQLArray(aRawSQL) {
 function getDMSQLArray() {
 	var aResult = ArrayNew(1);
 	var ii = 0;
-	marker = "";
+	var marker = "";
 	//Loop over params and inject struct of attributes of each
 	if ( StructKeyExists(ThisTag,"aParams") ) {
 		for ( ii = 1; ii LTE ArrayLen(ThisTag.aParams); ii=ii+1 ) {

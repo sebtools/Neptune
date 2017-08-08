@@ -1,8 +1,8 @@
 <cfsilent>
 <!---
 I get a SQL array for use with DataMgr
-Version 1.0 Beta 1 (build 4)
-Updated: 2010-10-01
+Version 1.0
+Updated: 2017-08-08
 Created: 2010-01-12
 --->
 

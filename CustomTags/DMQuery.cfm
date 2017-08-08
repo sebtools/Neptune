@@ -1,8 +1,8 @@
 <cfsilent>
 <!---
 I run a query using DataMgr
-Version 1.0 Beta 1 (build 4)
-Updated: 2010-10-01
+Version 1.0
+Updated: 2017-08-08
 Created: 2010-01-12
 --->
 
@@ -24,14 +24,7 @@ Created: 2010-01-12
 
 <cfif ThisTag.HasEndTag AND ThisTag.ExecutionMode EQ "End" AND Len(Trim(ThisTag.GeneratedContent))>
 	<!--- Execute the given SQL if given any --->
-	<cfset aSQL = getDMSQLArray()>
-	<cftry>
-		<cfset qRecords = attributes.DataMgr.runSQLArray(aSQL)>
-	<cfcatch>
-		<cfdump var="#aSQL#">
-		<cfabort>
-	</cfcatch>
-	</cftry>
+	<cfset qRecords = attributes.DataMgr.runSQLArray(getDMSQLArray(),attributes)>
 	<cfif StructKeyExists(attributes,"name") AND isDefined("qRecords")>
 		<cfset Caller[attributes.name] = qRecords>
 	</cfif>
