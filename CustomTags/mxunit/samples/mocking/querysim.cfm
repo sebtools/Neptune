@@ -28,6 +28,12 @@ because 'i' don't use that.
 
  else if (thistag.HasEndTag and thistag.ExecutionMode is 'end'){
    _local.raw = trim( Thistag.generatedContent );
+  if ( StructKeyExists(Attributes,"name") AND Len(Trim(Attributes.name)) ) {
+    if ( StructKeyExists(Attributes,"columns") AND Len(Trim(Attributes.columns)) ) {
+      _local.raw = "#Trim(Attributes.columns)##chr(10)##chr(13)##_local.raw#";
+    }
+    _local.raw = "#Trim(Attributes.name)##chr(10)##chr(13)##_local.raw#";
+  }
 	 thistag.generatedContent = '';
    _local.q = parse(_local.raw);
    setVariable( 'caller.' & _local.queryName, _local.q );
