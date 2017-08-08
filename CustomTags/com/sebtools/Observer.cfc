@@ -56,6 +56,10 @@
 	
 </cffunction>
 
+<cffunction name="getEventListeners" access="public" returntype="struct" output="no">
+	<cfreturn Variables.sEvents>
+</cffunction>
+
 <cffunction name="getListeners" access="public" returntype="struct" output="no">
 	<cfargument name="EventName" type="string" default="update">
 
