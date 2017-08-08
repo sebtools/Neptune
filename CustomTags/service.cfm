@@ -4,6 +4,7 @@
 <cfparam name="Attributes.name" default="">
 <cfparam name="Attributes.service" default="#Attributes.name#">
 
+	<!--- 1: Check in the attributes of the calling tag --->
 	<cfif StructKeyExists(Caller,"Attributes") AND StructKeyExists(Caller.Attributes,Attributes.service) AND isObject(Caller.Attributes[Attributes.service])>
 		<cfset Variables.result = Caller.Attributes[Attributes.service]>
 	</cfif>
@@ -20,10 +21,25 @@
 		}
 		</cfscript>
 	</cfif>
+
+	<!--- 3: Check in Application scope --->
 	<cfif NOT StructKeyExists(Variables,"result")>
-		<!--- 3: Check in Application scope --->
 		<cfif StructKeyExists(Caller,"Application") AND StructKeyExists(Application,Attributes.service) AND isObject(Application[Attributes.service])>
 			<cfset Variables.result = Application[Attributes.service]>
+		</cfif>
+	</cfif>
+
+	<!--- 4: Ask Service Factory --->
+	<cfif NOT StructKeyExists(Variables,"result")>
+		<cfif
+				StructKeyExists(Caller,"Application")
+			AND	StructKeyExists(Application,"ServiceFacory")
+			AND	isObject(Application.ServiceFacory)
+			AND	StructKeyExists(Application.ServiceFacory,"getService")
+			AND	StructKeyExists(Application.ServiceFacory,"hasService")
+			AND	Application.ServiceFactory.hasService(Attributes.service)
+		>
+			<cfset Variables.result = Application.ServiceFactory.getService(Attributes.service)>
 		</cfif>
 	</cfif>
 
