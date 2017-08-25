@@ -18,10 +18,14 @@ Created: 2010-01-12
 		<cfset ParentData = getBaseTagData("cf_DMQuery")>
 		<cfset isNestedTag = true>
 	<cfelseif ListFindNoCase(BaseTagList,"CF_DMSQL") GT 0 AND ListFindNoCase(BaseTagList,"CF_DMSQL") LT ListLen(BaseTagList)>
-		<cfassociate basetag="CF_DMSQL" dataCollection="aSQLs">
-		<!--- The second argument is instancenumber. The default is 1, which would just refer to the same CF_DMSQL. Have to use 2 to get the parent --->
-		<cfset ParentData = getBaseTagData("CF_DMSQL",2)>
-		<cfset isNestedTag = true>
+		<cftry>
+			<cfassociate basetag="CF_DMSQL" dataCollection="aSQLs">
+			<!--- The second argument is instancenumber. The default is 1, which would just refer to the same CF_DMSQL. Have to use 2 to get the parent --->
+			<cfset ParentData = getBaseTagData("CF_DMSQL",2)>
+			<cfset isNestedTag = true>
+		<cfcatch>
+		</cfcatch>
+		</cftry>
 	</cfif>
 </cfif>
 
@@ -60,6 +64,9 @@ Created: 2010-01-12
 		<cfif Len(Trim(ThisTag.GeneratedContent))>
 			<!--- Get SQL from generated content --->
 			<cfset attributes.sql = getDMSQLArray()>
+			<cfif StructKeyExists(attributes,"addtoclause") AND StructKeyExists(Caller,"Arguments")>
+				<cfset Variables.DataMgr.addAdvSQL(Caller.Arguments,attributes.addtoclause,attributes.sql)>
+			</cfif>
 		<cfelseif StructKeyExists(attributes,"method") AND isSimpleValue(Attributes.method) AND Len(Trim(Attributes.method))>
 			<!--- Or use a method to get it --->
 			<cfinvoke
