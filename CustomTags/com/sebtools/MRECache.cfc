@@ -347,20 +347,18 @@
 	<!--- Notify Observer (if available) --->
 	<cfif StructKeyExists(Variables.instance,"Observer") AND StructKeyExists(Variables.instance["Observer"],"announceEvent")>
 		<cfset Arguments.args.runTime = getTickCount() - Arguments.began>
-		<cfthread action="run" name="log" args="#Arguments.args#">
+		<cftry>
+			<cfset Variables.instance.Observer.announceEvent(EventName="MrECache:run",Args=args)>
+		<cfcatch>
+		</cfcatch>
+		</cftry>
+		<cfif StructKeyExists(args,"type")>
 			<cftry>
-				<cfset Variables.instance.Observer.announceEvent(EventName="MrECache:run",Args=args)>
+				<cfset Variables.instance.Observer.announceEvent(EventName="MrECache:#args.type#",Args=args)>
 			<cfcatch>
 			</cfcatch>
 			</cftry>
-			<cfif StructKeyExists(args,"type")>
-				<cftry>
-					<cfset Variables.instance.Observer.announceEvent(EventName="MrECache:#args.type#",Args=args)>
-				<cfcatch>
-				</cfcatch>
-				</cftry>
-			</cfif>
-		</cfthread>
+		</cfif>
 	</cfif>
 
 </cffunction>
