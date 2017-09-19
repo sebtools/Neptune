@@ -371,10 +371,10 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 	<cfsavecontent variable="ThisTag.config.Colon">:</cfsavecontent>
 	<cfif attributes.Format eq "Table">
 		<cfsavecontent variable="ThisTag.config.Layout"><cfoutput><div<cfif Len(Trim(attributes.skin))> class=" sebForm-skin-#LCase(attributes.skin)#"</cfif>><div id="sebForm" class="sebFormat-table">[ErrorHeader]<form><table border="0" cellspacing="0" cellpadding="3" class="sebFormTable">[Fields]</table></form></div></div></cfoutput></cfsavecontent>
-		<cfsavecontent variable="ThisTag.config.Fields.all"><tr id="row-[id]"><cfoutput><td valign="top" class="label"><label for="[id]">#attributes.Config_Label#</label></td><td valign="top">[Input]<div class="sebHelp">[Help]</div><div class="sebValidation"></div></td></tr></cfoutput></cfsavecontent>
+		<cfsavecontent variable="ThisTag.config.Fields.all"><tr id="row-[id]"><cfoutput><td valign="top" class="label">#attributes.Config_Label#</td><td valign="top">[Input]<div class="sebHelp">[Help]</div><div class="sebValidation"></div></td></tr></cfoutput></cfsavecontent>
 	<cfelse>
 		<cfsavecontent variable="ThisTag.config.Layout"><cfoutput><div<cfif Len(Trim(attributes.skin))> class=" sebForm-skin-#LCase(attributes.skin)#"</cfif>><div id="sebForm" class="sebFormat-semantic">[ErrorHeader]<form>[Fields]</form></div></div></cfoutput></cfsavecontent>
-		<cfsavecontent variable="ThisTag.config.Fields.all"><div id="div-[id]" class="sebfielddiv"><cfoutput><label for="[id]">#attributes.Config_Label#</label>[Input]<div class="sebHelp">[Help]</div><div class="sebValidation"></div></div></cfoutput></cfsavecontent>
+		<cfsavecontent variable="ThisTag.config.Fields.all"><div id="div-[id]" class="sebfielddiv"><cfoutput>#attributes.Config_Label#[Input]<div class="sebHelp">[Help]</div><div class="sebValidation"></div></div></cfoutput></cfsavecontent>
 	</cfif>
 	
 	<cfsavecontent variable="ThisTag.config.EmailLayout">[Fields]</cfsavecontent>
@@ -1818,7 +1818,7 @@ if ( isDefined("ThisTag.subforms") ) {
 	<cfset ThisTag.output.ErrorHeader = "">
 </cfif>
 <cfoutput><cfsavecontent variable="MyHead">
-<cfif NOT request.isQformLoaded><script src="#attributes.librarypath#qforms.js?lu=20140714a" type="text/javascript"></script>
+<cfif NOT request.isQformLoaded><script src="#attributes.librarypath#qforms.js" type="text/javascript"></script>
 <style type="text/css"><cfif Len(attributes.skin)>@import url(#attributes.skinpath##attributes.skin#.css);<cfelse>@import url(#attributes.librarypath#calendar/calendar-win2k-1.css);</cfif><!--- <cfloop list="#TagInfo.liErrFields#" index="tfn">input###tfn# {background-color:red;}input###tfn#:focus {background-color:white;}</cfloop> ---></style><cfif hasDateField>
 <script type="text/javascript" src="#attributes.librarypath#calendar/calendar.js"></script>
 <script type="text/javascript" src="#attributes.librarypath#calendar/lang/calendar-en.js"></script>
