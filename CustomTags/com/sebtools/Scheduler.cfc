@@ -70,6 +70,7 @@
 	</cfquery>
 	
 	<cfreturn qLastAction.DateLastRun>
+
 </cffunction>
 
 <cffunction name="getTaskRecords" access="public" returntype="query" output="no">
@@ -402,6 +403,17 @@
 	</cfloop>
 	
 	<cfreturn aResults>
+</cffunction>
+
+<cffunction name="getIncompleteTasks" access="public" returntype="struct" output="false">
+	
+	<cfset var sResult = {}>
+
+	<cfset StructAppend(sResult,Variables.Tasks)>
+
+	<cfset StructAppend(sResult,Variables.sRunningTasks)>
+
+	<cfreturn sResult>
 </cffunction>
 
 <cffunction name="getIntervalFromDate" access="public" returntype="date" output="false" hint="I return the date since which a task would have been run to be within the current interval defined for it.">
