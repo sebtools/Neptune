@@ -12,6 +12,12 @@
 
 	<cfset makedir(Variables.UploadPath)>
 
+	<cftry>
+		<cfset Variables.MrECache = CreateObject("component","MrECache").init("FileMgr",CreateTimeSpan(2,0,0,0))>
+	<cfcatch>
+	</cfcatch>
+	</cftry>
+
 	<cfreturn This>
 </cffunction>
 
@@ -72,6 +78,20 @@
 	<cfreturn result>
 </cffunction>
 
+<cffunction name="getMimeType" acess="public" returntype="string" output="no" hint="I return the mime-type for the given file (can be relative path, absolute path, or just the file name).">
+	<cfargument name="FileName" type="string" required="true">
+
+	<cfset var ext = ListLast(Arguments.FileName,".")>
+
+	<cfset loadMimeTypes()>
+
+	<cfif StructKeyExists(Variables.sTypes,ext)>
+		<cfreturn Variables.sTypes[ext]>
+	<cfelse>
+		<cfreturn "">
+	</cfif>
+</cffunction>
+
 <cffunction name="getStorageMechanism" acess="public" returntype="string" output="no" hint="I indicate how FileMgr is storing files.">
 	<cfreturn Variables.StorageMechanism>
 </cffunction>
@@ -118,6 +138,59 @@
 	</cfif>
 
 	<cfreturn result>
+</cffunction>
+
+<cffunction name="loadMimeTypes" access="public" returntype="any" output="false">
+	
+	<cfset var CFHTTP = 0>
+	<cfset var sMimes = 0>
+	<cfset var key = "">
+
+	<cfif NOT StructKeyExists(Variables,"sTypes")>
+		<cfif StructKeyExists(Variables,"MrECache")>
+			<cfset Variables.sTypes = Variables.MrECache.meth(
+				Component=This,
+				MethodName="loadMimeTypes_RealTime"
+			)>
+		<cfelse>
+			<cfset loadMimeTypes_RealTime()>
+		</cfif>
+	</cfif>
+
+	<cfreturn Variables.sTypes>
+</cffunction>
+
+<cffunction name="loadMimeTypes_RealTime" access="public" returntype="any" output="false">
+	
+	<cfset var CFHTTP = 0>
+	<cfset var sMimes = 0>
+	<cfset var key = "">
+	<cfset var ii = 0>
+
+	<cfif NOT StructKeyExists(Variables,"sTypes")>
+		<cfset Variables.sTypes = {}>
+
+		<cfhttp
+			method="get"
+			result="CFHTTP"
+			url="https://github.com/jshttp/mime-db/releases/tag/v1.30.0/db.json">
+		</cfhttp>
+
+		<cfscript>
+		sMimes = DeserializeJSON(CFHTTP.FileContent);
+
+		for ( key in sMimes ) {
+			if ( StructKeyExists(sMimes[key],"extensions") AND ArrayLen(sMimes[key]["extensions"]) ) {
+				for ( ii=1; ii LTE ArrayLen(sMimes[key]["extensions"]); ii++ ) {
+					Variables.sTypes[sMimes[key]["extensions"][ii]] = key;
+				}
+			}
+		}
+		</cfscript>
+
+	</cfif>
+
+	<cfreturn Variables.sTypes>
 </cffunction>
 
 <cffunction name="makeFileCopy" access="public" returntype="string" output="no" hint="I make a copy of a file and return the new file name.">

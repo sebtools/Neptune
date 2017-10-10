@@ -175,7 +175,7 @@
 		last_modified=GetHTTPTimeString(Arguments.CFFILE.TIMELASTMODIFIED),
 		date=GetHTTPTimeString(Arguments.CFFILE.TIMECREATED),
 		content_length=JavaCast("String",Arguments.CFFILE.FILESIZE),
-		content_type=Arguments.CFFILE.CONTENTTYPE
+		content_type=getMimeType(Arguments.CFFILE.ServerFile)
 	}>
 
 	<!--- 	OTHER KEYS:
