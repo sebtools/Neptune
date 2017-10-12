@@ -21,6 +21,7 @@ Optionally run search through google
 	<cfargument name="excludedirs" type="string" default="">
 	<cfargument name="excludefiles" type="string" default="">
 	<cfargument name="UseGoogleSyntax" type="boolean" default="false">
+	<cfargument name="Deployer" type="any" required="false">
 	
 	<cfreturn initInternal(argumentCollection=arguments)>
 </cffunction>
@@ -32,6 +33,7 @@ Optionally run search through google
 	<cfargument name="excludedirs" type="string" default="">
 	<cfargument name="excludefiles" type="string" default="">
 	<cfargument name="UseGoogleSyntax" type="boolean" default="false">
+	<cfargument name="Deployer" type="any" required="false">
 	
 	<cfset var qTest = 0>
 	
@@ -45,6 +47,9 @@ Optionally run search through google
 	variables.excludedirs = arguments.excludedirs;
 	variables.excludefiles = arguments.excludefiles;
 	variables.UseGoogleSyntax = arguments.UseGoogleSyntax;
+	if ( StructKeyExists(arguments,"Deployer") ) {
+		variables.Deployer = arguments.Deployer;
+	}
 	</cfscript>
 	
 	<cfreturn this>
@@ -61,6 +66,24 @@ Optionally run search through google
 </cffunction>
 
 <cffunction name="create" access="public" returntype="void" output="no" hint="I create the given collection.">
+	<cfargument name="CollectionName" type="string" required="yes">
+	<cfargument name="recreate" type="boolean" default="false">
+	
+	<cfif StructKeyExists(variables,"Deployer") AND NOT Arguments.recreate>
+		<cfset Variables.Deployer.deploy(
+			Name="Searcher:create:#Arguments.CollectionName#",
+			ComponentPath="com.sebtools.Searcher",
+			Component=This,
+			MethodName="create_Actual",
+			Args=Arguments
+		)>
+	<cfelse>
+		<cfset create_Actual(ArgumentCollection=Arguments)>
+	</cfif>
+	
+</cffunction>
+
+<cffunction name="create_Actual" access="public" returntype="void" output="no" hint="I create the given collection.">
 	<cfargument name="CollectionName" type="string" required="yes">
 	<cfargument name="recreate" type="boolean" default="false">
 	
@@ -101,7 +124,7 @@ Optionally run search through google
 						OR	CFCATCH.Detail CONTAINS "has already been registered"
 						OR	CFCATCH.Detail CONTAINS "Unable to create collection"
 					>--->
-						<cfset deleteDirectory("#variables.path#/#LCase(arguments.CollectionName)#")>
+						<cfset deleteDirectory("#variables.path##getDirDelim()##LCase(arguments.CollectionName)#")>
 						<cfcollection action="LIST" name="qCollections">
 						<cfloop query="qCollections">
 							<cfif name EQ CollectionName>
@@ -499,6 +522,37 @@ Optionally run search through google
 	</cfquery>
 	
 	<cfreturn qSearchData>
+</cffunction>
+
+<cffunction name="getDirDelim" acess="private" returntype="string" output="no">
+
+	<cfset var result = "/">
+
+	<cfif NOT StructKeyExists(variables,"dirdelim")>
+		<cftry>
+			<cfset variables.dirdelim = CreateObject("java", "java.io.File").separator>
+		<cfcatch>
+			<cftry>
+				<cfif Server.OS.name CONTAINS "Windows">
+					<cfset variables.dirdelim = "\">
+				<cfelse>
+					<cfset variables.dirdelim = "/">
+				</cfif>
+			<cfcatch>
+				<cfif getCurrentTemplatePath() CONTAINS "/">
+					<cfset variables.dirdelim = "/">
+				<cfelse>
+					<cfset variables.dirdelim = "\">
+				</cfif>
+			</cfcatch>
+			</cftry>
+		</cfcatch>
+		</cftry>
+	</cfif>
+
+	<cfset result = variables.dirdelim>
+
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="getDbXml" access="public" returntype="string" output="no" hint="I return the XML for the tables needed for Searcher to work.">

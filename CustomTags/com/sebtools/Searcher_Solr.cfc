@@ -11,6 +11,7 @@
 	<cfargument name="excludedirs" type="string" default="">
 	<cfargument name="excludefiles" type="string" default="">
 	<cfargument name="UseGoogleSyntax" type="boolean" default="false">
+	<cfargument name="Deployer" type="any" required="false">
 	
 	<cfreturn initInternal(argumentCollection=arguments)>
 </cffunction>
@@ -21,7 +22,7 @@
 	<cfreturn Arguments.ResultURL>
 </cffunction>
 
-<cffunction name="create" access="public" returntype="void" output="no" hint="I create the given collection.">
+<cffunction name="create_Actual" access="public" returntype="void" output="no" hint="I create the given collection.">
 	<cfargument name="CollectionName" type="string" required="yes">
 	<cfargument name="recreate" type="boolean" default="false">
 	
@@ -43,7 +44,7 @@
 					<cfcollection action="CREATE" collection="#arguments.CollectionName#" path="#variables.path#" language="English" engine="solr">
 				</cflock>
 				<cfcatch>
-						<cfset deleteDirectory("#variables.path#/#LCase(arguments.CollectionName)#")>
+						<cfset deleteDirectory("#variables.path##getDirDelim()##LCase(arguments.CollectionName)#")>
 						<cfcollection action="LIST" name="qCollections" engine="solr">
 						<cfloop query="qCollections">
 							<cfif name EQ CollectionName>
