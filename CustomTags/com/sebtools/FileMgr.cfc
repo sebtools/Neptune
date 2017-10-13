@@ -173,7 +173,7 @@
 		<cfhttp
 			method="get"
 			result="CFHTTP"
-			url="https://github.com/jshttp/mime-db/releases/tag/v1.30.0/db.json">
+			url="https://cdn.rawgit.com/jshttp/mime-db/v1.30.0/db.json">
 		</cfhttp>
 
 		<cfscript>
