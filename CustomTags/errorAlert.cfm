@@ -25,6 +25,7 @@ if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, "cf_
 </cfif>
 <cfparam name="Attributes.sendError" type="boolean" default="#DefaultSendError#">
 <cfparam name="Attributes.showError" type="boolean" default="#DefaultShowError#">
+<cfparam name="Attributes.silent" type="boolean" default="false">
 <cfparam name="Attributes.MessageVariable" type="string" default="ErrorMessage">
 
 <cfif ThisTag.executionMode IS "End" OR NOT thisTag.hasEndTag>
@@ -105,15 +106,17 @@ if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, "cf_
 		</cf_scaledAlert>
 	</cfif>
 	
-	<cfif Attributes.showError>
-		<cfset Variables.output = ErrorDetails>
-	<cfelse>
-		<cfsavecontent variable="Variables.output">
-			<h1 class="err">Error!</h1>
-			<h3>An Error has ocurred on this site.</h3>
-			<hr/>
-			<p>The error has been reported to our programmers and we are working to correct it. We generally get errors fixed overnight, so please feel free to try this action again tomorrow.</p>
-		</cfsavecontent>
+	<cfif NOT Attributes.silent>
+		<cfif Attributes.showError>
+			<cfset Variables.output = ErrorDetails>
+		<cfelse>
+			<cfsavecontent variable="Variables.output">
+				<h1 class="err">Error!</h1>
+				<h3>An Error has ocurred on this site.</h3>
+				<hr/>
+				<p>The error has been reported to our programmers and we are working to correct it. We generally get errors fixed overnight, so please feel free to try this action again tomorrow.</p>
+			</cfsavecontent>
+		</cfif>
 	</cfif>
 
 </cfif>
