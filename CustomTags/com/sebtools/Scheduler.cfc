@@ -37,6 +37,105 @@
 	
 </cffunction>
 
+<cffunction name="DateAddInterval" access="public" returntype="string" output="no">
+	<cfargument name="interval" type="string" required="true">
+	<cfargument name="date" type="string" default="#now()#">
+
+	<cfset var result = arguments.date>
+	<cfset var timespans = "millisecond,second,minute,hour,day,week,month,quarter,year">
+	<cfset var dateparts = "l,s,n,h,d,ww,m,q,yyyy">
+	<cfset var num = 1>
+	<cfset var timespan = "">
+	<cfset var datepart = "">
+	<cfset var OrdinationString = "">
+	<cfset var ordinals = "first,second,third,fourth,fifth,sixth,seventh,eighth,ninth,tenth,eleventh,twelfth">
+	<cfset var ordinal = "">
+	<cfset var numbers = "one,two,three,four,five,six,seven,eight,nine,ten,eleven,twelve">
+	<cfset var number = "">
+	<cfset var weekdays = "Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday">
+	<cfset var weekday = "">
+	<cfset var thisint = "">
+	<cfset var sNums = 0>
+	<cfset var isSubtraction = Left(Trim(arguments.interval),1) EQ "-">
+	<cfset var sub = "">
+
+	<cfif NOT isDate(Arguments.date)>
+		<cfreturn "">
+	</cfif>
+
+	<cfif isSubtraction>
+		<cfset arguments.interval = Trim(ReplaceNoCase(arguments.interval,"-","","ALL"))>
+		<cfset sub = "-">
+	</cfif>
+
+	<cfif ListLen(arguments.interval) GT 1>
+		<cfloop list="#arguments.interval#" index="thisint">
+			<cfset result = DateAddInterval("#sub##thisint#",result)>
+		</cfloop>
+	<cfelse>
+		<cfset arguments.interval = ReplaceNoCase(arguments.interval,"annually","yearly","ALL")>
+		<cfset arguments.interval = ReReplaceNoCase(arguments.interval,"\b(\d+)(nd|rd|th)\b","\1","ALL")>
+		<cfset sNums = ReFindNoCase("\b\d+\b",arguments.interval,1,true)>
+		<!--- Figure out number --->
+		<cfif ArrayLen(sNums.pos) AND sNums.pos[1] GT 0>
+			<cfset num = Mid(arguments.interval,sNums.pos[1],sNums.len[1])>
+		</cfif>
+		<cfif ListFindNoCase(arguments.interval,"every"," ")>
+			<cfset arguments.interval = ListDeleteAt(arguments.interval,ListFindNoCase(arguments.interval,"every"," ")," ")>
+		</cfif>
+
+		<cfloop list="#ordinals#" index="ordinal">
+			<cfset OrdinationString = REReplaceNoCase(arguments.interval,"\bsecond$","")><!--- Making sure "every [other,ordinal] second" isn't considered as an ordinal interval --->
+			<cfif ListFindNoCase(OrdinationString,ordinal," ")>
+				<cfset num = num * ListFindNoCase(ordinals,ordinal)>
+			</cfif>
+		</cfloop>
+		<cfloop list="#numbers#" index="number">
+			<cfif ListFindNoCase(arguments.interval,number," ")>
+				<cfset num = num * ListFindNoCase(numbers,number)>
+			</cfif>
+		</cfloop>
+		<cfif ListFindNoCase(arguments.interval,"other"," ")>
+			<cfset arguments.interval = ListDeleteAt(arguments.interval,ListFindNoCase(arguments.interval,"other"," ")," ")>
+			<cfset num = num * 2>
+		</cfif>
+		<!--- Check if day of week is specified --->
+		<cfloop list="#weekdays#" index="weekday">
+			<cfif ListFindNoCase(arguments.interval,weekday," ")>
+				<!--- Make sure the date given is on the day of week specified (subtract days as needed) --->
+				<cfset arguments.date = DateAdd("d",- Abs( 7 - ListFindNoCase(weekdays,weekday) + DayOfWeek(arguments.date) ) MOD 7,arguments.date)>
+				<cfset arguments.interval = ListDeleteAt(arguments.interval,ListFindNoCase(arguments.interval,weekday," ")," ")>
+				<!--- Make sure we are adding weeks --->
+				<cfset arguments.interval = ListAppend(arguments.interval,"week"," ")>
+			</cfif>
+		</cfloop>
+
+		<!--- Figure out timespan --->
+		<cfset timespan = ListLast(arguments.interval," ")>
+
+		<!--- Ditch ending "s" or "ly" --->
+		<cfif Right(timespan,1) EQ "s">
+			<cfset timespan = Left(timespan,Len(timespan)-1)>
+		</cfif>
+		<cfif Right(timespan,2) EQ "ly">
+			<cfset timespan = Left(timespan,Len(timespan)-2)>
+		</cfif>
+		<cfif timespan EQ "dai">
+			<cfset timespan = "day">
+		</cfif>
+
+		<cfif ListFindNoCase(timespans,timespan)>
+			<cfset datepart = ListGetAt(dateparts,ListFindNoCase(timespans,timespan))>
+		<cfelse>
+			<cfthrow message="#timespan# is not a valid interval measurement.">
+		</cfif>
+
+		<cfset result = DateAdd(datepart,"#sub##num#",arguments.date)>
+	</cfif>
+
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="failsafe" access="public" returntype="void" output="no">
 	
 	<!--- So long as runTasks is called every three hours, then all is well. --->
