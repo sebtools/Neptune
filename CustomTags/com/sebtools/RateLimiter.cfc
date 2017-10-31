@@ -5,6 +5,9 @@
 	<cfargument name="timeSpan" type="string" default="#CreateTimeSpan(0,0,0,3)#">
 
 	<cfset Variables.instance = Arguments>
+	<cfset Variables.running = StructNew()>
+
+	<cfset Variables.timeSpan_ms = Floor(Arguments.timeSpan * 100000 / 1.1574074074) * 1000>
 
 	<cfset Variables.MrECache = CreateObject("component","MrECache").init("limit_#Arguments.id#",Arguments.timeSpan)>
 
@@ -20,13 +23,33 @@
 	</cfif>
 
 	<cfset Variables.MrECache.put(Arguments.id,Arguments.result)>
+	<cfset StructDelete(Variables.running,Arguments.id)>
 
+</cffunction>
+
+<cffunction name="calling" access="public" returntype="void" output="false">
+	<cfargument name="id" type="string" required="true">
+
+	<cfset Variables.running[Arguments.id] = now()>
+
+</cffunction>
+
+<cffunction name="isAvailable" access="public" returntype="boolean" output="false">
+	<cfargument name="id" type="string" required="true">
+
+	<cfreturn Variables.MrECache.exists(Arguments.id)>
 </cffunction>
 
 <cffunction name="isCallable" access="public" returntype="boolean" output="false">
 	<cfargument name="id" type="string" required="true">
 
-	<cfreturn NOT Variables.MrECache.exists(Arguments.id)>
+	<cfreturn NOT ( isAvailable(Arguments.id) OR isCalling(Arguments.id) )>
+</cffunction>
+
+<cffunction name="isCalling" access="public" returntype="boolean" output="false">
+	<cfargument name="id" type="string" required="true">
+
+	<cfreturn StructKeyExists(Variables.running,Arguments.id)>
 </cffunction>
 
 <cffunction name="method" access="public" returntype="any" output="false" hint="I call the given method if it hasn't been called within the rate limit time.">
@@ -35,18 +58,38 @@
 	<cfargument name="MethodName" type="string" required="true">
 	<cfargument name="Args" type="struct" required="false">
 	<cfargument name="default" type="any" required="false">
+	<cfargument name="waitlimit" type="numeric" default="100" hint="Maximum number of milliseconds to wait.">
+	<cfargument name="waitstep" type="numeric" default="20" hint="Milliseconds to wait between checks.">
 
 	<cfset var local = StructNew()>
+	<cfset var waited = 0>
 
+	<!--- No reason to wait longer than the limit of the rate limiter. --->
+	<cfset Arguments.waitlimit = Min(Arguments.waitlimit,Variables.timeSpan_ms)>
+
+	<!--- If method is currently running, wait up to the wait limit for it to finish. --->
+	<cfif isCalling(Arguments.id)>
+		<cfscript>
+		while ( isCalling(Arguments.id) AND waited LT waitlimit ) {
+			sleep(Arguments.waitstep);
+			waited += Arguments.waitstep;
+		}
+		</cfscript>
+	</cfif>
+	
 	<cfif NOT isCallable(Arguments.id)>
 		<!--- If MrECache has rate limiter value then we are within the rate limit and must return the default value. --->
 		<cfif NOT StructKeyExists(Arguments,"default")>
-			<cfset Arguments.default = Variables.MrECache.get(Arguments.id)>
+			<cfif isAvailable(Arguments.id)>
+				<cfset Arguments.default = Variables.MrECache.get(Arguments.id)>
+			<cfelse>
+				<cfthrow message="Unable to retrieve data from #Method# (waited #waited# milliseconds)." type="RateLimiter">
+			</cfif>
 		</cfif>
 		<cfreturn Arguments.default>
 	<cfelse>
 		<!--- If not within the rate limit then call the method and return the value. --->
-		<cfset called(Arguments.id)>
+		<cfset calling(Arguments.id)>
 		<cfif NOT StructKeyExists(Arguments,"Args")>
 			<cfset Arguments["Args"] = {}>
 		</cfif>
@@ -59,6 +102,8 @@
 		<cfif StructKeyExists(local,"result")>
 			<cfset called(Arguments.id,local.result)>
 			<cfreturn local.result>
+		<cfelse>
+			<cfset called(Arguments.id)>
 		</cfif>
 	</cfif>
 
