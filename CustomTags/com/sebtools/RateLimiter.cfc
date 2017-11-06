@@ -7,7 +7,7 @@
 	<cfset Variables.instance = Arguments>
 	<cfset Variables.running = StructNew()>
 
-	<cfset Variables.timeSpan_ms = Floor(Arguments.timeSpan * 100000 / 1.1574074074) * 1000>
+	<cfset Variables.timeSpan_ms = Int(Arguments.timeSpan * 100000 / 1.1574074074) * 1000>
 
 	<cfset Variables.MrECache = CreateObject("component","MrECache").init("limit_#Arguments.id#",Arguments.timeSpan)>
 
