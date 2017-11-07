@@ -166,6 +166,7 @@
 	<cfset var sMimes = 0>
 	<cfset var key = "">
 	<cfset var ii = 0>
+	<cfset var filename = "mime-db.json">
 
 	<cfif NOT StructKeyExists(Variables,"sTypes")>
 		<cfset Variables.sTypes = {}>
@@ -177,8 +178,18 @@
 		</cfhttp>
 
 		<cfscript>
-		sMimes = DeserializeJSON(CFHTTP.FileContent);
+		if ( isJSON(CFHTTP.FileContent) ) {
+			sMimes = DeserializeJSON(CFHTTP.FileContent);
+			/* Save the JSON locally in case we can't reach it remotely later. */
+			if ( NOT FileExists(getFilePath(filename)) ) {
+				writeFile(filename,CFHTTP.FileContent);
+			}
+		} else if ( FileExists(getFilePath(filename)) ) {
+			/* If we fail to get the JSON locally, we'll use our saved copy (if we have one). */
+			sMimes = DeserializeJSON(readFile(filename));
+		}
 
+		//An error here means that the JSON retrieval failed both remotely and didn't exist locally.
 		for ( key in sMimes ) {
 			if ( StructKeyExists(sMimes[key],"extensions") AND ArrayLen(sMimes[key]["extensions"]) ) {
 				for ( ii=1; ii LTE ArrayLen(sMimes[key]["extensions"]); ii++ ) {
@@ -786,6 +797,26 @@ Copies a directory.
 	<cfset result = LimitFileNameLength(arguments.maxlength,result)>
 
 	<cfreturn result>
+</cffunction>
+
+<cffunction name="unzip" access="public" returntype="any" output="false">
+	<cfargument name="file" type="string" required="yes">
+	<cfargument name="destination" type="string" required="yes">
+
+	<cfset Arguments.action = "unzip">
+
+	<cfzip AttributeCollection="#Arguments#">
+
+</cffunction>
+
+<cffunction name="zip" access="public" returntype="any" output="false">
+	<cfargument name="source" type="string" required="yes">
+	<cfargument name="file" type="string" required="yes">
+
+	<cfset Arguments.action = "zip">
+
+	<cfzip AttributeCollection="#Arguments#">
+
 </cffunction>
 
 <cffunction name="fixFileName" access="private" returntype="string" output="false">
