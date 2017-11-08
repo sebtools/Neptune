@@ -368,7 +368,7 @@
 
 		<!--- Get it from ServiceFactory if we can. --->
 		<cfif Application.Framework.Loader.hasService(arguments.scope)>
-			<cfset variables[arguments.scope] = Application.ServiceFactory.getService(arguments.scope)>
+			<cfset variables[arguments.scope] = Application.Framework.Loader.getService(arguments.scope)>
 		<cfelse>
 			<!--- If not, try to get it from Application scope (may result in an exception). --->
 			<cfset variables[arguments.scope] = Application[arguments.scope]>
@@ -385,7 +385,7 @@
 			<cfset variables[varname] = scopestruct[varname]>
 		<cfelseif StructKeyExists(Application,"Framework") AND Application.Framework.Loader.hasService(varname)>
 			<!--- Get it from ServiceFactory if we can. --->
-			<cfset variables[varname] = Application.ServiceFactory.getService(varname)>
+			<cfset variables[varname] = Application.Framework.Loader.getService(varname)>
 		<cfelseif NOT arguments.skipmissing>
 			<cfthrow message="#scope#.#varname# is not available.">
 		</cfif>
