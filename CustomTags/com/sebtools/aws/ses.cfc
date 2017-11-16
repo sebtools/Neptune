@@ -14,14 +14,16 @@
 	<cfreturn "http://docs.aws.amazon.com/ses/latest/APIReference/">
 </cffunction>
 
-<cffunction name="GetIdentities" access="public" returntype="string" output="no" hint="I get a list of identies from which email can be sent on SES.">
+<cffunction name="GetIdentities" access="public" returntype="string" output="no">
 
-	<cfreturn Variables.MrECache.method(
-		id="identities",
-		Component=This,
-		MethodName="_GetIdentities",
+	<cfset var aIdentities = Variables.AWS.callLimitedAPI(
+		subdomain="email",
+		Action="ListIdentities",
+		Parameters={"IdentityType"="Domain"},
 		timeSpan=CreateTimeSpan(0,1,0,0)
 	)>
+
+	<cfreturn ArrayToList(aIdentities)>
 </cffunction>
 
 <cffunction name="GetIdentityNotificationAttributes" access="public" returntype="any" output="no">
@@ -30,7 +32,8 @@
 	<cfset var result = Variables.AWS.callLimitedAPI(
 		subdomain="email",
 		Action="GetIdentityNotificationAttributes",
-		Parameters={"Identities.member.1"=Arguments.Members}
+		Parameters={"Identities.member.1"=Arguments.Members},
+		timeSpan=CreateTimeSpan(0,0,1,0)
 	)>
 
 	<cfreturn result>
@@ -126,17 +129,6 @@
 
 </cffunction>
 
-<cffunction name="_GetIdentities" access="public" returntype="string" output="no">
-
-	<cfset var aIdentities = Variables.AWS.callLimitedAPI(
-		subdomain="email",
-		Action="ListIdentities",
-		Parameters={"IdentityType"="Domain"}
-	)>
-
-	<cfreturn ArrayToList(aIdentities)>
-</cffunction>
-
 <cffunction name="GetIdentity" access="public" returntype="string" output="no" hint="I get the identity for the given value.">
 	<cfargument name="Sender" type="string" required="true">
 
@@ -216,8 +208,7 @@
 			id="isVerifiedIdentity",
 			Component=This,
 			MethodName="isVerifiedIdentity",
-			Args={Identity=identity},
-			default=true
+			Args={Identity=identity}
 		)>
 	</cfif>
 
@@ -234,7 +225,8 @@
 		Identities.member.1=Arguments.Identity
 	)>
 	<cfif
-			StructKeyExists(xResponse,"entry")
+			isXML(xResponse)
+		AND	StructKeyExists(xResponse,"entry")
 		AND	StructKeyExists(xResponse.entry,"key")
 		AND	StructKeyExists(xResponse.entry,"value")
 		AND	StructKeyExists(xResponse.entry.value,"VerificationStatus")

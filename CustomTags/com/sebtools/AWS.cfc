@@ -100,6 +100,8 @@
 	<cfargument name="method" type="string" default="GET" hint="The HTTP method to invoke.">
 	<cfargument name="parameters" type="struct" default="#structNew()#" hint="An struct of HTTP URL parameters to send in the request.">
 	<cfargument name="timeout" type="numeric" default="20" hint="The default call timeout.">
+	<cfargument name="timeSpan" type="string" required="false">
+	<cfargument name="idleTime" type="string" required="false">
 
 	<cfset var sArgs = {
 		id="#Arguments.subdomain#_#Arguments.Action#",
@@ -111,8 +113,18 @@
 	<cfif StructKeyExists(Arguments,"default")>
 		<cfset sArgs["default"] = Arguments.default>
 	</cfif>
+	<cfif StructKeyExists(Arguments,"timeSpan")>
+		<cfset sArgs["timeSpan"] = Arguments.timeSpan>
+	</cfif>
+	<cfif StructKeyExists(Arguments,"idleTime")>
+		<cfset sArgs["idleTime"] = Arguments.idleTime>
+	</cfif>
 
-	<cfreturn Variables.RateLimiter.method(ArgumentCollection=sArgs)>
+	<cfif StructKeyExists(Arguments,"timeSpan")>
+		<cfreturn Variables.RateLimiter.cached(ArgumentCollection=sArgs)>
+	<cfelse>
+		<cfreturn Variables.RateLimiter.method(ArgumentCollection=sArgs)>
+	</cfif>
 </cffunction>
 
 <cffunction name="callAPI" access="public" returntype="any" output="false" hint="I return the results of Amazon REST Call in the form easiest to use.">

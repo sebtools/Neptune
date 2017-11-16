@@ -9,6 +9,7 @@
 
 	<cfset Variables.timeSpan_ms = Int(Arguments.timeSpan * 100000 / 1.1574074074) * 1000>
 
+	<cfset Variables.Cacher = CreateObject("component","MrECache").init("rlcache",CreateTimeSpan(0,0,10,0))>
 	<cfset Variables.MrECache = CreateObject("component","MrECache").init("limit_#Arguments.id#",Arguments.timeSpan)>
 
 	<cfreturn This>
@@ -52,6 +53,32 @@
 	<cfreturn StructKeyExists(Variables.running,Arguments.id)>
 </cffunction>
 
+<cffunction name="cached" access="public" returntype="any" output="false" hint="I call the given method if it hasn't been called within the rate limit time. I return a cached value if one is available.">
+	<cfargument name="id" type="string" required="true">
+	<cfargument name="Component" type="any" required="true">
+	<cfargument name="MethodName" type="string" required="true">
+	<cfargument name="Args" type="struct" required="false">
+	<cfargument name="default" type="any" required="false">
+	<cfargument name="timeSpan" type="string" required="false">
+	<cfargument name="idleTime" type="string" required="false">
+	<cfargument name="waitlimit" type="numeric" default="100" hint="Maximum number of milliseconds to wait.">
+	<cfargument name="waitstep" type="numeric" default="20" hint="Milliseconds to wait between checks.">
+
+	<cfset var sCacherArgs = {
+		Component=This,
+		MethodName="method",
+		Args=Arguments
+	}>
+	<cfif StructKeyExists(Arguments,"timeSpan")>
+		<cfset sCacherArgs["timeSpan"] = Arguments.timeSpan>
+	</cfif>
+	<cfif StructKeyExists(Arguments,"idleTime")>
+		<cfset sCacherArgs["idleTime"] = Arguments.idleTime>
+	</cfif>
+
+	<cfreturn Variables.Cacher.meth(ArgumentCollection=sCacherArgs)>
+</cffunction>
+
 <cffunction name="method" access="public" returntype="any" output="false" hint="I call the given method if it hasn't been called within the rate limit time.">
 	<cfargument name="id" type="string" required="true">
 	<cfargument name="Component" type="any" required="true">
@@ -83,7 +110,7 @@
 			<cfif isAvailable(Arguments.id)>
 				<cfset Arguments.default = Variables.MrECache.get(Arguments.id)>
 			<cfelse>
-				<cfthrow message="Unable to retrieve data from #Method# (waited #waited# milliseconds)." type="RateLimiter">
+				<cfthrow message="Unable to retrieve data from #Arguments.MethodName# (waited #waited# milliseconds)." type="RateLimiter">
 			</cfif>
 		</cfif>
 		<cfreturn Arguments.default>
