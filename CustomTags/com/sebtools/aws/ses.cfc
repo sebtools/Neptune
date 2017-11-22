@@ -20,7 +20,8 @@
 		subdomain="email",
 		Action="ListIdentities",
 		Parameters={"IdentityType"="Domain"},
-		timeSpan=CreateTimeSpan(0,1,0,0)
+		timeSpan=CreateTimeSpan(0,3,0,0),
+		waitlimit=300
 	)>
 
 	<cfreturn ArrayToList(aIdentities)>
