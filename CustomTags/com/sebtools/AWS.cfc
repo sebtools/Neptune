@@ -107,7 +107,7 @@
 		id="#Arguments.subdomain#_#Arguments.Action#",
 		Component=This,
 		MethodName="callAPI",
-		Args=Arguments
+		Args=StructCopy(Arguments)
 	}>
 
 	<cfif StructKeyExists(Arguments,"default")>
@@ -115,9 +115,15 @@
 	</cfif>
 	<cfif StructKeyExists(Arguments,"timeSpan")>
 		<cfset sArgs["timeSpan"] = Arguments.timeSpan>
+		<cfset StructDelete(sArgs["Args"],"timeSpan")>
 	</cfif>
 	<cfif StructKeyExists(Arguments,"idleTime")>
 		<cfset sArgs["idleTime"] = Arguments.idleTime>
+		<cfset StructDelete(sArgs["Args"],"idleTime")>
+	</cfif>
+	<cfif StructKeyExists(Arguments,"waitlimit")>
+		<cfset sArgs["waitlimit"] = Arguments.waitlimit>
+		<cfset StructDelete(sArgs["Args"],"waitlimit")>
 	</cfif>
 
 	<cfif StructKeyExists(Arguments,"timeSpan")>

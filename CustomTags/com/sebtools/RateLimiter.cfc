@@ -49,6 +49,16 @@
 
 <cffunction name="isCalling" access="public" returntype="boolean" output="false">
 	<cfargument name="id" type="string" required="true">
+	<cfargument name="check" type="boolean" default="false" hint="Check if it was run recently.">
+
+	<!--- If it was last called over 10 minutes ago, something is hinky and/or no need to worry about the rate limiting for this part. --->
+	<cfif
+			Arguments.check
+		AND	StructKeyExists(Variables.running,Arguments.id)
+		AND	DateAdd("n",10,Variables.running[Arguments.id]) LT now()
+	>
+		<cfset StructDelete(Variables.running,Arguments.id)>
+	</cfif>
 
 	<cfreturn StructKeyExists(Variables.running,Arguments.id)>
 </cffunction>
@@ -95,7 +105,7 @@
 	<cfset Arguments.waitlimit = Min(Arguments.waitlimit,Variables.timeSpan_ms)>
 
 	<!--- If method is currently running, wait up to the wait limit for it to finish. --->
-	<cfif isCalling(Arguments.id)>
+	<cfif isCalling(Arguments.id,true)>
 		<cfscript>
 		while ( isCalling(Arguments.id) AND waited LT waitlimit ) {
 			sleep(Arguments.waitstep);
@@ -110,9 +120,11 @@
 			<cfif isAvailable(Arguments.id)>
 				<cfset Arguments.default = Variables.MrECache.get(Arguments.id)>
 			<cfelse>
+				<cfset called(Arguments.id)>
 				<cfthrow message="Unable to retrieve data from #Arguments.MethodName# (waited #waited# milliseconds)." type="RateLimiter">
 			</cfif>
 		</cfif>
+		<cfset called(Arguments.id,Arguments.default)>
 		<cfreturn Arguments.default>
 	<cfelse>
 		<!--- If not within the rate limit then call the method and return the value. --->

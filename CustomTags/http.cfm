@@ -1,10 +1,10 @@
 <cfsilent>
-<cfdump var="#ThisTag#">
 <cfif ThisTag.ExecutionMode EQ "Start">
 	<cfparam name="Attributes.url" type="string">
 	<cfparam name="Attributes.method" default="get">
 	<cfparam name="Attributes.result" default="CFHTTP">
 	<cfparam name="Attributes.log" type="boolean" default="true">
+	<cfparam name="Attributes.log_result" type="boolean" default="true">
 </cfif>
 <cfif ThisTag.ExecutionMode EQ "End" OR NOT ThisTag.HasEndTag>
 	<!--- Default to cache get requests, but not other requests. --->
@@ -72,6 +72,7 @@
 	</cfif>
 	
 	<cfset sArgs = StructCopy(Attributes)>
+	<cfset begin = getTickCount()>
 	<cfhttp attributeCollection="#Attributes#">
 		<cfif StructKeyExists(ThisTag,"aParams")>
 			<cfloop index="ii" from="1" to="#ArrayLen(ThisTag.aParams)#">
@@ -79,6 +80,7 @@
 			</cfloop>
 		</cfif>
 	</cfhttp>
+	<cfset end = getTickCount()>
 	<cfif Attributes.log>
 		<cf_service name="DataMgr">
 		<!--- If unable to get DataMgr service then no point in logging request. --->
@@ -89,11 +91,18 @@
 				<cfset Variables.HTTPRequestLogger = CreateObject("component","com.sebtools.utils.HTTPRequestLogger").init(DataMgr=Variables.DataMgr) />
 			</cfif>
 			<!--- Log the request --->
+			<cfset sLogArgs = {}>
+			<cfset sLogArgs["Attribs"] = sArgs>
+			<cfset sLogArgs["ProcessTimeMS"] = end - begin>
 			<cfif StructKeyExists(ThisTag,"aParams")>
-				<cfset Variables.HTTPRequestLogger.logRequest(sArgs,ThisTag.aParams)>
+				<cfset sLogArgs["Params"] = ThisTag.aParams>
 			<cfelse>
-				<cfset Variables.HTTPRequestLogger.logRequest(sArgs,ArrayNew(1))>
+				<cfset sLogArgs["Params"] = ArrayNew(1)>
 			</cfif>
+			<cfif Attributes.log_result>
+				<cfset sLogArgs["Result"] = Variables[Variables.result]>
+			</cfif>
+			<cfset Variables.HTTPRequestLogger.logRequest(ArgumentCollection=sLogArgs)>
 		</cfif>
 	</cfif>
 	
