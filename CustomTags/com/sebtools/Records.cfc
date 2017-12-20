@@ -277,15 +277,19 @@
 
 <cffunction name="getRecord" access="public" returntype="query" output="no">
 	
-	<cfset StructAppend(alterArgs(argumentCollection=arguments),getSpecifyingValues())>
+	<cfset Arguments = alterArgs(argumentCollection=arguments)>
+	
+	<cfset StructAppend(Arguments,getSpecifyingValues(),"no")>
 	
 	<cfreturn variables.Manager.getRecord(tablename=variables.table,data=arguments)>
 </cffunction>
 
 <cffunction name="getRecords" access="public" returntype="query" output="no">
+
+	<cfset Arguments = alterArgs(argumentCollection=arguments)>
 	
-	<cfset StructAppend(alterArgs(argumentCollection=arguments),getSpecifyingValues(),"no")>
-	
+	<cfset StructAppend(Arguments,getSpecifyingValues(),"no")>
+
 	<cfreturn variables.Manager.getRecords(tablename=variables.table,data=arguments)>
 </cffunction>
 
