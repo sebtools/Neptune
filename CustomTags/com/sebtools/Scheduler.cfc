@@ -47,6 +47,7 @@
 	<cfset var num = 1>
 	<cfset var timespan = "">
 	<cfset var datepart = "">
+	<cfset var DayOf = "">
 	<cfset var OrdinationString = "">
 	<cfset var ordinals = "first,second,third,fourth,fifth,sixth,seventh,eighth,ninth,tenth,eleventh,twelfth">
 	<cfset var ordinal = "">
@@ -68,6 +69,8 @@
 		<cfset sub = "-">
 	</cfif>
 
+	<cfset arguments.interval = REReplaceNoCase(arguments.interval,"\s+(and|plus)\b",",","ALL")>
+
 	<cfif ListLen(arguments.interval) GT 1>
 		<cfloop list="#arguments.interval#" index="thisint">
 			<cfset result = DateAddInterval("#sub##thisint#",result)>
@@ -84,8 +87,17 @@
 			<cfset arguments.interval = ListDeleteAt(arguments.interval,ListFindNoCase(arguments.interval,"every"," ")," ")>
 		</cfif>
 
+		<!--- Day of the month/year --->
+		<cfset OrdinationString = REReplaceNoCase(arguments.interval,"\bsecond$","")><!--- Making sure "every [other,ordinal] second" isn't considered as an ordinal interval --->
 		<cfloop list="#ordinals#" index="ordinal">
-			<cfset OrdinationString = REReplaceNoCase(arguments.interval,"\bsecond$","")><!--- Making sure "every [other,ordinal] second" isn't considered as an ordinal interval --->
+			<cfif ReFindNoCase("#ordinal#\s+of\s+",OrdinationString)>
+				<cfset DayOf = ListFindNoCase(ordinals,ordinal)>
+				<cfset OrdinationString = ReReplaceNoCase(OrdinationString,"#ordinal#\s+of\s+","")>
+			</cfif>
+		</cfloop>
+
+		<!--- Regular ordination --->
+		<cfloop list="#ordinals#" index="ordinal">
 			<cfif ListFindNoCase(OrdinationString,ordinal," ")>
 				<cfset num = num * ListFindNoCase(ordinals,ordinal)>
 			</cfif>
@@ -101,6 +113,8 @@
 		</cfif>
 		<!--- Check if day of week is specified --->
 		<cfloop list="#weekdays#" index="weekday">
+			<!--- Make sure user could pluralize the weekday and this would still work. --->
+			<cfset arguments.interval = ReplaceNoCase(arguments.interval,"#weekday#s",weekday,"ALL")>
 			<cfif ListFindNoCase(arguments.interval,weekday," ")>
 				<!--- Make sure the date given is on the day of week specified (subtract days as needed) --->
 				<cfset arguments.date = DateAdd("d",- Abs( 7 - ListFindNoCase(weekdays,weekday) + DayOfWeek(arguments.date) ) MOD 7,arguments.date)>
@@ -131,6 +145,10 @@
 		</cfif>
 
 		<cfset result = DateAdd(datepart,"#sub##num#",arguments.date)>
+
+		<cfif Val(DayOf)>
+			<cfset result = CreateDateTime(Year(result),Month(result),DayOf,Hour(result),Minute(result),Second(result))>
+		</cfif>
 	</cfif>
 
 	<cfreturn result>
