@@ -96,6 +96,7 @@
 <cffunction name="translate" access="public" returntype="string" output="no" hint="I get the requested text in the requested language.">
 	<cfargument name="Phrase" type="string" required="true">
 	<cfargument name="locale" type="string" default="#Variables.DefaultLocale#">
+	<cfargument name="remember" type="boolean" default="false" hint="Create an empty record for the phrase if it doesn't exist.">
 
 	<cfreturn getTranslation(ArgumentCollection=Arguments)>
 </cffunction>
@@ -103,14 +104,14 @@
 <cffunction name="getTranslation" access="public" returntype="string" output="no" hint="I get the requested text in the requested language.">
 	<cfargument name="Phrase" type="string" required="true">
 	<cfargument name="locale" type="string" default="#Variables.DefaultLocale#">
+	<cfargument name="remember" type="boolean" default="false" hint="Create an empty record for the phrase if it doesn't exist.">
 
 	<cfset var result = "">
 
 	<cfset Arguments.locale = formatLang(Arguments.locale)>
-	<cfset Arguments.Phrase = makePhraseKey(Arguments.Phrase)>
 
 	<cfset result = Variables.MrECache.method(
-		id="#Arguments.locale#:#Arguments.Phrase#",
+		id="#Arguments.locale#:#makePhraseKey(Arguments.Phrase)#",
 		Component=This,
 		MethodName="getTranslation_Live",
 		Args="#Arguments#"
@@ -138,8 +139,9 @@
 <cffunction name="getTranslation_Live" access="public" returntype="string" output="no" hint="I get the requested text in the requested language.">
 	<cfargument name="Phrase" type="string" required="true">
 	<cfargument name="locale" type="string" default="#Variables.DefaultLocale#">
+	<cfargument name="remember" type="boolean" default="false" hint="Create an empty record for the phrase if it doesn't exist.">
 
-	<cfset var qPhrases = getRecords(PhraseName=Arguments.Phrase,fieldlist="#Arguments.locale#,#Variables.DefaultLocale#")>
+	<cfset var qPhrases = getRecords(PhraseName=makePhraseKey(Arguments.Phrase),fieldlist="#Arguments.locale#,#Variables.DefaultLocale#")>
 	<cfset var result = "">
 
 	<cfif qPhrases.RecordCount>
@@ -148,6 +150,8 @@
 		<cfelseif Len(qPhrases[Variables.DefaultLocale][1])>
 			<cfset result = qPhrases[Variables.DefaultLocale][1]>
 		</cfif>
+	<cfelseif Arguments.remember>
+		<cfset addPhrase(Arguments.Phrase)>
 	</cfif>
 
 	<cfif NOT Len(Trim(result))>
