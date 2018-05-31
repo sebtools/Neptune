@@ -54,13 +54,15 @@
 	<cfset var sent = false>
 	<cfset var isWithinLimit = Variables.SES.isUnderSESLimit()>
 	<cfset var isFromVerified = Variables.SES.isVerified(getEmailAddress(Arguments.From))>
-	
+	<cfset var hasAttachments = ( StructKeyExists(Arguments,"Attachments") AND Len(Trim(Arguments.Attachments)) )>
+	<!--- Kind of a pain to send attachments with SES (also they have a file) limit, so (for now) any messages with attachments will be sent through the local mail server. --->
+
 	<!---
 	Here is one of the key pieces of functionality for Mailer SES.
 	It checks the quota and won't send if the threshold has been it.
 	If it can, it will revert to sending out via the traditional Mailer.
 	--->
-	<cfif isWithinLimit AND isFromVerified>
+	<cfif isWithinLimit AND isFromVerified AND NOT hasAttachments>
 		<cfset sent = sendEmail_Internal(ArgumentCollection=Arguments)>
 	<cfelseif StructKeyExists(Variables,"Mailer")>
 		<!--- If available, send mail out using the backup Mailer after the quota is met or for from addresses that cannot sent through SES. --->
@@ -72,6 +74,9 @@
 		<cfif NOT isWithinLimit>
 			<cfthrow message="Message will exceed SES limit." type="Mailer" errorcode="SESLimit">
 		</cfif>
+		<cfif hasAttachments>
+			<cfthrow message="Mailer is currently unable to send messages with attachments through SES." type="Mailer" errorcode="SESLimit">
+		</cfif>
 	</cfif>
 
 	<cfreturn sent>
@@ -79,8 +84,10 @@
 
 <cffunction name="sendEmail_Internal" access="private" returntype="boolean" output="no">
 
+	<cfset var result = false>
+
 	<cfif NOT ( StructKeyExists(Arguments,"mailerID") AND NOT Arguments.mailerID CONTAINS "ColdFusion" )>
-		<cfset Arguments.mailerID = "Amazon SES (SMTP)">
+		<cfset Arguments.mailerID = "Amazon SES (API)">
 	</cfif>
 
 	<!--- For now, we're doing a simple shield against an external process setting the mail server wrong. Need a better permanent fix here. --->
@@ -94,13 +101,69 @@
 		<cfset Arguments.Server = Variables.MailServer>
 	</cfif>
 
-	<!---
-	Since this extends com.sebtools.Mailer, the sendMail method there will do what we need.
-	We could have had our own call to the API here, but using cfmail does everything we need without having to recreate it here.
-	One advantage to switching to an API call later, however, would be getting data back about the send.
-	http://docs.aws.amazon.com/ses/latest/APIReference/API_SendEmail.html
-	--->
-	<cfreturn Super.sendEmail(ArgumentCollection=Arguments)>
+	<cfif
+			StructKeyExists(Arguments,"Contents") AND Len(Arguments.Contents)
+		AND	NOT ( StructKeyExists(Arguments,"text") AND Len(Trim(Arguments.text)) )
+		AND	NOT ( StructKeyExists(Arguments,"html") AND Len(Trim(Arguments.html)) )
+	>
+		<cfif StructKeyExists(Arguments,"type") AND Arguments.type EQ "html">
+			<cfset Arguments.html = Arguments.Contents>
+		<cfelse>
+			<cfset Arguments.text = Arguments.Contents>
+		</cfif>
+	</cfif>
+
+	<cfset Arguments.To = getEmailAddress(Arguments.To)>
+	<cftry>
+		<cfset result = Variables.SES.sendEmail(
+			ArgumentCollection=Arguments
+		)>
+	<cfcatch>
+		<cfif CFCATCH.Message CONTAINS "Missing">
+			<cfset Arguments.To = getEmailAddress(Arguments.To)>
+			<cfif StructKeyExists(Arguments,"CC")>
+				<cfset Arguments.CC = getEmailAddress(Arguments.CC)>
+			</cfif>
+			<cfif StructKeyExists(Arguments,"BCC")>
+				<cfset Arguments.BCC = getEmailAddress(Arguments.BCC)>
+			</cfif>
+			<cftry>
+				<cfset result = Variables.SES.sendEmail(
+					ArgumentCollection=Arguments
+				)>
+			<cfcatch>
+				<cfset rethrowMessage(CFCATCH,"#CFCATCH.message# (to=#Arguments.To#)")>
+			</cfcatch>
+			</cftry>
+		</cfif>
+		<cfset rethrowMessage(CFCATCH,"#CFCATCH.message# (to=#Arguments.To#)")>
+	</cfcatch>
+	</cftry>
+
+	<cfset Arguments.MessageID = result.XmlText>
+
+	<cfset logSend(argumentCollection=arguments)>
+
+	<cfreturn true>
+</cffunction>
+
+<!--- https://blog.pengoworks.com/index.cfm/2011/5/26/Modifying-the-message-in-a-CFCATCH-before-rethrowing-error --->
+<cffunction name="rethrowMessage" access="private" returntype="void" output="false" hint="Rethrow a CFCATCH error, but allows customizing the message key">
+	<cfargument name="cfcatch" type="any" required="true">
+	<cfargument name="message" type="string" required="false">
+
+	<cfset var exception = "">
+
+	<cfif NOT StructKeyExists(Arguments, "message")>
+		<cfset Arguments.message = Arguments.cfcatch.message>
+	</cfif>
+
+	<cfset exception = createObject("java", "java.lang.Exception").init(Arguments.message)>
+	<cfset exception.initCause(Arguments.cfcatch.getCause())>
+	<cfset exception.setStackTrace(Arguments.cfcatch.getStackTrace())>
+
+	<cfthrow object="#exception#">
+
 </cffunction>
 
 </cfcomponent>

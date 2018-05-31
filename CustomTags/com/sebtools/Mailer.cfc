@@ -718,6 +718,7 @@
 			<field ColumnName="MailMode" CF_DataType="CF_SQL_VARCHAR" Length="10" />
 			<field ColumnName="Server" CF_DataType="CF_SQL_VARCHAR" Length="180" />
 			<field ColumnName="ResendOfLogID" CF_DataType="CF_SQL_INTEGER" />
+			<field ColumnName="MessageID" CF_DataType="CF_SQL_VARCHAR" Length="240" />
 		</table>
 	</tables>
 	</cfoutput></cfsavecontent>
