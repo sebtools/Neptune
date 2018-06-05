@@ -140,7 +140,11 @@
 	</cfcatch>
 	</cftry>
 
-	<cfset Arguments.MessageID = result.XmlText>
+	<cfif IsSimpleValue(result)>
+		<cfset Arguments.MessageID = result>
+	<cfelse>
+		<cfset Arguments.MessageID = result.XmlText>
+	</cfif>
 
 	<cfset logSend(argumentCollection=arguments)>
 
