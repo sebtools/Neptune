@@ -1,16 +1,17 @@
 <!---
-1.0 RC8 (Build 120)
-Last Updated: 2011-01-16
+1.0 RC9 (Build 121)
+Last Updated: 2011-10-11
 Created by Steve Bryant 2004-06-01
-Information: sebtools.com
+Information: http://www.bryantwebconsulting.com/docs/sebtags/?version=1.0
 Documentation:
-http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
+http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 ---><cfset TagName = "cf_sebSubForm"><cfset ParentTag = "cf_sebForm">
 <cfif NOT isDefined("ThisTag.ExecutionMode") OR NOT ListFindNoCase(GetBaseTagList(), ParentTag)><cfthrow message="&lt;#TagName#&gt; must be called as a custom tag between &lt;#ParentTag#&gt; and &lt;/#ParentTag#&gt;" type="cftag"></cfif>
 
 <cfswitch expression="#ThisTag.ExecutionMode#">
 
 <cfcase value="Start">
+	<cfinclude template="sebUdf.cfm">
 	<cfassociate basetag="#ParentTag#" datacollection="subforms">
 	<cfparam name="attributes.tablename" default="">
 	<cfparam name="attributes.query" default="">
@@ -28,6 +29,8 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 	
 	<cfset ParentData = getBaseTagData("cf_sebForm")>
 	<cfset ParentAtts = ParentData.attributes>
+
+	<cfparam name="attributes.isHandlingFiles" default="#ParentAtts.isHandlingFiles#" type="boolean">
 	
 	<!--- Get form defaults from component --->
 	<cfif
@@ -53,6 +56,9 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 				</cfif>
 				<cfif StructKeyExists(sCompMeta,"method_delete") AND Len(sCompMeta.method_delete) AND NOT isDefined("attributes.CFC_DeleteMethod")>
 					<cfset attributes.CFC_DeleteMethod = sCompMeta.method_delete>
+				</cfif>
+				<cfif StructKeyExists(sCompMeta,"property_handles_files") AND isBooolean(sCompMeta.property_handles_files)>
+					<cfset attributes.isHandlingFiles = NOT sCompMeta.property_handles_files>
 				</cfif>
 				<cfif StructKeyExists(sCompMeta,"catch_types") AND Len(sCompMeta.catch_types) AND NOT ListFindNoCase(attributes.CatchErrTypes,sCompMeta.catch_types)>
 					<cfset ParentAtts.CatchErrTypes = ListAppend(ParentAtts.CatchErrTypes,sCompMeta.catch_types)>
@@ -391,9 +397,9 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 									WHERE	#attributes.fkfield# <> <cfqueryparam value="#form.pkfield#" cfsqltype="CF_SQL_INTEGER">
 										AND	#attributes.qfields[thisField].dbfield# = '#attributes.qfields[thisField].value#'
 									</cfquery>
-									<cfif qsebformGetDeleteFiles.RecordCount eq 0 AND FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+									<cfif qsebformGetDeleteFiles.RecordCount EQ 0><cfset deleteFile(thisFile,attributes.isHandlingFiles)></cfif>
 								<cfelse>
-									<cfif FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+									<cfset deleteFile(thisFile,attributes.isHandlingFiles)>
 								</cfif>
 							</cfif>
 							<!--- /If this is a file field, delete the file (unless it is still in use) --->

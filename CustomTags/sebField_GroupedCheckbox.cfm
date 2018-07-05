@@ -1,4 +1,5 @@
 <cfsilent>
+	<cfparam name="attributes.fieldtype" default="checkbox">
 <!--- Make sure subquery exists --->
 <cfif
 	NOT (
@@ -25,7 +26,7 @@
 		<div class="#attributes.id#_groupout" id="#attributes.id#_groupout_#qRecords[attributes.groupfield][CurrentRow]#">
 			<strong class="#attributes.id#_grouplabel" id="#attributes.id#_grouplabel_#qRecords[attributes.groupfield][CurrentRow]#">#qRecords[attributes.grouplabel][CurrentRow]#</strong>
 			<div class="#attributes.id#_groupin" id="#attributes.id#_groupin_#qRecords[attributes.groupfield][CurrentRow]#"><cfoutput><cfset thisID = "#attributes.id#_#CurrentRow#">
-				<input type="checkbox" id="#thisID#" name="#attributes.fieldname#" value="#HTMLEditFormat(qRecords[attributes.subvalues][CurrentRow])#"<cfif ListFindNoCase(attributes.value,qRecords[attributes.subvalues][CurrentRow])> checked="checked"</cfif>/> <label id="lbl-#thisID#" for="#thisID#">#qRecords[attributes.subdisplays][CurrentRow]#</label><br/></cfoutput>
+				<input type="#attributes.fieldtype#" id="#thisID#" name="#attributes.fieldname#" value="#HTMLEditFormat(qRecords[attributes.subvalues][CurrentRow])#"<cfif ListFindNoCase(attributes.value,qRecords[attributes.subvalues][CurrentRow])> checked="checked"</cfif>/> <label id="lbl-#thisID#" for="#thisID#">#qRecords[attributes.subdisplays][CurrentRow]#</label><br/></cfoutput>
 			</div>
 		</div>
 	</cfoutput>

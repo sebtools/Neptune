@@ -1,5 +1,7 @@
 <cfparam name="attributes.starthour" type="numeric" default="6">
 <cfparam name="attributes.endhour" type="numeric" default="20">
+<cfparam name="attributes.hasJQuery" type="boolean" default="false">
+<cfparam name="attributes.librarypath" type="string" default="/lib/">
 
 <cfset attributes.starthour = Int(attributes.starthour)>
 <cfset attributes.endhour = Int(attributes.endhour)>
@@ -18,21 +20,14 @@
 </cfif>
 
 <cfif NOT isDefined("request.sebField_jtime")>
-	<cfsavecontent variable="head"><cfoutput><script src="/lib/jquery.js"></script><link rel="stylesheet" href="/lib/jtime/clockpick.css" type="text/css"><script src="/lib/jtime/jquery.clockpick.js"></script></cfoutput></cfsavecontent>
+	<cfsavecontent variable="head"><cfoutput><cfif NOT attributes.hasJQuery><script src="#attributes.librarypath#jquery.js"></script></cfif><link rel="stylesheet" href="#attributes.librarypath#jquery/jquery.clockpick.1.2.9.css" type="text/css"><script src="#attributes.librarypath#jquery/jquery.clockpick.1.2.9.min.js"></script></cfoutput></cfsavecontent>
 	<cfhtmlhead text="#head#">
-	<cfset request.sebField_jtime = now()>
-</cfif>
-<cfsavecontent variable="head2"><cfoutput><script type="text/javascript">$(document).ready(function() {
-	$("###attributes.id#").clockpick(
-		{
-			starthour : #attributes.starthour#,
-			endhour : #attributes.endhour#,
-			hoursopacity: 0.8,
-			minutesopacity: 0.8
-		}
-	);
+<cfsavecontent variable="head2"><cfoutput><script type="text/javascript">$(function() {
+	$( 'input[type="text"].jtime' ).clockpick();
 });</script></cfoutput></cfsavecontent>
 <cfhtmlhead text="#head2#">
+	<cfset request.sebField_jtime = now()>
+</cfif>
 
 <cfset attributes.fieldname = "#attributes.fieldname#">
 

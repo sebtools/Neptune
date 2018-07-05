@@ -11,6 +11,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 <cfswitch expression="#ThisTag.ExecutionMode#">
 
 <cfcase value="Start">
+	<cfinclude template="sebUdf.cfm">
 	<cfassociate basetag="#ParentTag#" datacollection="subforms">
 	<cfparam name="attributes.datatable">
 	<cfparam name="attributes.relatetable">
@@ -21,6 +22,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 	<cfparam name="attributes.useFieldset" default="true" type="boolean">
 	<cfset ParentAtts = request.cftags[ParentTag].attributes>
 	<cfif Not Len(ParentAtts.datasource)><cfthrow message="&lt;#TagName#&gt;: datasource attribute for &lt;#ParentTag#&gt; must be provided in order to use &lt;#TagName#&gt;" type="cftag"></cfif>
+	<cfparam name="attributes.isHandlingFiles" default="#ParentAtts.isHandlingFiles#" type="boolean">
 	<cfquery name="qdatadata" datasource="#ParentAtts.datasource#">SELECT * FROM #attributes.datatable#<cfif Len(attributes.orderBy)> ORDER BY #attributes.orderBy#</cfif></cfquery>
 	<cfquery name="qdatadata" datasource="#ParentAtts.datasource#">SELECT * FROM #attributes.datatable#<cfif Len(attributes.orderBy)> ORDER BY #attributes.orderBy#</cfif></cfquery>
 	<cfscript>
@@ -253,9 +255,9 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 									WHERE	#attributes.fkfield# <> <cfqueryparam value="#form.pkfield#" cfsqltype="CF_SQL_INTEGER">
 										AND	#attributes.qfields[thisField].dbfield# = '#attributes.qfields[thisField].value#'
 									</cfquery>
-									<cfif qsebformGetDeleteFiles.RecordCount eq 0 AND FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+									<cfif qsebformGetDeleteFiles.RecordCount EQ 0><cfset deleteFile(thisFile,attributes.isHandlingFiles)></cfif>
 								<cfelse>
-									<cfif FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+									<cfset deleteFile(thisFile,attributes.isHandlingFiles)>
 								</cfif>
 							</cfif>
 							<!--- /If this is a file field, delete the file (unless it is still in use) --->

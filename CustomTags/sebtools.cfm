@@ -58,4 +58,17 @@ sebtools.skins.tim = StructNew();
 sebtools.skins.tim.format = "table";
 sebtools.skins.tim.shape = "round";
 sebtools.skins.tim.menutype = "roundtab";
+
+if ( StructKeyExists(Attributes,"returnvar") ) {
+	if ( NOT StructKeyExists(Caller,attributes.returnvar) ) {
+		Caller[attributes.returnvar] = StructNew();
+	}
+	if ( NOT isStruct(Caller[attributes.returnvar]) ) {
+		Caller[attributes.returnvar] = StructNew();
+	}
+	if ( NOT StructKeyExists(Caller[attributes.returnvar],"sebtools") ) {
+		Caller[attributes.returnvar]["sebtools"] = StructNew();
+	}
+	Caller[attributes.returnvar]["sebtools"] = sebtools;
+}
 </cfscript>

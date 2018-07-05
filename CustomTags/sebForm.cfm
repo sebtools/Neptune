@@ -1,10 +1,10 @@
 <!---
-1.0 RC8 (Build 120)
-Last Updated: 2011-01-16
+1.0 RC9 (Build 121)
+Last Updated: 2011-10-11
 Created by Steve Bryant 2004-06-01
-Information: sebtools.com
+Information: http://www.bryantwebconsulting.com/docs/sebtags/?version=1.0
 Documentation:
-http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
+http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 ---><cfsilent><cfparam name="request.isQformLoaded" type="boolean" default="false">
 <cfset TagName = "cf_sebForm"><cfif NOT isDefined("ThisTag.ExecutionMode")><cfthrow message="#TagName# must be called as a custom tag" type="cftag"></cfif>
 <cfif ThisTag.ExecutionMode eq "Start">
@@ -23,17 +23,21 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	TagInfo.sValidations = StructNew();
 	TagInfo.sValidations["Email"] = "^['_a-z0-9-]+(\.['_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*\.(([a-z]{2,3})|(aero|coop|info|museum|name|jobs|travel))$";
 	TagInfo.sValidations["Email"] = "\b\s*[\w\-\+_]+(\.[\w\-\+_]+)*\@[\w\-\+_]+\.[\w\-\+_]+(\.[\w\-\+_]+)*\s*\b";
-	TagInfo.sValidations["Email"] = "\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b";
-	TagInfo.sValidations["Email"] = "^([a-zA-Z0-9_.-])+@(([a-zA-Z0-9-])+.)+([a-zA-Z0-9]{2,4})+$";
-	TagInfo.sValidations["Email"] = "^[\w\-\+_]+(\.[\w\-\+_]+)*\@[\w\-\+_]+\.[\w\-\+_]+(\.[\w\-\+_]+)*$";
+	TagInfo.sValidations["Email"] = "^[A-Z0-9\._%+-]+@[A-Z0-9.-]+\.[A-Z]+$";
+	TagInfo.sValidations["Email"] = "^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$";
+	TagInfo.sValidations["Email"] = "\.";
+	//TagInfo.sValidations["Email"] = "^[\w\-\+_]+(\.[\w\-\+_]+)*\@[\w\-\+_]+\.[\w\-\+_]+(\.[\w\-\+_]+)*$";
+	TagInfo.sValidations["Email"] = "^([a-zA-Z0-9_.-])+@(([a-zA-Z0-9-])+.)+([a-zA-Z0-9]{2,6})+$";
+	TagInfo.sValidations["Email"] = "^[^ @]+@[^ @]+$";
 	TagInfo.sValidations["GUID"] = "^(\{{0,1}([0-9a-fA-F]){8}-([0-9a-fA-F]){4}-([0-9a-fA-F]){4}-([0-9a-fA-F]){4}-([0-9a-fA-F]){12}\}{0,1})$";
 	TagInfo.sValidations["zipcode"] = "^[0-9]{5}(-[0-9]{4})?$";
-	TagInfo.sValidations["integer"] = "^[0-9]*$";
+	TagInfo.sValidations["integer"] = "^[0-9]{0,9}$";
+	TagInfo.sValidations["decimal"] = "^[0-9]{0,9}(\.[0-9]*)?$";
 	TagInfo.sValidations["url"] = "https?://([-\w\.]+)+(:\d+)?(/([\w/_\.]*(\?\S+)?)?)?";
-	
-	
+
+
 	wysytypes = "xwysiwyg,htmlarea,xstandard";
-	
+
 	/* || ATTRIBUTES INITIALIZATION || */
 	if ( NOT isDefined("request.sebFormNum") ) {
 		setDefaultAtt("name","frmSebform");
@@ -53,7 +57,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	if ( NOT StructKeyExists(attributes.config, "EmailFields") ) {
 		attributes.config.EmailFields = StructNew();
 	}
-	
+
 	//attributes for this form (by id)
 	if ( StructKeyExists(Caller, "sebFormAttributes") ) {
 		StructAppend(attributes, Caller.sebFormAttributes, "no");
@@ -117,16 +121,21 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	setDefaultAtt("sendback",false);
 	setDefaultAtt("Query_String",CGI.QUERY_STRING);
 	setDefaultAtt("stripurlvars","");
-	
+	setDefaultAtt("isDeletable","");
+	setDefaultAtt("isEditable","");
+	setDefaultAtt("minimize","true");
+	setDefaultAtt("isSubmitting","false");
+	setDefaultAtt("isHandlingFiles",true);
+
 	Referrer = CGI.HTTP_REFERER;
-	
+
 	if  ( Len(attributes.stripurlvars) ) {
 		attributes.Query_String = QueryStringDeleteVar(attributes.stripurlvars,attributes.Query_String);
-		
+
 		if ( ListLen(Referrer,"?") EQ 2 ) {
 			Referrer = ListFirst(CGI.HTTP_REFERER,"?") & "?" & QueryStringDeleteVar(attributes.stripurlvars,ListRest(CGI.HTTP_REFERER,"?"));
 		}
-		
+
 	}
 	if ( attributes.sendback ) {
 		if ( StructKeyExists(sForm,"sebForm_Forward") ) {
@@ -145,7 +154,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 		setDefaultAtt("recordid",0);
 	}
 	setDefaultAtt("altertable",false);
-	
+
 	for (i=1; i lte ListLen(TagInfo.liHtmlAtts); i=i+1) {
 		thisAtt = ListGetAt(TagInfo.liHtmlAtts, i);
 		setDefaultAtt(thisAtt);
@@ -154,7 +163,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 		setDefaultAtt("action", "#CGI.SCRIPT_NAME#?#CGI.Query_String#");
 	} else {
 		setDefaultAtt("action", "#CGI.SCRIPT_NAME#");
-	} 
+	}
 	setDefaultAtt("enctype");
 	setDefaultAtt("target");
 	setDefaultAtt("librarypath","/lib/");
@@ -176,25 +185,26 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	setDefaultAtt("SubmitBarLabels","Submit,Cancel,Delete");
 	setDefaultAtt("deletable",true);
 	setDefaultAtt("useSebFieldsOnly",false);
+	setDefaultAtt("useSebFormMetaFields",true);
 	setDefaultAtt("hasOtherFields",false);
 	setDefaultAtt("Config_Label","{[Label][ReqMark][Colon]}");
 	setDefaultAtt("useSessionMessages",false);
 	setDefaultAtt("Message_Completion","");
 	setDefaultAtt("Message_Deletion","");
-	
+
 	Caller[attributes.returnvar] = StructNew();
 	Caller[attributes.returnvar].fields = StructNew();
 	Caller[attributes.returnvar].sForm = sForm;
-	
+
 	/*
 	if ( (Len(attributes.datasource) AND Len(attributes.dbtable)) OR (isDefined("attributes.CFC_Component") AND isDefined("attributes.CFC_GetMethod")) OR (isDefined("attributes.CFC_Component") AND isDefined("attributes.CFC_Method")) ) {
 		TagInfo.liRequiredAtts = ListAppend(TagInfo.liRequiredAtts, "pkfield");
 	}
 	*/
-	
-	
+
+
 	ThisTag.output = StructNew();
-	
+
 	doSQLDDL = false;
 	</cfscript><!--- || CHECK FOR REQUIRED ATTRIBUTES || ---><cfif Len(TagInfo.liRequiredAtts)><cfloop index="thisReqAtt" list="#TagInfo.liRequiredAtts#"><cfif NOT Len(attributes[thisReqAtt])><cfthrow message="#thisReqAtt# is a required attribute for &lt;#TagInfo.TagName#&gt;" type="cftag"></cfif></cfloop></cfif>
 	<cfinclude template="sebtools.cfm">
@@ -211,7 +221,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 		attributes.format = "semantic";
 	}
 	// || ADJUST INCOMING ATTRIBUTES ||
-	
+
 	/* Make sure library path ends with "/" */
 	if ( right(attributes.librarypath, 1) neq "/" ) {
 		attributes.librarypath = attributes.librarypath & "/";
@@ -221,7 +231,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	} else {
 		attributes.class = "seb sebform";
 	}
-	
+
 	if ( ListLen(attributes.SubmitBarLabels) LT 1 ) {
 		attributes.SubmitBarLabels = ListAppend(attributes.SubmitBarLabels,"Submit");
 	}
@@ -231,7 +241,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	if ( ListLen(attributes.SubmitBarLabels) LT 3 ) {
 		attributes.SubmitBarLabels = ListAppend(attributes.SubmitBarLabels,"Delete");
 	}
-	
+
 	//Clean up all forms for Mac
 	//FixMacPost()
 	if (findNoCase("mac", CGI.HTTP_USER_AGENT) AND findNoCase("msie", CGI.HTTP_USER_AGENT)) {
@@ -241,7 +251,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 			}
 		}
 	}
-	
+
 	//Add any specified validations
 	if ( StructKeyExists(attributes,"validations") AND isStruct(attributes.validations) ) {
 		StructAppend(attributes.validations,TagInfo.sValidations,false);
@@ -252,7 +262,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	<cfif attributes.altertable and (NOT StructKeyExists(attributes,"dbtype") OR NOT Len(attributes.dbtype)) >
 		<cfthrow message="You must specify a dbtype (msa,mys,sql) if you set altertable to true." type="cftag">
 	</cfif>
-	
+
 	<!--- Get form defaults from component --->
 	<cfif
 			isDefined("attributes.CFC_Component")
@@ -281,6 +291,9 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 				<cfif StructKeyExists(sCompMeta,"property_deletable") AND Len(sCompMeta.property_deletable)>
 					<cfset attributes.isDeletable = sCompMeta.property_deletable>
 				</cfif>
+				<cfif StructKeyExists(sCompMeta,"property_handles_files") AND isBoolean(sCompMeta.property_handles_files)>
+					<cfset attributes.isHandlingFiles = NOT sCompMeta.property_handles_files>
+				</cfif>
 				<cfif StructKeyExists(sCompMeta,"property_pktype") AND Len(sCompMeta.property_pktype)>
 					<cfif attributes.pktype NEQ "identity" AND attributes.pktype NEQ "GUID">
 						<cfif attributes.pktype EQ "idstamp">
@@ -305,7 +318,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 		</cfcatch>
 		</cftry>
 	</cfif>
-	
+
 	<!--- Get field defaults from component --->
 	<cfif
 			isDefined("attributes.CFC_Component")
@@ -317,7 +330,13 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 			)
 	>
 		<cftry>
-			<cfset attributes.sFields = attributes.CFC_Component.getFieldsStruct(transformer="sebField")>
+			<cfinvoke returnvariable="attributes.sFields" component="#attributes.CFC_Component#" method="getFieldsStruct">
+				<cfinvokeargument name="transformer" value="sebField">
+				<cfif StructKeyExists(attributes,"pkfield") and Len(attributes.pkfield)>
+					<cfinvokeargument name="#attributes.pkfield#" value="#attributes.recordid#">
+				</cfif>
+			</cfinvoke>
+			<!---<cfset attributes.sFields = attributes.CFC_Component.getFieldsStruct(transformer="sebField")>--->
 			<!--- If component has getFieldStruct, make sure to catch "Master" errors --->
 			<cfif NOT ListFindNoCase(attributes.CatchErrTypes,"Master")>
 				<cfset attributes.CatchErrTypes = ListAppend(attributes.CatchErrTypes,"Master")>
@@ -329,7 +348,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 		</cfcatch>
 		</cftry>
 	</cfif>
-	
+
 	<cfscript>
 	if ( attributes.pktype eq "GUID" AND Len(attributes.recordid) neq 36 AND NOT (isDefined("attributes.CFC_Component") AND isDefined("attributes.CFC_GetMethod")) ) {
 		attributes.recordid = '';
@@ -341,23 +360,23 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	}
 	attributes.datatype = datatype;
 	</cfscript>
-	
+
 	<!--- || HTML CONFIGURATION || --->
 	<cfset ThisTag.config = StructNew()>
 	<cfset ThisTag.config.Fields = StructNew()>
 	<cfset ThisTag.config.EmailFields = StructNew()>
-	<cfsavecontent variable="ThisTag.config.ErrorHeader"><div class="sebform-error"><b>We're Sorry. Some information is missing or incomplete:</b><br/><br/><ul>[Errors]</ul><br/>Please try again.</div></cfsavecontent>
+	<cfsavecontent variable="ThisTag.config.ErrorHeader"><div class="sebform-error"><b>We're sorry. Some information is missing or incomplete:</b><br/><br/><ul>[Errors]</ul><br/>Please try again.</div></cfsavecontent>
 	<cfsavecontent variable="ThisTag.config.ErrorItem"><li>[Error]</li></cfsavecontent>
 	<cfsavecontent variable="ThisTag.config.ReqMark"><span class="sebReq">*</span></cfsavecontent>
 	<cfsavecontent variable="ThisTag.config.Colon">:</cfsavecontent>
 	<cfif attributes.Format eq "Table">
-		<cfsavecontent variable="ThisTag.config.Layout"><cfoutput><div<cfif Len(Trim(attributes.skin))> class=" sebForm-skin-#LCase(attributes.skin)#"</cfif>><div id="sebForm" class="sebFormat-table">[ErrorHeader]<form><table border="0" cellspacing="0" cellpadding="3">[Fields]</table></form></div></div></cfoutput></cfsavecontent>
-		<cfsavecontent variable="ThisTag.config.Fields.all"><tr id="row-[id]"><cfoutput><td valign="top" class="label"><label for="[id]">#attributes.Config_Label#</label></td><td valign="top">[Input]<div class="sebHelp">[Help]</div></td></tr></cfoutput></cfsavecontent>
+		<cfsavecontent variable="ThisTag.config.Layout"><cfoutput><div<cfif Len(Trim(attributes.skin))> class=" sebForm-skin-#LCase(attributes.skin)#"</cfif>><div id="sebForm" class="sebFormat-table">[ErrorHeader]<form><table border="0" cellspacing="0" cellpadding="3" class="sebFormTable">[Fields]</table></form></div></div></cfoutput></cfsavecontent>
+		<cfsavecontent variable="ThisTag.config.Fields.all"><tr id="row-[id]"><cfoutput><td valign="top" class="label">#attributes.Config_Label#</td><td valign="top">[Input]<div class="sebHelp">[Help]</div><div class="sebValidation"></div></td></tr></cfoutput></cfsavecontent>
 	<cfelse>
 		<cfsavecontent variable="ThisTag.config.Layout"><cfoutput><div<cfif Len(Trim(attributes.skin))> class=" sebForm-skin-#LCase(attributes.skin)#"</cfif>><div id="sebForm" class="sebFormat-semantic">[ErrorHeader]<form>[Fields]</form></div></div></cfoutput></cfsavecontent>
-		<cfsavecontent variable="ThisTag.config.Fields.all"><div id="div-[id]"><cfoutput><label for="[id]">#attributes.Config_Label#</label>[Input]<div class="sebHelp">[Help]</div></div></cfoutput></cfsavecontent>
+		<cfsavecontent variable="ThisTag.config.Fields.all"><div id="div-[id]" class="sebfielddiv"><cfoutput>#attributes.Config_Label#[Input]<div class="sebHelp">[Help]</div><div class="sebValidation"></div></div></cfoutput></cfsavecontent>
 	</cfif>
-	
+
 	<cfsavecontent variable="ThisTag.config.EmailLayout">[Fields]</cfsavecontent>
 	<cfif attributes.emailtype eq "html">
 		<cfsavecontent variable="ThisTag.config.EmailFields.all"><cfoutput>{[label][Colon] }[value]<br/>#cr#<br/>#cr#</cfoutput></cfsavecontent>
@@ -424,7 +443,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 			</cfif>
 		</cfcatch>
 	</cftry>
-	
+
 	<cfif attributes.qFormData.RecordCount AND ListFindNoCase(attributes.qFormData.ColumnList,attributes.pkfield)>
 		<cfset attributes.recordid = attributes.qFormData[attributes.pkfield][1]>
 	</cfif>
@@ -457,7 +476,13 @@ FieldsArrayOutput = "";
 		<cfif StructKeyExists(attributes,"FieldsArray") AND isArray(attributes.FieldsArray)>
 			<cfset aDefFields = attributes.FieldsArray>
 		<cfelse>
-			<cfset aDefFields = attributes.CFC_Component.getFieldsArray(transformer='sebField')>
+			<cfinvoke returnvariable="aDefFields" component="#attributes.CFC_Component#" method="getFieldsArray">
+				<cfinvokeargument name="transformer" value="sebField">
+				<cfif Len(attributes.pkfield)>
+					<cfinvokeargument name="#attributes.pkfield#" value="#attributes.recordid#">
+				</cfif>
+			</cfinvoke>
+			<!---<cfset aDefFields = attributes.CFC_Component.getFieldsArray(transformer='sebField')>--->
 		</cfif>
 		<cfif ArrayLen(aDefFields)>
 			<cfsavecontent variable="FieldsArrayOutput">
@@ -502,6 +527,9 @@ SebFieldList = "pkfield";
 for (thisField=1; thisField lte ArrayLen(ThisTag.qfields); thisField=thisField+1 ) {
 	SebFieldList = ListAppend(SebFieldList,ThisTag.qfields[thisField].fieldname);
 	SebFieldList = ListAppend(SebFieldList,"delete#ThisTag.qfields[thisField].fieldname#");
+	if ( StructKeyExists(ThisTag.qfields[thisField],"otherfield") AND Len(ThisTag.qfields[thisField]["otherfield"]) ) {
+		SebFieldList = ListAppend(SebFieldList,ThisTag.qfields[thisField]["otherfield"]);
+	}
 	/* Add field value to structure returned to page */
 	if ( Len(ThisTag.qfields[thisField].fieldname) ) {
 		Caller[attributes.returnvar]["fields"][ThisTag.qfields[thisField].fieldname] = ThisTag.qfields[thisField].value;
@@ -509,12 +537,12 @@ for (thisField=1; thisField lte ArrayLen(ThisTag.qfields); thisField=thisField+1
 	/* Add all dbfield except those that are for a related table (used for many-many relations) */
 	if ( Len(ThisTag.qfields[thisField].dbfield) AND NOT (StructKeyExists(ThisTag.qfields[thisField],"reltable") AND Len(ThisTag.qfields[thisField].reltable)) ) {
 		ArrayAppend(arrFields, ThisTag.qfields[thisField]);
-		
+
 		//If this field is not in the database, mark that a SQL DDL statement is needed
 		if ( NOT ListFindNoCase(attributes.qFormData.ColumnList, ThisTag.qfields[thisField].dbfield)  ) {
 			doSQLDDL = true;
 		}
-		
+
 		//Set enctype correctly for type=file
 		if ( ThisTag.qfields[thisField].type eq "file" ) {
 			attributes.enctype = "multipart/form-data";
@@ -529,7 +557,7 @@ for (thisField=1; thisField lte ArrayLen(ThisTag.qfields); thisField=thisField+1
 	if ( StructKeyExists(ThisTag.qfields[thisField],"reltable") AND Len(ThisTag.qfields[thisField].reltable) ) {
 		liRelateTableFields = ListAppend(liRelateTableFields,thisField);
 	}
-	
+
 	//check for xdate
 	if ( ThisTag.qfields[thisField].type eq "xdate" ) {
 		hasDateField = true;
@@ -588,10 +616,26 @@ if ( isDefined("ThisTag.subforms") ) {
 </cfif>
 <cfset Caller[attributes.returnvar]["sebFields"] = ThisTag.qfields>
 
-<!--- || HANDLE FORM SUBMISSION || --->
+<cfif Attributes.isSubmitting EQ true AND NOT StructCount(sForm)>
+	<cfloop index="ii" from="1" to="#ArrayLen(ThisTag.qFields)#">
+		<cfif
+				StructKeyExists(ThisTag.qFields[ii],"name")
+			AND	StructKeyExists(ThisTag.qFields[ii],"defaultValue")
+			AND	Len(ThisTag.qFields[ii].defaultValue)
+		>
+			<cfset sForm[ThisTag.qFields[ii].name] = ThisTag.qFields[ii].defaultValue>
+		</cfif>
+	</cfloop>
+</cfif>
+
 <cfif isDefined("sForm.sebformsubmit") AND sForm.sebformsubmit EQ Hash(attributes.formname)>
+	<cfset Attributes.isSubmitting = true>
+</cfif>
+
+<!--- || HANDLE FORM SUBMISSION || --->
+<cfif Attributes.isSubmitting EQ true>
 	<!--- sebformsubmit only exists to determine form submission, so it is needed after this point --->
-	
+
 	<!--- Scrub other options --->
 	<cfloop index="ii" from="1" to="#ArrayLen(ThisTag.qFields)#" step="1">
 		<!--- Is this field being passed in? --->
@@ -618,18 +662,18 @@ if ( isDefined("ThisTag.subforms") ) {
 						</cfloop>
 					</cfif>
 				</cfif>
-				
+
 				<cfif NOT isOtherOptionChosen>
 					<cfset sForm[ThisTag.qFields[ii].otherfield] = "">
 				</cfif>
 			</cfif>
-			
+
 			<cfif StructKeyExists(sForm,ThisTag.qFields[ii].name) AND ListFindNoCase(sForm[ThisTag.qFields[ii].name],"SebFormOtherValue")>
 				<cfset sForm[ThisTag.qFields[ii].name] = ListDeleteAt(sForm[ThisTag.qFields[ii].name],ListFindNoCase(sForm[ThisTag.qFields[ii].name],"SebFormOtherValue"))>
 			</cfif>
 		</cfif>
 	</cfloop>
-	
+
 	<cfset StructDelete(sForm,"sebformsubmit")>
 	<cfscript>
 	//useSebFieldsOnly
@@ -645,7 +689,7 @@ if ( isDefined("ThisTag.subforms") ) {
 	<cfif NOT StructKeyExists(sForm,"pkfield")>
 		<cfset sForm.pkfield = "">
 	</cfif>
-	
+
 	<cfif StructKeyExists(attributes,"filter")>
 		<cfif NOT isArray(attributes.filter)>
 			<cfset temp = attributes.filter>
@@ -676,7 +720,7 @@ if ( isDefined("ThisTag.subforms") ) {
 			<cfset sForm.pkfield = pkval>
 		</cfif>
 	</cfif>
-	
+
 	<cfscript>
 	//Check for delete command
 	isDeletion = false;
@@ -692,13 +736,13 @@ if ( isDefined("ThisTag.subforms") ) {
 			if ( NOT StructKeyExists(sForm, ThisTag.qfields[thisField].fieldname) ) {
 				sForm[ThisTag.qfields[thisField].fieldname] = "";
 			}
-			
+
 			if ( isNumeric(ThisTag.qfields[thisField].length) AND ThisTag.qfields[thisField].length gt 0 ) {
 				if ( Len(sForm[ThisTag.qfields[thisField].fieldname]) gt ThisTag.qfields[thisField].length ) {
 					sForm[ThisTag.qfields[thisField].fieldname] = Left(sForm[ThisTag.qfields[thisField].fieldname],ThisTag.qfields[thisField].length);
 				}
 			}
-			
+
 			//Check for delete command
 			if ( StructKeyExists(sForm, ThisTag.qfields[thisField].fieldname) AND isDefined("sForm.pkfield") AND Len(sForm.pkfield) ) {
 				if ( ThisTag.qfields[thisField].type eq "delete" ) {
@@ -719,8 +763,8 @@ if ( isDefined("ThisTag.subforms") ) {
 		attributes.replyto = "";
 	}
 	</cfscript>
-	
-	
+
+
 	<!--- || HANDLE DELETION || --->
 	<!---  If main record is being deleted --->
 	<cfif isDeletion>
@@ -754,9 +798,9 @@ if ( isDefined("ThisTag.subforms") ) {
 							WHERE	#attributes.pkfield# <> <cfqueryparam value="#sForm.pkfield#" cfsqltype="#datatype#">
 								AND	#arrFields[thisField].dbfield# = '#arrFields[thisField].value#'
 							</cfquery>
-							<cfif sebformGetDeleteFiles.RecordCount eq 0 AND FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+							<cfif sebformGetDeleteFiles.RecordCount EQ 0><cfset deleteFile(thisFile,attributes.isHandlingFiles)></cfif>
 						<cfelse>
-							<cfif FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+							<cfset deleteFile(thisFile,attributes.isHandlingFiles)>
 						</cfif>
 					</cfif>
 					<!--- /If this is a file field, delete the file (unless it is still in use) --->
@@ -770,7 +814,7 @@ if ( isDefined("ThisTag.subforms") ) {
 			WHERE	#attributes.pkfield# = <cfqueryparam value="#sForm.pkfield#" cfsqltype="#datatype#">
 			</cfquery>
 		</cfif>
-		
+
 		<!--- Deletions for subforms: --->
 		<!---  If this form has any subforms --->
 		<cfif isDefined("ThisTag.subforms")>
@@ -797,10 +841,10 @@ if ( isDefined("ThisTag.subforms") ) {
 										AND	#ThisTag.subforms[i].qfields[thisField].dbfield# = '#ThisTag.subforms[i].qfields[thisField].value#'
 									</cfquery>
 									<cfif qsubformdeletedfile.RecordCount>
-										<cfif FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+										<cfset deleteFile(thisFile,attributes.isHandlingFiles)>
 									</cfif>
 								<cfelse>
-									<cfif FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+									<cfset deleteFile(thisFile,attributes.isHandlingFiles)>
 								</cfif>
 							</cfif>
 						</cfloop>
@@ -882,15 +926,15 @@ if ( isDefined("ThisTag.subforms") ) {
 		</cfloop>
 		<!--- /Loop through all groups --->
 	</cfif>
-	
-	
+
+
 	<!--- || SERVER-SIDE VALIDATION || --->
 	<cfscript>
 	if ( NOT StructKeyExists(TagInfo,"isValid") ) {
 		TagInfo.isValid = true;
 	}
-	
-	
+
+
 	// %% Add server-side validation for subforms?
 	for (thisField=1; thisField lte ArrayLen(arrFields); thisField=thisField+1 ) {
 		thisName = arrFields[thisField].fieldname;
@@ -917,6 +961,7 @@ if ( isDefined("ThisTag.subforms") ) {
 				}
 			}
 			if ( arrFields[thisField].type IS "time" ) {
+				sForm[thisName] = ReReplaceNoCase(sForm[thisName],"\.?m\.?$","m");
 				if ( isDate(sForm[thisName]) AND sForm[thisName] LT 1 ) {
 					sForm[thisName] = TimeFormat(sForm[thisName],"hh:mm:ss tt");
 				} else {
@@ -928,6 +973,9 @@ if ( isDefined("ThisTag.subforms") ) {
 			if ( ListFindNoCase("wysiwyg,FCKeditor,HTMLArea",arrFields[thisField].type) AND NOT ( StructKeyExists(arrFields[thisField],"fixAbsoluteLinks") AND arrFields[thisField].fixAbsoluteLinks IS false ) ) {
 				sForm[thisName] = fixAbsoluteLinks(sForm[thisName]);
 			}
+			if ( StructKeyExists(arrFields[thisField],"validationtype") AND arrFields[thisField].validationtype EQ "email" ) {
+				sForm[thisName] = REReplaceNoCase(sForm[thisName],"\?|,",".","ALL");
+			}
 			if ( arrFields[thisField].type EQ "text" AND StructKeyExists(arrFields[thisField],"stripregex") AND Len(arrFields[thisField].stripregex) ) {
 				sForm[thisname] = ReReplaceNoCase(sForm[thisname],arrFields[thisField].stripregex,"","ALL");
 			}
@@ -935,7 +983,7 @@ if ( isDefined("ThisTag.subforms") ) {
 				if ( NOT ReFindNoCase(arrFields[thisField].regex,sForm[thisname]) ) {
 					TagInfo.isValid = false;
 					TagInfo.liErrFields = ListAppend(TagInfo.liErrFields, thisName);
-					ArrayAppend(TagInfo.arrErrors, '"#arrFields[thisField].label#" is not valid.');				
+					ArrayAppend(TagInfo.arrErrors, '"#arrFields[thisField].label#" is not valid.');
 				}
 			}
 		} else {
@@ -953,7 +1001,7 @@ if ( isDefined("ThisTag.subforms") ) {
 			}
 		}
 		*/
-		
+
 		/* Run any qform validations */
 		if ( Len(arrFields[thisField].qformmethods) ) {
 			/* Email Validation */
@@ -981,7 +1029,7 @@ if ( isDefined("ThisTag.subforms") ) {
 			<cfquery name="qCheckUnique" datasource="#attributes.datasource#">
 			SELECT	#arrFields[thisField].dbfield#
 			FROM	#attributes.dbtable#
-			WHERE	#arrFields[thisField].dbfield# = 
+			WHERE	#arrFields[thisField].dbfield# =
 					<cfif StructKeyExists(sForm, arrFields[thisField].fieldname) AND Len(sForm[arrFields[thisField].fieldname])>
 						<cfif Len(arrFields[thisField].datatype)>
 							<cfqueryparam value="#sForm[arrFields[thisField].fieldname]#" cfsqltype="#arrFields[thisField].cfdatatype#">
@@ -1007,9 +1055,9 @@ if ( isDefined("ThisTag.subforms") ) {
 			</cfscript>
 		</cfloop>
 	</cfif>
-	<!--- /Check for unique fields --->	
-	
-	
+	<!--- /Check for unique fields --->
+
+
 	<!--- || UPLOADS || --->
 	<!---  If any file fields exist in form --->
 	<cfif hasFileField>
@@ -1017,7 +1065,8 @@ if ( isDefined("ThisTag.subforms") ) {
 		<cfif MainHasFileField>
 			<!---  main table uploads --->
 			<!---  Loop through all field in maintable --->
-			<cfloop index="thisField" from="1" to="#ArrayLen(arrFields)#" step="1"><cfset thisName = arrFields[thisField].fieldname>
+			<cfloop index="thisField" from="1" to="#ArrayLen(arrFields)#" step="1">
+				<cfset thisName = arrFields[thisField].fieldname>
 				<!---  If this is a file field --->
 				<cfif Len(thisName) AND arrFields[thisField].type eq "file">
 					<cfset thisFile = arrFields[thisField].destination & arrFields[thisField].value>
@@ -1046,14 +1095,19 @@ if ( isDefined("ThisTag.subforms") ) {
 								AND	#attributes.pkfield# <> <cfqueryparam value="#sForm.pkfield#" cfsqltype="#datatype#">
 							</cfquery>
 							<cfif qsebformGetDeleteFile.RecordCount eq 0>
-								<cfif FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+								<cfset deleteFile(thisFile,attributes.isHandlingFiles)>
 							</cfif>
-						<cfelse>
-							<cfif FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+						<!---<cfelse>
+							<cfset deleteFile(thisFile,attributes.isHandlingFiles)>--->
 						</cfif>
 					</cfif>
 					<!---  If form contains uploaded file --->
-					<cfif isDefined("sForm.#thisName#") AND Len(sForm[thisName]) AND sForm[thisName] neq "."><!---  AND FindNoCase(getTempDirectory(), sForm[thisName]) --->
+					<cfif
+							StructKeyExists(sForm,thisName)
+						AND	Len(sForm[thisName])
+						AND	sForm[thisName] neq "."
+						AND	FindNoCase(getTempDirectory(), sForm[thisName])
+					>
 						<cftry>
 							<!--- Correct accept for MS Word --->
 							<cfif ListFindNoCase(arrFields[thisField].accept,"application/msword") AND NOT ListFindNoCase(arrFields[thisField].accept,"application/unknown")>
@@ -1067,7 +1121,7 @@ if ( isDefined("ThisTag.subforms") ) {
 								<cfset arrFields[thisField].accept = ListAppend(arrFields[thisField].accept,"application/octet-stream")>
 							</cfif>
 							<cftry>
-								<cfinvoke method="uploadFile">
+								<cfinvoke returnvariable="sFile" method="uploadFile">
 									<cfinvokeargument name="FileField" value="#thisName#">
 									<cfinvokeargument name="Destination" value="#Trim(arrFields[thisField].destination)#">
 									<cfinvokeargument name="NameConflict" value="#arrFields[thisField].nameconflict#">
@@ -1076,12 +1130,8 @@ if ( isDefined("ThisTag.subforms") ) {
 									</cfif>
 									<cfinvokeargument name="extensions" value="#arrFields[thisField].extensions#">
 									<cfinvokeargument name="Mode" value="#arrFields[thisField].mode#">
+									<cfinvokeargument name="isHandlingFiles" value="#attributes.isHandlingFiles#">
 								</cfinvoke>
-								<!---<cfif Len(arrFields[thisField].accept)>
-									<cffile action="UPLOAD" filefield="#thisName#" destination="#Trim(arrFields[thisField].destination)#" nameconflict="#arrFields[thisField].nameconflict#" accept="#arrFields[thisField].accept#" mode="#arrFields[thisField].mode#">
-								<cfelse>
-									<cffile action="UPLOAD" filefield="#thisName#" destination="#Trim(arrFields[thisField].destination)#" nameconflict="#arrFields[thisField].nameconflict#" mode="#arrFields[thisField].mode#">
-								</cfif>--->
 							<cfcatch>
 								<!--- If failed file was rejected because it is same file as being used for this record, try again with overwrite --->
 								<cfif
@@ -1099,7 +1149,7 @@ if ( isDefined("ThisTag.subforms") ) {
 									AND	CFCATCH.Message CONTAINS "File overwriting is not permitted"
 									AND	CFCATCH.Detail CONTAINS attributes.qFormData[arrFields[thisField].dbfield][1]
 								>
-									<cfinvoke method="uploadFile">
+									<cfinvoke returnvariable="sFile" method="uploadFile">
 										<cfinvokeargument name="FileField" value="#thisName#">
 										<cfinvokeargument name="Destination" value="#Trim(arrFields[thisField].destination)#">
 										<cfinvokeargument name="NameConflict" value="overwrite">
@@ -1108,22 +1158,21 @@ if ( isDefined("ThisTag.subforms") ) {
 										</cfif>
 										<cfinvokeargument name="extensions" value="#arrFields[thisField].extensions#">
 										<cfinvokeargument name="Mode" value="#arrFields[thisField].mode#">
+										<cfinvokeargument name="isHandlingFiles" value="#attributes.isHandlingFiles#">
 									</cfinvoke>
-									<!---<cfif Len(arrFields[thisField].accept)>
-										<cffile action="UPLOAD" filefield="#thisName#" destination="#Trim(arrFields[thisField].destination)#" nameconflict="overwrite" accept="#arrFields[thisField].accept#" mode="#arrFields[thisField].mode#">
-									<cfelse>
-										<cffile action="UPLOAD" filefield="#thisName#" destination="#Trim(arrFields[thisField].destination)#" nameconflict="overwrite" mode="#arrFields[thisField].mode#">
-									</cfif>--->
 								<cfelse>
 									<cfrethrow>
 								</cfif>
 							</cfcatch>
 							</cftry>
-							<!--- Set form field (unless it has an unaccepted extension) --->
-							<cfif Len(cffile.ServerFile) AND NOT ( Len(Trim(arrFields[thisField].extensions)) AND NOT ListFindNoCase(Trim(arrFields[thisField].extensions),ListLast(cffile.ServerFile,".")) )>
-								<cfset sForm[thisName] = fixFileName(cffile.ServerFile,Trim(arrFields[thisField].destination))>
-							<cfelse>
-								<cfset StructDelete(sForm,thisName)>
+							<!--- Only mess with the file for field if sebForm is handling files. --->
+							<cfif attributes.isHandlingFiles>
+								<!--- Set form field (unless it has an unaccepted extension) --->
+								<cfif Len(sFile.ServerFile) AND NOT ( Len(Trim(arrFields[thisField].extensions)) AND NOT ListFindNoCase(Trim(arrFields[thisField].extensions),ListLast(sFile.ServerFile,".")) )>
+									<cfset sForm[thisName] = fixFileName(sFile.ServerFile,Trim(arrFields[thisField].destination))>
+								<cfelse>
+									<cfset StructDelete(sForm,thisName)>
+								</cfif>
 							</cfif>
 						<cfcatch>
 							<cfscript>
@@ -1140,6 +1189,7 @@ if ( isDefined("ThisTag.subforms") ) {
 							<cfset sForm[thisName] = "">
 						<cfelse>
 							<cfset sForm[thisName] = arrFields[thisField].value>
+							<cfset StructDelete(sForm,thisName)>
 						</cfif>
 					</cfif>
 					<!--- /If form contains uploaded file --->
@@ -1174,7 +1224,7 @@ if ( isDefined("ThisTag.subforms") ) {
 										<cfelse>
 											<cfset thisFile = ThisTag.subforms[i].qfields[thisField].destination & ThisTag.subforms[i].qsubdata[ThisTag.subforms[i].qfields[thisField].dbfield][j]>
 										</cfif>
-										
+
 										<!--- Delete unused file if it is being removed or updated --->
 										<cfif ThisTag.subforms[i].qfields[thisField].nameconflict eq "overwrite">
 											<cfquery name="qsebformGetDeleteFile" datasource="#attributes.datasource#">
@@ -1184,10 +1234,10 @@ if ( isDefined("ThisTag.subforms") ) {
 												AND	#ThisTag.subforms[i].qfields[thisField].dbfield# = '#ThisTag.subforms[i].qfields[thisField].value#'
 											</cfquery>
 											<cfif qsebformGetDeleteFile.RecordCount eq 0>
-												<cfif FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+												<cfset deleteFile(thisFile,attributes.isHandlingFiles)>
 											</cfif>
 										<cfelse>
-											<cfif FileExists(thisFile)><cffile action="DELETE" file="#thisFile#"></cfif>
+											<cfset deleteFile(thisFile,attributes.isHandlingFiles)>
 										</cfif>
 									</cfif>
 									<!--- If file is uploaded for this field --->
@@ -1196,10 +1246,11 @@ if ( isDefined("ThisTag.subforms") ) {
 											<cfif ListFindNoCase(ThisTag.subforms[i].qfields[thisField].accept,"application/msword") AND NOT ListFindNoCase(ThisTag.subforms[i].qfields[thisField].accept,"application/unknown")>
 												<cfset arrFields[thisField].accept = ListAppend(arrFields[thisField].accept,"application/unknown")>
 											</cfif>
-											<cfset myfile = uploadFile(filefield="#FormFieldName#",destination="#ThisTag.subforms[i].qfields[thisField].destination#",nameconflict="#ThisTag.subforms[i].qfields[thisField].nameconflict#",accept="#ThisTag.subforms[i].qfields[thisField].accept#",extensions="#ThisTag.subforms[i].qfields[thisField].extensions#",mode="#ThisTag.subforms[i].qfields[thisField].mode#")>
-											<cfset sForm[FormFieldName] = myfile.ServerFile>
-											<!---<cffile action="UPLOAD" filefield="#FormFieldName#" destination="#ThisTag.subforms[i].qfields[thisField].destination#" nameconflict="#ThisTag.subforms[i].qfields[thisField].nameconflict#" accept="#ThisTag.subforms[i].qfields[thisField].accept#" mode="#ThisTag.subforms[i].qfields[thisField].mode#">--->
-											<!---<cfset sForm[FormFieldName] = cffile.ServerFile>--->				
+											<cfset sFile = uploadFile(filefield="#FormFieldName#",destination="#ThisTag.subforms[i].qfields[thisField].destination#",nameconflict="#ThisTag.subforms[i].qfields[thisField].nameconflict#",accept="#ThisTag.subforms[i].qfields[thisField].accept#",extensions="#ThisTag.subforms[i].qfields[thisField].extensions#",mode="#ThisTag.subforms[i].qfields[thisField].mode#",isHandlingFiles=attributes.isHandlingFiles)>
+											<!--- Only mess with the file for field if sebForm is handling files. --->
+											<cfif attributes.isHandlingFiles>
+												<cfset sForm[FormFieldName] = fixFileName(sFile.ServerFile,Trim(ThisTag.subforms[i].qfields[thisField].destination))>
+											</cfif>
 										<cfcatch>
 											<cfscript>
 											sForm[thisName] = "";
@@ -1217,7 +1268,7 @@ if ( isDefined("ThisTag.subforms") ) {
 										} else {
 											if ( Len(ThisTag.subforms[i].qfields[thisField].dbfield) AND ListFindNoCase(ThisTag.subforms[i].qsubdata_ColumnList, ThisTag.subforms[i].qfields[thisField].dbfield) ) {
 												sForm[FormFieldName] = ThisTag.subforms[i].qsubdata[ThisTag.subforms[i].qfields[thisField].dbfield][j];
-											}										
+											}
 										}
 										</cfscript>
 									</cfif>
@@ -1228,7 +1279,7 @@ if ( isDefined("ThisTag.subforms") ) {
 						</cfloop>
 						<!--- /Loop through all records in subform --->
 					</cfif>
-					<!--- /If this record has existing entries for this subform --->				
+					<!--- /If this record has existing entries for this subform --->
 					<!---  If records can be added to this subform --->
 					<cfif ThisTag.subforms[i].addrows gt 0>
 						<!---  Loop through all potential new rows --->
@@ -1246,10 +1297,11 @@ if ( isDefined("ThisTag.subforms") ) {
 											<cfset arrFields[thisField].accept = ListAppend(arrFields[thisField].accept,"application/unknown")>
 										</cfif>
 										<cftry>
-											<cfset myfile = uploadFile(filefield="#FormFieldName#",destination="#ThisTag.subforms[i].qfields[thisField].destination#",nameconflict="#ThisTag.subforms[i].qfields[thisField].nameconflict#",accept="#ThisTag.subforms[i].qfields[thisField].accept#",extensions="#ThisTag.subforms[i].qfields[thisField].extensions#",mode="#ThisTag.subforms[i].qfields[thisField].mode#")>
-											<cfset sForm[FormFieldName] = myfile.ServerFile>
-											<!---<cffile action="UPLOAD" filefield="#FormFieldName#" destination="#ThisTag.subforms[i].qfields[thisField].destination#" nameconflict="#ThisTag.subforms[i].qfields[thisField].nameconflict#" accept="#ThisTag.subforms[i].qfields[thisField].accept#" mode="#ThisTag.subforms[i].qfields[thisField].mode#">--->
-											<!---<cfset sForm[FormFieldName] = cffile.ServerFile>--->				
+											<cfset sFile = uploadFile(filefield="#FormFieldName#",destination="#ThisTag.subforms[i].qfields[thisField].destination#",nameconflict="#ThisTag.subforms[i].qfields[thisField].nameconflict#",accept="#ThisTag.subforms[i].qfields[thisField].accept#",extensions="#ThisTag.subforms[i].qfields[thisField].extensions#",mode="#ThisTag.subforms[i].qfields[thisField].mode#",isHandlingFiles=attributes.isHandlingFiles)>
+											<!--- Only mess with the file for field if sebForm is handling files. --->
+											<cfif attributes.isHandlingFiles>
+												<cfset sForm[FormFieldName] = fixFileName(sFile.ServerFile,Trim(ThisTag.subforms[i].qfields[thisField].destination))>
+											</cfif>
 										<cfcatch>
 											<cfscript>
 											sForm[thisName] = "";
@@ -1278,14 +1330,19 @@ if ( isDefined("ThisTag.subforms") ) {
 		<!--- /subform uploads  --->
 	</cfif>
 	<!---  If any file fields exist in form --->
-	
-	
-	
+
+
+
 	<!--- || HANDLE INSERT/UPDATE || --->
 	<cftry>
 		<!---  If validation passes, add/edit data --->
 		<cfif TagInfo.isValid>
-			<cfif isDefined("attributes.CFC_Component") AND isDefined("attributes.CFC_Method")>
+			<cfif
+					StructKeyExists(Attributes,"CFC_Component")
+				AND	StructKeyExists(Attributes,"CFC_Method")
+				AND	Len(Attributes.CFC_Method)
+				AND	isObject(Attributes.CFC_Component)
+			>
 				<cfset argCollection = Duplicate(sForm)>
 				<!--- Handle Groups --->
 				<cfif isDefined("ThisTag.aGroups")>
@@ -1324,11 +1381,11 @@ if ( isDefined("ThisTag.subforms") ) {
 							<cfloop index="j" from="1" to="#ThisTag.subforms[i].qsubdata_RecordCount#" step="1">
 								<cfset CurrRecordID = ThisTag.subforms[i].qsubdata[ThisTag.subforms[i].pkfield][j]>
 								<cfset prefix = "#ThisTag.subforms[i].prefix#e#CurrRecordID#_">
-								
+
 								<cfset ArrayAppend(aSubFormData,StructNew())>
-								
+
 								<cfset isDeletion = true>
-								
+
 								<cfset aSubFormData[Arraylen(aSubFormData)][ThisTag.subforms[i].pkfield] = CurrRecordID>
 								<cfloop index="thisField" from="1" to="#ArrayLen(ThisTag.subforms[i].qfields)#" step="1">
 									<cfset FormFieldName = "#prefix##ThisTag.subforms[i].qfields[thisField].fieldname#">
@@ -1350,7 +1407,7 @@ if ( isDefined("ThisTag.subforms") ) {
 								</cfif>
 							</cfloop>
 						</cfif>
-						
+
 						<!--- If subform can add records --->
 						<cfif ThisTag.subforms[i].addrows>
 							<!---  Loop over all possible new entries for subforms --->
@@ -1414,12 +1471,12 @@ if ( isDefined("ThisTag.subforms") ) {
 					<!--- Perform CFC Methods for sub forms --->
 					<cfif isDefined("ThisTag.subforms")>
 						<cfloop index="i" from="1" to="#ArrayLen(ThisTag.subforms)#" step="1">
-							<cfif StructKeyExists(ThisTag.subforms[i],"CFC_Method") AND StructKeyExists(ThisTag.subforms[i],"aSubFormData") AND ArrayLen(ThisTag.subforms[i].aSubFormData)>
+							<cfif StructKeyExists(ThisTag.subforms[i],"CFC_Method") AND Len(ThisTag.subforms[i].CFC_Method) AND StructKeyExists(ThisTag.subforms[i],"aSubFormData") AND ArrayLen(ThisTag.subforms[i].aSubFormData)>
 								<cfloop index="j" from="1" to="#ArrayLen(ThisTag.subforms[i].aSubFormData)#" step="1">
 									<cfset argCollection = Duplicate(ThisTag.subforms[i].aSubFormData[j])>
 									<cfif StructKeyExists(ThisTag.subforms[i],"fkfield")>
 										<cfif isDefined("CFC_Result")>
-											<cfset argCollection[ThisTag.subforms[i].fkfield] = CFC_Result>	
+											<cfset argCollection[ThisTag.subforms[i].fkfield] = CFC_Result>
 										<cfelseif StructKeyExists(sForm,"pkfield") AND Len(sForm.pkfield)>
 											<cfset argCollection[ThisTag.subforms[i].fkfield] = sForm.pkfield>
 										</cfif>
@@ -1437,6 +1494,10 @@ if ( isDefined("ThisTag.subforms") ) {
 					<cfif isDefined("CFC_Result") AND isSimpleValue(CFC_Result) AND Len(CFC_Result) AND attributes.forward CONTAINS "{result}">
 						<cfset attributes.forward = ReplaceNoCase(attributes.forward, "{result}", CFC_Result, "ALL")>
 						<cfset attributes.Message_Completion = ReplaceNoCase(attributes.Message_Completion, "{result}", CFC_Result, "ALL")>
+					</cfif>
+					<!--- Ability to return variable to page. %%Need to add to docs --->
+					<cfif isDefined("CFC_Result") AND StructKeyExists(Attributes,"CFC_ReturnVar") AND isSimpleValue(Attributes.CFC_ReturnVar) AND Len(Trim(Attributes.CFC_ReturnVar))>
+						<cfset Caller[Attributes.CFC_ReturnVar] = CFC_Result>
 					</cfif>
 				</cfif>
 			<cfelse>
@@ -1492,7 +1553,7 @@ if ( isDefined("ThisTag.subforms") ) {
 									<cfif attributes.dbtype eq "mys">'#DateFormat(sForm[arrFields[thisField].fieldname],"yyyy-mm-dd")#'<cfelse>#CreateODBCDate(sForm[arrFields[thisField].fieldname])#</cfif>
 								<cfelse>
 									<cfif isNumeric(sForm[arrFields[thisField].fieldname])>#sForm[arrFields[thisField].fieldname]#<cfelse>'#sForm[arrFields[thisField].fieldname]#'</cfif>
-								</cfif>					
+								</cfif>
 							<cfelse>
 								<cfif arrFields[thisField].isnullable>
 									NULL
@@ -1637,7 +1698,7 @@ if ( isDefined("ThisTag.subforms") ) {
 													<cfif attributes.dbtype eq "mys">#DateFormat(sForm[FormFieldName],"yyyy-mm-dd")#<cfelse>#CreateODBCDate(sForm[FormFieldName])#</cfif>
 												<cfelse>
 													<cfif isNumeric(sForm[FormFieldName])>#sForm[FormFieldName]#<cfelse>'#sForm[FormFieldName]#'</cfif>
-												</cfif>					
+												</cfif>
 											<cfelse>
 												<cfif ThisTag.subforms[i].qfields[thisField].isnullable>
 													NULL
@@ -1772,9 +1833,9 @@ qFormAPI.include("*");
 </cfif></cfloop></script><!--- Generate any qform API property ---><cfset request.isQformLoaded = true></cfif>
 </cfsavecontent><cfhtmlhead text="#MyHead#"><cfsavecontent variable="ThisTag.output.form"><form name="#attributes.formname#"<cfloop index="thisHtmlAtt" list="#TagInfo.liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif Len(attributes.action)> action="#xmlFormat(attributes.action)#"</cfif><cfif Len(attributes.method)> method="#attributes.method#"</cfif><cfif Len(attributes.enctype)> enctype="#attributes.enctype#"</cfif><cfif Len(attributes.target)> target="#attributes.target#"</cfif>><cfif attributes.sendback AND attributes.sendforward>
 <input type="hidden" name="sebForm_forward" value="#HTMLEditFormat(Referrer)#"/>
-</cfif><input type="hidden" name="sebformsubmit" value="#Hash(attributes.formname)#"/><cfif attributes.method EQ "get"><cfloop list="#attributes.Query_String#" delimiters="&" index="urlvalpair"><cfif ListLen(urlvalpair,"=") EQ 2 AND NOT ListFindNoCase(fieldlist,ListFirst(urlvalpair,"="))>
+</cfif><cfif attributes.useSebFormMetaFields><input type="hidden" name="sebformsubmit" value="#Hash(attributes.formname)#"/></cfif><cfif attributes.method EQ "get"><cfloop list="#attributes.Query_String#" delimiters="&" index="urlvalpair"><cfif ListLen(urlvalpair,"=") EQ 2 AND NOT ListFindNoCase(fieldlist,ListFirst(urlvalpair,"="))>
 <input type="hidden" name="#HTMLEditFormat(ListFirst(urlvalpair,"="))#" value="#HTMLEditFormat(ListLast(urlvalpair,"="))#"/></cfif></cfloop></cfif>
-<cfif ListFindNoCase(attributes.qFormData.ColumnList, attributes.pkfield)><input type="hidden" name="pkfield" value="#HTMLEditFormat(attributes.qFormData[attributes.pkfield][1])#"/><cfelse><input type="hidden" name="pkfield" value=""/></cfif><cfloop index="thisField" from="1" to="#ArrayLen(arrFields)#" step="1"><cfif arrFields[thisField].type EQ "hidden">
+<cfif attributes.useSebFormMetaFields><cfif ListFindNoCase(attributes.qFormData.ColumnList, attributes.pkfield)><input type="hidden" name="pkfield" value="#HTMLEditFormat(attributes.qFormData[attributes.pkfield][1])#"/><cfelse><input type="hidden" name="pkfield" value=""/></cfif></cfif><cfloop index="thisField" from="1" to="#ArrayLen(arrFields)#" step="1"><cfif arrFields[thisField].type EQ "hidden">
 <input type="hidden" name="#arrFields[thisField].fieldname#"<cfif Len(arrFields[thisField].id)> id="#arrFields[thisField].id#"</cfif> value="#HTMLEditFormat(arrFields[thisField].value)#"/></cfif></cfloop><cfif attributes.EmbedFields IS true><cfloop collection="#sForm#" item="ffname"><cfif NOT ListFindNoCase(SebFieldList,ffname)>
 <input type="hidden" name="#LCase(HTMLEditFormat(ffname))#" value="#HTMLEditFormat(Form[ffname])#" /></cfif></cfloop></cfif>
 </cfsavecontent></cfoutput>
@@ -1795,11 +1856,13 @@ function seb_setStyleById(i, p, v) {var n = document.getElementById(i);if (n) {
 	n.style[p] = v;
 }}<cfif attributes.hasOtherFields>
 if ( typeof(window['sOtherValues']) == "undefined" ) {sOtherValues = new Object();}
-function seb_showHideOther(id) {
+function seb_showHideOther(id,required) {
 	var ii = 0;
 	var hasOther = false;
 	var elementType = "";
 	var elementName = "";
+	var oOtherInput = 0;
+	var name = "";
 
 	if ( document.getElementById(id) && document.getElementById(id).getElementsByTagName('OPTION').length ) {
 		var obj = document.getElementById(id);
@@ -1810,7 +1873,7 @@ function seb_showHideOther(id) {
 		//var aOptions = obj.getElementsByTagName('INPUT');
 		var key = "checked";
 	}
-	
+
 	for(ii in obj.childNodes) {
 		if(obj.childNodes[ii] !== null && (obj.childNodes[ii]["type"] == "checkbox" || obj.childNodes[ii]["type"] == "radio" || obj.childNodes[ii].nodeName == "OPTION")) {
 			hasOther = hasOther || ( (obj.childNodes[ii][key] || obj.childNodes[ii].checked ) && obj.childNodes[ii].className == 'sebform-option-other' );
@@ -1819,19 +1882,27 @@ function seb_showHideOther(id) {
 <!--- 	for ( ii in aOptions ) {
 		hasOther = hasOther || ( (aOptions[ii][key] || aOptions[ii].checked ) && aOptions[ii].className == 'sebform-option-other' );
 	} --->
-	
+
+
+	oOtherInput = document.getElementById(id + '-other');
+	name = oOtherInput.name;
 	if ( hasOther ) {
 		if ( typeof(sOtherValues[id]) != 'undefined' ) {
-			document.getElementById(id + '-other').value = sOtherValues[id];
+			oOtherInput.value = sOtherValues[id];
 		}
 		seb_setStyleById(id + '-otherdiv','display','block');
 		seb_setStyleById(id + '-other','display','inline');
-		document.getElementById(id + '-other').focus();
+		oOtherInput.focus();
+		if ( required ) {
+			#attributes.objname#[name].required = true;
+			//alert('required');
+		}
 	} else {
-		sOtherValues[id] = document.getElementById(id + '-other').value;
+		#attributes.objname#[name].required = false;
+		sOtherValues[id] = oOtherInput.value;
 		seb_setStyleById(id + '-otherdiv','display','none');
 		seb_setStyleById(id + '-other','display','none');
-		document.getElementById(id + '-other').value = document.getElementById(id + '-other').defaultValue;
+		oOtherInput.value = oOtherInput.defaultValue;
 	};
 }</cfif><cfif hasFileField>
 /* check extensions function */
@@ -1841,8 +1912,12 @@ function checkExts(field,extensions) {var fieldValue = field.value;var arrExtens
 if ( #attributes.objname#['#thisName#'] ) {#attributes.objname#['#thisName#'].description = '#JSStringFormat(arrFields[thisField].label)#'};<cfif ListFindNoCase(wysytypes,arrFields[thisField].type)><cfset wysifields = ListAppend(wysifields, thisField)></cfif><cfif arrFields[thisField].required AND NOT ( arrFields[thisField].locked AND arrFields[thisField].type eq "file" ) AND NOT ( arrFields[thisField].type eq "file" AND Len(arrFields[thisField].value) )>
 #attributes.objname#['#thisName#'].required = true;</cfif><cfif arrFields[thisField].locked>
 #attributes.objname#['#thisName#'].locked = true;</cfif><cfif arrFields[thisField].type EQ "text" AND StructKeyExists(arrFields[thisField],"regex") AND Len(arrFields[thisField].regex)>
-reFilter_#arrFields[thisField].id# = new RegExp("#JSStringFormat(arrFields[thisField].regex)#");
-#attributes.objname#['#thisName#'].validateExp("!reFilter_#arrFields[thisField].id#.test(document.getElementById('#arrFields[thisField].id#').value)",'#arrFields[thisField].label# must be formatted correctly');</cfif><cfif Len(arrFields[thisField].qformmethods)><cfloop index="thisqFormMethod" list="#arrFields[thisField].qformmethods#" delimiters=";"><cfif Len(thisqFormMethod)>
+if ( navigator.appName != 'Microsoft Internet Explorer' ) {
+	reFilter_#arrFields[thisField].id# = new RegExp("#JSStringFormat(arrFields[thisField].regex)#");<cfif StructKeyExists(arrFields[thisField],"stripregex") AND Len(Trim(arrFields[thisField].stripregex))>
+	reStrip_#arrFields[thisField].id# = new RegExp("#JSStringFormat(arrFields[thisField].stripregex)#",'g');
+	#attributes.objname#['#thisName#'].validateExp("!reFilter_#arrFields[thisField].id#.test(document.getElementById('#arrFields[thisField].id#').value.replace(reStrip_#arrFields[thisField].id#,''))",'#arrFields[thisField].label# must be formatted correctly');<cfelse>
+	#attributes.objname#['#thisName#'].validateExp("!reFilter_#arrFields[thisField].id#.test(document.getElementById('#arrFields[thisField].id#').value)",'#arrFields[thisField].label# must be formatted correctly');</cfif>
+}</cfif><cfif Len(arrFields[thisField].qformmethods)><cfloop index="thisqFormMethod" list="#arrFields[thisField].qformmethods#" delimiters=";"><cfif Len(thisqFormMethod)>
 #attributes.objname#['#thisName#'].#thisqFormMethod#;</cfif></cfloop></cfif><cfif arrFields[thisField].type eq "file" AND Len(arrFields[thisField].extensions)>
 #attributes.objname#['#thisName#'].validateExp("checkExts(document.#attributes.formname#['#thisName#'],'#arrFields[thisField].extensions#')", '#arrFields[thisField].label# must have one of the following extensions: #arrFields[thisField].extensions#');<cfelseif arrFields[thisField].type eq "xdate">
 #attributes.objname#['#thisName#'].locked = true;<cfelseif arrFields[thisField].type eq "textarea" AND isNumeric(arrFields[thisField].length) AND arrFields[thisField].length gt 0>
@@ -1850,11 +1925,13 @@ function sebTextareaLength_#arrFields[thisField].id#() {var limitField = documen
 seb_addEventToId('#arrFields[thisField].id#', 'keydown', sebTextareaLength_#arrFields[thisField].id#);
 seb_addEventToId('#arrFields[thisField].id#', 'keyup', sebTextareaLength_#arrFields[thisField].id#);
 document.getElementById('#arrFields[thisField].id#-countdiv').style.display = 'block';</cfif></cfif><cfif StructKeyExists(arrFields[thisField],"hasOtherOption") AND arrFields[thisField].hasOtherOption IS true><cfif arrFields[thisField].type EQ "select">
-seb_addEventToId('#arrFields[thisField].id#', 'change', function() {seb_showHideOther('#arrFields[thisField].id#')});
-seb_showHideOther('#arrFields[thisField].id#');<cfelse>
-#attributes.objname#['#thisName#'].addEvent('onclick',"seb_showHideOther('#arrFields[thisField].id#')");
-#attributes.objname#['#thisName#'].addEvent('onkeyup',"seb_showHideOther('#arrFields[thisField].id#')");
-seb_showHideOther('#arrFields[thisField].id#');</cfif></cfif></cfloop><cfif Len(wysifields)>
+seb_addEventToId('#arrFields[thisField].id#', 'change', function() {seb_showHideOther('#arrFields[thisField].id#',#arrFields[thisField].requireother#)});
+seb_showHideOther('#arrFields[thisField].id#',#arrFields[thisField].requireother#);
+#attributes.objname#['#arrFields[thisField].OtherField#'].description = #attributes.objname#['#thisName#'].description + ': Other';<cfelse>
+#attributes.objname#['#thisName#'].addEvent('onclick',"seb_showHideOther('#arrFields[thisField].id#',#arrFields[thisField].requireother#)");
+#attributes.objname#['#thisName#'].addEvent('onkeyup',"seb_showHideOther('#arrFields[thisField].id#',#arrFields[thisField].requireother#)");
+seb_showHideOther('#arrFields[thisField].id#',#arrFields[thisField].requireother#);
+#attributes.objname#['#arrFields[thisField].OtherField#'].description = #attributes.objname#['#thisName#'].description + ': Other';</cfif></cfif></cfloop><cfif Len(wysifields)>
 function updateWysis() {<cfloop index="thisField" list="#wysifields#"><cfif arrFields[thisField].type eq "xstandard">document.getElementById('#arrFields[thisField].id#-edit').EscapeUnicode = true;document.getElementById('#arrFields[thisField].id#').value = document.getElementById('#arrFields[thisField].id#-edit').value;<cfelse>document.getElementById('#arrFields[thisField].id#').value = ha#arrFields[thisField].id#.getHTML();#attributes.objname#.#arrFields[thisField].fieldname#.setValue(ha#arrFields[thisField].id#.getHTML());</cfif></cfloop>}
 seb_addEventToId('#attributes.id#','submit',updateWysis);
 //#attributes.objname#.onSubmit = updateWysis;
