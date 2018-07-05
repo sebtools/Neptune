@@ -190,7 +190,9 @@
 			<cfset This.Loader.loadConfig(This.Config)>
 
 			<!--- Seed all services unless the framework is told to lazy load services. --->
-			<cfif NOT variables.instance["lazy"]>
+			<cfif variables.instance["lazy"]>
+				<cfset This.Loader.getAlwaysServices()>
+			<cfelse>
 				<cfset This.Loader.seedServices()>
 			</cfif>
 			<cfset This.Loader.setScope(Application)>

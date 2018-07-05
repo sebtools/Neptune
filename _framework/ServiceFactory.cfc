@@ -231,6 +231,27 @@
 	<cfreturn Variables.cache>
 </cffunction>
 
+<cffunction name="getAlwaysServices" access="public" returntype="struct" output="no" hint="I return all of the service components as a structure.">
+
+	<cfset var ii = 0>
+	<cfset var xComponent = 0>
+
+	<cflock name="#getLockNamePrefix()#:GetAllServices" timeout="30">
+		<cfloop index="ii" from="1" to="#ArrayLen(Variables.xComponents.site.components.component)#">
+			<cfset xComponent = Variables.xComponents.site.components.component[ii]>
+			<cfif
+					StructKeyExists(xComponent.XmlAttributes,"name")
+				AND	StructKeyExists(xComponent.XmlAttributes,"always")
+				AND	xComponent.XmlAttributes.always IS true
+			>
+				<cfset getService(xComponent.XmlAttributes["name"])>
+			</cfif>
+		</cfloop>
+	</cflock>
+
+	<cfreturn Variables.cache>
+</cffunction>
+
 <cffunction name="getService" access="public" returntype="any" output="no" hint="I return the requested service component.">
 	<cfargument name="ServiceName" type="string" required="yes">
 
@@ -250,7 +271,7 @@
 		<cfreturn This>
 	</cfif>
 
-	<cfif NOT StructKeyExists(Variables.cache,Arguments.ServiceName)>
+	<cfif Len(Trim(Arguments.ServiceName)) AND NOT StructKeyExists(Variables.cache,Arguments.ServiceName)>
 		<cfset axServices = XmlSearch(Variables.xComponents,"//component[translate(@name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='#LCase(Arguments.ServiceName)#']")>
 			<cfif ArrayLen(axServices) AND StructKeyExists(axServices[1].XmlAttributes,"path") AND Len(axServices[1].XmlAttributes["path"])>
 			<cfset Variables.cache[Arguments.ServiceName] = CreateObject("component",axServices[1].XmlAttributes["path"])>
@@ -565,6 +586,12 @@
 	<cfargument name="type" type="string" required="true">
 
 	<cfreturn Len(getSpecialServiceName(arguments.type))>
+</cffunction>
+
+<cffunction name="isServiceLoaded" access="public" returntype="boolean" output="no" hint="I indicate if the given service is already loaded.">
+	<cfargument name="ServiceName" type="string" required="no">
+
+	<cfreturn hasServiceLoaded(Arguments.ServiceName)>
 </cffunction>
 
 <cffunction name="loadConfig" access="public" returntype="any" output="no" hint="I load the configuration arguments that will be used as data for the components.">
