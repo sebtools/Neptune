@@ -1,46 +1,62 @@
-<!--- 1.0 Beta 2 (Build 32) --->
-<!--- Last Updated: 2011-03-30 --->
+<!--- 1.0 Beta 3 (Build 35) --->
+<!--- Last Updated: 2011-11-23 --->
 <!--- Created by Steve Bryant 2007-09-13 --->
-<!--- Information: sebtools.com --->
+<!--- Information: http://www.bryantwebconsulting.com/docs/com-sebtools/records.cfm?version=Build%2012 --->
 <cfcomponent output="false">
+
+<cfset variables.sSpecifyingValues = StructNew()>
+<cfset variables.OnExists = "save">
 
 <cffunction name="init" access="public" returntype="any" output="no">
 	<cfargument name="Manager" type="any" required="yes">
-	
+
 	<cfset initInternal(argumentCollection=arguments)>
-	
+
 	<cfreturn this>
 </cffunction>
 
 <cffunction name="initInternal" access="private" returntype="any" output="no">
 	<cfargument name="Manager" type="any" required="yes">
-	
+
 	<cfset var key = "">
 	<cfset var metaXml = "">
-	
+
 	<cfset StructAppend(variables,arguments)>
-	
+
 	<!--- Get all components from Manager --->
 	<cfloop collection="#variables.Manager#" item="key">
 		<cfif isObject(variables.Manager[key])>
 			<cfset variables[key] = variables.Manager[key]>
 		</cfif>
 	</cfloop>
-	
+
+	<!--- Get all components from arguments --->
+	<cfloop collection="#arguments#" item="key">
+		<cfif isObject(arguments[key])>
+			<cfset variables[key] = arguments[key]>
+			<cfset This[key] = arguments[key]>
+		</cfif>
+	</cfloop>
+
 	<cfset metaXml = getMethodOutputValue(variables,"xml")>
-	
+
 	<cfif NOT isDefined("metaXml")>
 		<cfthrow type="Records" message="Your xml method must return the XML that it creates.">
 	</cfif>
 	<cfif Len(metaXml)>
 		<cfset variables.xDef = variables.Manager.loadXml(metaXml)>
 	</cfif>
-	
+
 	<cfset variables.sMetaData = variables.Manager.getMetaStruct()>
 	<cfset variables.cachedata = StructNew()>
 	<cfset variables.datasource = variables.DataMgr.getDatasource()>
-	<cfset variables.table = getTableVariable(metaXml)>
-	
+	<!--- It could exist if it was passed in as an initialization argument. --->
+	<cfif StructKeyExists(Arguments,"table") AND isSimpleValue(Arguments.table) AND Len(Trim(Arguments.table))>
+		<cfset variables.table = Arguments.table>
+	<cfelse>
+		<cfset variables.table = getTableVariable(metaXml)>
+	</cfif>
+
 	<cfif StructKeyExists(variables.sMetaData,variables.table)>
 		<cfset variables.labelSingular = variables.sMetaData[variables.table].labelSingular>
 		<cfset variables.labelPlural = variables.sMetaData[variables.table].labelPlural>
@@ -51,7 +67,7 @@
 			<cfset variables.methodPlural = variables.sMetaData[variables.table].methodPlural>
 		</cfif>
 	</cfif>
-	
+
 	<cfif NOT StructKeyExists(variables,"labelSingular")>
 		<cfset variables.labelSingular = "Record">
 	</cfif>
@@ -66,23 +82,72 @@
 	</cfif>
 	<cfset variables.methodSingular = makeCompName(variables.methodSingular)>
 	<cfset variables.methodPlural = makeCompName(variables.methodPlural)>
-	
-	<cfset addMethods()>
-	
+
 	<cfset setMetaStruct()>
-	
+
+	<cfset addMethods()>
+
 </cffunction>
 
 <cffunction name="getFieldList" access="public" returntype="string" output="no">
 	<cfreturn variables.sMetaData[variables.table].fieldlist>
 </cffunction>
 
+<cffunction name="getPrimaryKeyValues" access="public" returntype="string" output="no">
+
+	<cfset var sMetaStruct = getMetaStruct()>
+	<cfset var result = 0>
+
+	<cfif StructKeyExists(sMetaStruct,"arg_pk")>
+		<cfset Arguments.field = sMetaStruct["arg_pk"]>
+		<cfset Arguments.useDefault = false>
+		<cfinvoke returnvariable="result" method="getTableFieldValue" argumentcollection="#Arguments#">
+	</cfif>
+
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="getTableFieldValue" access="public" returntype="string" output="no">
+
+	<cfset var sMetaStruct = getMetaStruct()>
+	<cfset var sFields = getFieldsStruct()>
+	<cfset var qRecords= 0>
+	<cfset var result = "">
+
+	<cfif NOT (
+			StructKeyExists(Arguments,"field")
+		AND	Len(arguments.field)
+		AND	ListLen(Arguments.field) EQ 1
+		AND	StructKeyExists(sFields,Arguments.field)
+	)>
+		<cfset throwError("getTableFieldValue must have a field argument with one and only one field from this table.")>
+	</cfif>
+
+	<cfif NOT (
+			StructKeyExists(Arguments,"useDefault")
+		AND	isBoolean(arguments.useDefault)
+	)>
+		<cfset Arguments.useDefault = true>
+	</cfif>
+
+	<cfset Arguments.fieldlist = Arguments.field>
+	<cfinvoke component="#This#" method="getRecords" returnvariable="qRecords" argumentcollection="#Arguments#">
+
+	<cfif qRecords.RecordCount>
+		<cfset result = ArrayToList(qRecords[Arguments.field])>
+	<cfelseif Arguments.useDefault AND StructKeyExists(sFields[Arguments.field],"default")>
+		<cfset result = sFields[Arguments.field]["default"]>
+	</cfif>
+
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="getTableVariable" access="public" returntype="string" output="no">
 	<cfargument name="metaXml" type="string" default="">
-	
+
 	<cfset var result = "">
 	<cfset var xDef = 0>
-	
+
 	<cfif StructKeyExists(variables,"table")>
 		<cfset result = variables.table>
 	<cfelse>
@@ -98,24 +163,28 @@
 			<cfset result = variables.Parent.getComponentTableName(This)>
 		</cfif>
 	</cfif>
-	
+
 	<cfif Len(result)>
 		<cfset variables.table = result>
 	<cfelse>
 		<cfthrow type="Records" message="If xml method is not provided, variables.table must be set.">
 	</cfif>
-	
+
 	<cfreturn result>
 </cffunction>
 
 <cffunction name="copyRecord" access="public" returntype="string" output="no">
-	
-	<cfreturn variables.Manager.copyRecord(tablename=variables.table,data=arguments)>
+
+	<cfset var result = Variables.Manager.copyRecord(tablename=Variables.table,data=Arguments)>
+
+	<cfset notifyEvent(EventName=variables.sMetaStruct["method_copy"],Args=Arguments,result=result)>
+
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="getFieldsArray" access="public" returntype="array" output="no">
 	<cfargument name="transformer" type="string" required="no">
-	
+
 	<cfif StructKeyExists(variables,"cachedata") AND StructKeyExists(variables.cachedata,"FieldsArray") AND isArray(variables.cachedata["FieldsArray"]) AND NOT StructCount(arguments)>
 		<cfreturn variables.cachedata["FieldsArray"]>
 	<cfelse>
@@ -126,7 +195,7 @@
 
 <cffunction name="getFieldsStruct" access="public" returntype="struct" output="no">
 	<cfargument name="transformer" type="string" required="no">
-	
+
 	<cfif StructKeyExists(variables,"cachedata") AND StructKeyExists(variables.cachedata,"FieldsStruct") AND isStruct(variables.cachedata["FieldsStruct"]) AND NOT StructCount(arguments)>
 		<cfreturn variables.cachedata["FieldsStruct"]>
 	<cfelse>
@@ -137,54 +206,61 @@
 
 <cffunction name="getFolder" access="public" returntype="string" output="no">
 	<cfargument name="field" type="string" required="yes">
-	
+
 	<cfset var sFields = getFieldsStruct()>
 	<cfset var result = "">
-	
+
 	<cfif StructKeyExists(sFields,arguments.field) AND StructKeyExists(sFields[arguments.field],"folder")>
 		<cfset result = sFields[arguments.field]["folder"]>
 	</cfif>
-	
+
 	<cfreturn variables.FileMgr.convertFolder(result,"/")>
 </cffunction>
 
 <cffunction name="getLabelFieldValue" access="public" returntype="string" output="no">
-	
+
 	<cfset var qRecord = 0>
 	<cfset var sManagerData = variables.Manager.getMetaStruct(variables.table)>
+	<cfset var sArgs = StructNew()>
 	<cfset var result = "">
-	
+
 	<cfif NOT StructKeyExists(sManagerData,"labelField")>
 		<cfthrow message="getLabelFieldValue can only be used against tables with a defined labelField." type="Records">
 	</cfif>
-	
+
 	<cfset qRecord = variables.Manager.getRecord(tablename=variables.table,data=arguments,fieldlist=sManagerData.labelField)>
-	
+
 	<cfif qRecord.RecordCount>
 		<cfset result = qRecord[sManagerData.labelField][1]>
 	</cfif>
-	
+
+	<!---<cfset sArgs.field = sManagerData.labelField>
+	<cfset Arguments.tablename = Variables.table>
+	<cfset sArgs.data = Variables.Manager.alterArgs(ArgumentCollection=Arguments)>
+	<cfdump var="#sArgs#"><cfabort>
+	<cfreturn getTableFieldValue(ArgumentCollection=sArgs)>--->
+
 	<cfreturn result>
 </cffunction>
 
 <cffunction name="getMetaStruct" access="public" returntype="struct" output="no">
-	
+
 	<cfif NOT StructKeyExists(variables,"sMetaStruct")>
 		<cfset setMetaStruct()>
 	</cfif>
-	
+
 	<cfreturn variables.sMetaStruct>
 </cffunction>
 
 <cffunction name="getServiceComponent" access="public" returntype="any" output="no">
 	<cfargument name="name" type="string" required="true">
-	
+
 	<cfset var result = arguments.name>
-	
+
 	<cfif StructKeyExists(variables,"Parent") AND isObject(variables.Parent) AND StructKeyExists(variables.Parent,arguments.name)>
 		<cfset result = variables.Parent[arguments.name]>
 	</cfif>
-	
+
 	<cfreturn result>
 </cffunction>
 
@@ -195,17 +271,27 @@
 </cffunction>
 
 <cffunction name="getPKRecord" access="public" returntype="query" output="no">
-	
+
 	<cfreturn variables.Manager.getPKRecord(tablename=arguments.table,data=arguments)>
 </cffunction>
 
 <cffunction name="getRecord" access="public" returntype="query" output="no">
-	
+
+	<cfset arguments.alterargs_for = "get">
+	<cfset Arguments = alterArgs(argumentCollection=arguments)>
+
+	<cfset StructAppend(Arguments,getSpecifyingValues(),"no")>
+
 	<cfreturn variables.Manager.getRecord(tablename=variables.table,data=arguments)>
 </cffunction>
 
 <cffunction name="getRecords" access="public" returntype="query" output="no">
-	
+
+	<cfset arguments.alterargs_for = "gets">
+	<cfset Arguments = alterArgs(argumentCollection=arguments)>
+
+	<cfset StructAppend(Arguments,getSpecifyingValues(),"no")>
+
 	<cfreturn variables.Manager.getRecords(tablename=variables.table,data=arguments)>
 </cffunction>
 
@@ -214,23 +300,37 @@
 </cffunction>
 
 <cffunction name="hasRecords" access="public" returntype="boolean" output="no">
-	<cfreturn (numRecords(argumentCollection=arguments) GT 0)>
+
+	<cfset var result = false>
+
+	<cfif StructKeyExists(variables.DataMgr,"hasRecords")>
+		<cfset arguments.tablename = variables.table>
+		<cfset arguments.alterargs_for = "has">
+		<cfset arguments.data = alterArgs(argumentCollection=arguments)>
+
+		<cfset result = variables.DataMgr.hasRecords(argumentCollection=variables.Manager.alterArgs(argumentCollection=arguments))>
+	<cfelse>
+		<cfset result = (numRecords(argumentCollection=alterArgs(argumentCollection=arguments)) GT 0)>
+	</cfif>
+
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="numRecords" access="public" returntype="numeric" output="no">
-	
+
 	<cfset var sArgs = StructNew()>
 	<cfset var qRecords = 0>
-	
+
 	<cfset sArgs["tablename"] = variables.table>
 	<cfset sArgs["Function"] = "count">
 	<cfset sArgs["FunctionAlias"] = "NumRecords">
-	<cfset sArgs["data"] = arguments>
+	<cfset arguments.alterargs_for = "num">
+	<cfset sArgs["data"] = alterArgs(argumentCollection=arguments)>
 	<cfset sArgs["fieldlist"] = "">
-	
+
 	<cfset qRecords = variables.Manager.getRecords(argumentCollection=sArgs)>
-	
-	<cfreturn qRecords.NumRecords>
+
+	<cfreturn Val(qRecords.NumRecords)>
 </cffunction>
 
 <cffunction name="deleteRecord" access="public" returntype="void" output="no">
@@ -238,24 +338,64 @@
 </cffunction>
 
 <cffunction name="removeRecord" access="public" returntype="void" output="no">
-	
+
 	<cfset variables.Manager.removeRecord(variables.table,arguments)>
-	
+
+	<cfset notifyEvent(EventName=variables.sMetaStruct["method_remove"],Args=Arguments)>
+
+</cffunction>
+
+<cffunction name="RecordObject" access="public" returntype="any" output="no">
+	<cfargument name="Record" type="any" required="yes">
+	<cfargument name="fields" type="string" default="">
+
+	<cfset Arguments.Service = This>
+
+	<cfreturn CreateObject("component","RecordObject").init(ArgumentCollection=Arguments)>
 </cffunction>
 
 <cffunction name="saveRecord" access="public" returntype="string" output="no">
-	
+
 	<cfset var sArgs = 0>
-	
-	<cfinvoke component="#This#" method="validate#variables.methodSingular#" argumentCollection="#arguments#" returnvariable="sArgs">
-	
-	<cfreturn variables.Manager.saveRecord(variables.table,sArgs)>
+	<cfset var sSpecifyingValues = getSpecifyingValues()>
+	<cfset var result = 0>
+
+	<cfif StructCount(sSpecifyingValues) AND NOT isUpdate()>
+		<cfset StructAppend(Arguments,sSpecifyingValues,"no")>
+	</cfif>
+
+	<cfinvoke component="#This#" method="validate#variables.methodSingular#" argumentCollection="#arguments#" returnvariable="Arguments">
+
+	<cfif NOT StructKeyExists(Arguments,"OnExists")>
+		<cfset Arguments.OnExists = Variables.OnExists>
+	</cfif>
+
+	<cfset result = variables.Manager.saveRecord(variables.table,Arguments)>
+
+	<cfset notifyEvent(EventName=variables.sMetaStruct["method_save"],Args=Arguments,result=result)>
+
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="saveRecordOnly" access="public" returntype="string" output="no">
+
+	<cfset var sSpecifyingValues = getSpecifyingValues()>
+
+	<cfif StructCount(sSpecifyingValues) AND NOT isUpdate()>
+		<cfset StructAppend(Arguments,sSpecifyingValues,"no")>
+	</cfif>
+
+	<cfreturn variables.Manager.saveRecord(variables.table,Arguments)>
+</cffunction>
+
+<cffunction name="Security_getPermissions" access="public" returntype="string" output="no">
+	<cfreturn Variables.Manager.Security_getPermissions(variables.table)>
 </cffunction>
 
 <cffunction name="sortRecords" access="public" returntype="void" output="no">
-	
+
 	<cfset var sortfield = getSortField()>
-	
+
 	<cfif Len(sortfield)>
 		<cfif StructKeyExists(arguments,variables.methodPlural)>
 			<cfset variables.DataMgr.saveSortOrder(variables.table,sortfield,arguments[variables.methodPlural])>
@@ -263,16 +403,18 @@
 			<cfset variables.DataMgr.saveSortOrder(variables.table,sortfield,arguments[1])>
 		</cfif>
 	</cfif>
-	
+
+	<cfset notifyEvent(EventName=variables.sMetaStruct["method_sort"],Args=Arguments)>
+
 </cffunction>
 
 <cffunction name="validateRecord" access="public" returntype="struct" output="no">
-	
-	<cfreturn arguments>
+
+	<cfreturn Arguments>
 </cffunction>
 
 <cffunction name="addMethods" access="private" returntype="void" output="no">
-	
+
 	<cfset var singular = variables.methodSingular>
 	<cfset var plural = variables.methodPlural>
 	<cfset var methods = "get#singular#,get#plural#,remove#singular#,save#singular#,sort#plural#,copy#singular#,num#plural#,has#plural#,validate#singular#">
@@ -280,7 +422,13 @@
 	<cfset var method = "">
 	<cfset var rmethod = "">
 	<cfset var ii = 0>
-	
+	<cfset var sMetaStruct = getMetaStruct()>
+
+	<cfif StructKeyExists(sMetaStruct,"arg_pk")>
+		<cfset methods = ListAppend(methods,"get#sMetaStruct.arg_pk#s")>
+		<cfset rmethods = ListAppend(rmethods,"getPrimaryKeyValues")>
+	</cfif>
+
 	<cfloop index="ii" from="1" to="#ListLen(methods)#" step="1">
 		<cfset method = ListGetAt(methods,ii)>
 		<cfset rmethod = ListGetAt(rmethods,ii)>
@@ -291,23 +439,27 @@
 			<cfset variables[method] = variables[rmethod]>
 		</cfif>
 	</cfloop>
-	
+
+</cffunction>
+
+<cffunction name="alterArgs" access="private" returntype="struct" output="no">
+	<cfreturn arguments>
 </cffunction>
 
 <!---<cffunction name="adjustImages" access="private" returntype="struct" output="no">
-	
+
 	<cfreturn variables.Manager.adjustImages(variables.table,arguments)>
 </cffunction>--->
 
 <!---<cffunction name="getFieldsArrayInternal" access="private" returntype="array" output="no">
 	<cfargument name="transformer" type="string" default="">
 	<cfargument name="table" type="string" default="#variables.table#">
-	
+
 	<cfreturn variables.Manager.getFieldsArrayInternal(transformer=arguments.transformer,tablename=arguments.table)>
 </cffunction>--->
 
 <!---<cffunction name="fixFileNames" access="private" returntype="any" output="false" hint="">
-	
+
 	<cfset var FileFields = getFieldsOfTypes("file,image,thumb")>
 	<cfset var PKFields = getFieldsOfTypes("pk:integer,pk:text")>
 	<cfset var Fields = ListAppend(PKFields,FileFields)>
@@ -318,9 +470,9 @@
 	<cfset var NewFileName = "">
 	<cfset var sData = StructNew()>
 	<cfset var pkfield = "">
-	
+
 	<cfset qRecords = variables.DataMgr.getRecords(tablename=variables.table,fieldlist=Fields)>
-	
+
 	<cfloop list="#FileFields#" index="field">
 		<cfset folder = getFolder(field)>
 		<cfset path = variables.FileMgr.getDirectory(folder)>
@@ -337,38 +489,38 @@
 			</cfif>
 		</cfloop>
 	</cfloop>
-	
+
 </cffunction>--->
 
 <cffunction name="getFieldsOfTypes" access="public" returntype="string" output="false" hint="">
 	<cfargument name="Types" type="string" required="yes">
-	
+
 	<cfset var aFields = getFieldsArray()>
 	<cfset var ii = 0>
 	<cfset var result = "">
-	
+
 	<cfloop index="ii" from="1" to="#ArrayLen(aFields)#" step="1">
 		<cfif StructKeyExists(aFields[ii],"type") AND ListFindNoCase(arguments.Types,aFields[ii].type)>
 			<cfset result = ListAppend(result,aFields[ii].name)>
 		</cfif>
 	</cfloop>
-	
+
 	<cfreturn result>
 </cffunction>
 
 <!---<cffunction name="getFieldsStructInternal" access="private" returntype="struct" output="no">
 	<cfargument name="transformer" type="string" required="no">
-	
+
 	<cfset var sFields = StructNew()>
 	<cfset var aFields = getFieldsArrayInternal(argumentCollection=arguments)>
 	<cfset var ii = 0>
-	
+
 	<cfloop index="ii" from="1" to="#ArrayLen(aFields)#" step="1">
 		<cfif StructKeyExists(aFields[ii],"name")>
 			<cfset sFields[aFields[ii]["name"]] = aFields[ii]>
 		</cfif>
 	</cfloop>
-	
+
 	<cfreturn sFields>
 </cffunction>--->
 
@@ -376,18 +528,18 @@
 	<cfargument name="component" type="any" required="yes">
 	<cfargument name="method" type="string" required="yes">
 	<cfargument name="args" type="struct" required="no">
-	
+
 	<cfset var result = "">
 	<cfset var fMethod = component[method]>
-	
+
 	<cfif StructKeyExists(arguments,"args")>
 		<cfsavecontent variable="result"><cfoutput>#fMethod(argumentCollection=args)#</cfoutput></cfsavecontent>
 	<cfelse>
 		<cfsavecontent variable="result"><cfoutput>#fMethod()#</cfoutput></cfsavecontent>
 	</cfif>
-	
+
 	<cfset result = Trim(result)>
-	
+
 	<cfreturn result>
 </cffunction>
 
@@ -400,26 +552,30 @@
 </cffunction>
 
 <cffunction name="getSortFieldInternal" access="private" returntype="string" output="no">
-	
+
 	<cfset var aFields = getFieldsArray()>
 	<cfset var ii = 0>
 	<cfset var result = "">
-	
+
 	<cfloop index="ii" from="1" to="#ArrayLen(aFields)#" step="1">
 		<cfif StructKeyExists(aFields[ii],"type") AND aFields[ii].type EQ "Sorter">
 			<cfset result = aFields[ii].name>
 			<cfbreak>
 		</cfif>
 	</cfloop>
-	
+
 	<cfreturn result>
 </cffunction>
 
+<cffunction name="getSpecifyingValues" access="public" returntype="struct" output="no">
+	<cfreturn variables.sSpecifyingValues>
+</cffunction>
+
 <cffunction name="getTableList" access="private" returntype="string" output="no" hint="I return a list of tables being referenced in this component.">
-	
+
 	<cfset var ii = 0>
 	<cfset var result = "">
-	
+
 	<cfif StructKeyExists(variables,"xDef")>
 		<cfloop index="ii" from="1" to="#ArrayLen(variables.xDef.tables.table)#" step="1">
 			<cfset result = ListAppend(result,variables.xDef.tables.table[ii].XmlAttributes.name)>
@@ -427,18 +583,26 @@
 	<cfelse>
 		<cfset result = variables.table>
 	</cfif>
-	
+
 	<cfreturn result>
 </cffunction>
 
+<cffunction name="isUpdate" access="public" returntype="boolean" output="no">
+
+	<cfset var result = false>
+
+	<cfreturn Variables.DataMgr.isMatchingRecord(tablename=variables.table,data=StructFromArgs(arguments),pksonly=(variables.OnExists EQ "save"))>
+</cffunction>
+
 <cffunction name="setMetaStruct" access="public" returntype="struct" output="no">
-	
+
 	<cfset var sMethods = StructNew()>
 	<cfset var aPKFields = variables.Manager.DataMgr.getPKFields(getTableVariable())>
 	<cfset var sManagerData = variables.Manager.getMetaStruct(getTableVariable())>
 	<cfset var single = variables.methodSingular>
 	<cfset var plural = variables.methodSingular>
-	
+	<cfset var sParent = 0>
+
 	<cfif StructKeyExists(sManagerData,"labelField")>
 		<cfset sMethods["field_label"] = "#sManagerData.labelField#">
 	</cfif>
@@ -452,70 +616,83 @@
 	<cfset sMethods["label_Plural"] = "#variables.labelPlural#">
 	<cfset sMethods["method_Singular"] = "#variables.methodSingular#">
 	<cfset sMethods["method_Plural"] = "#variables.methodPlural#">
+	<cfset sMethods["method_copy"] = "copy#variables.methodSingular#">
 	<cfset sMethods["method_get"] = "get#variables.methodSingular#">
 	<cfset sMethods["method_gets"] = "get#variables.methodPlural#">
+	<cfset sMethods["method_remove"] = "remove#variables.methodSingular#">
 	<cfset sMethods["method_save"] = "save#variables.methodSingular#">
 	<cfset sMethods["method_sort"] = "sort#variables.methodPlural#">
 	<cfset sMethods["method_delete"] = "remove#variables.methodSingular#">
 	<cfset sMethods["method_validate"] = "validate#variables.methodSingular#">
+	<cfset sMethods["method_security_permissions"] = "Security_GetPermissions">
 	<cfif StructKeyExists(sManagerData,"deletable")>
 		<cfset sMethods["property_deletable"] = "#sManagerData.deletable#">
 	</cfif>
 	<cfset sMethods["property_hidecols"] = true>
 	<cfset sMethods["property_pktype"] = variables.Manager.getPrimaryKeyType(getTableVariable())>
+	<cfset sMethods["property_handles_files"] = true>
 	<cfset sMethods["message_save"] = "#variables.labelSingular# Saved.">
 	<cfset sMethods["message_remove"] = "#variables.labelSingular# Deleted.">
 	<cfset sMethods["message_sort"] = "#variables.labelPlural# Sorted.">
-	
-	<cfset sMethods["arg_sort"] = "#plural#">
-	<cfset sMethods["catch_types"] = "#plural#">
-	
+
+	<cfset sMethods["arg_sort"] = "#variables.methodPlural#">
+	<cfset sMethods["catch_types"] = "#variables.methodPlural#">
+	<cfif StructKeyExists(Variables,"Parent") AND isObject(Variables.Parent)>
+		<cfif StructKeyExists(Variables.Parent,"getErrorType")>
+			<cfset sMethods["catch_types"] = ListAppend(sMethods["catch_types"],Variables.Parent.getErrorType())>
+		<cfelse>
+			<cfset sParent = getMetaData(Variables.Parent)>
+			<cfset sMethods["catch_types"] = ListAppend(sMethods["catch_types"],ListFirst(ListLast(sParent.name,'.')),'_')>
+		</cfif>
+	</cfif>
+
+	<cfset sMethods["pkfields"] = variables.Manager.getPrimaryKeyFields(getTableVariable())>
 	<cfif ArrayLen(aPKFields) EQ 1>
 		<cfset sMethods["arg_pk"] = aPKFields[1].ColumnName>
 	</cfif>
-	
+
 	<cfset variables.sMetaStruct = sMethods>
-	
+
 	<cfreturn sMethods>
 </cffunction>
 
 <cffunction name="StructFromArgs" access="private" returntype="struct" output="false" hint="">
-	
+
 	<cfset var sTemp = 0>
 	<cfset var sResult = StructNew()>
 	<cfset var key = "">
-	
+
 	<cfif StructCount(arguments) EQ 1 AND isStruct(arguments[1])>
 		<cfset sTemp = arguments[1]>
 	<cfelse>
 		<cfset sTemp = arguments>
 	</cfif>
-	
+
 	<!--- set all arguments into the return struct --->
 	<cfloop collection="#sTemp#" item="key">
 		<cfif StructKeyExists(sTemp, key)>
 			<cfset sResult[key] = sTemp[key]>
 		</cfif>
 	</cfloop>
-	
+
 	<cfreturn sResult>
 </cffunction>
 
 <!---<cffunction name="loadFolders" access="private" returntype="void" output="no" hint="I make sure that any needed folders exist.">
-	
+
 	<cfset var aFields = getFieldsArray()>
 	<cfset var ii = 0>
-	
+
 	<cfloop index="ii" from="1" to="#ArrayLen(aFields)#" step="1">
 		<cfif StructKeyExists(aFields[ii],"Folder") AND Len(aFields[ii].Folder)>
 			<cfset variables.FileMgr.makeFolder(aFields[ii].Folder)>
 		</cfif>
 	</cfloop>
-	
+
 </cffunction>--->
 
 <cffunction name="dbXml" access="public" returntype="string" output="no">
-	
+
 	<cfset var result = "">
 	<cfset var aFields = 0>
 	<cfset var ii = 0>
@@ -526,7 +703,7 @@
 	<cfset var noshowatts = "name,type">
 	<cfset var tables = getTableList()>
 	<cfset var table = "">
-	
+
 	<cfsavecontent variable="result"><cfoutput>
 	<tables><cfloop list="#tables#" index="table"><cfset aFields = variables.Manager.getFieldsArray(transformer="DataMgr",tablename=table)>
 		<table name="#table#"><cfloop index="ii" from="1" to="#ArrayLen(aFields)#" step="1">
@@ -542,31 +719,31 @@
 		</cfloop></cfif>
 	</tables>
 	</cfoutput></cfsavecontent>
-	
+
 	<cfreturn result>
 </cffunction>
 
 <cffunction name="XmlAsString" access="public" returntype="any" output="false" hint="">
 	<cfargument name="XmlElem" type="any" required="yes">
-	
+
 	<cfreturn variables.Manager.XmlAsString(arguments.XmlElem)>
 </cffunction>
 
 <cffunction name="xml" access="public" returntype="string" output="no">
-	
+
 	<cfset var result = "">
-	
+
 	<cfreturn result>
 </cffunction>
 
 <cffunction name="onMissingMethod" access="public" returntype="any" output="no">
-	
+
 	<cfset var result = 0>
 	<cfset var method = arguments.missingMethodName>
 	<cfset var args = arguments.missingMethodArguments>
 	<cfset var newmethod = "">
 	<cfset var isValid = false>
-	
+
 	<cfif arguments.missingMethodName CONTAINS variables.methodPlural>
 		<cfset newmethod = ReplaceNoCase(arguments.missingMethodName,variables.methodPlural,"Records")>
 		<cfif StructKeyExists(this,newmethod)>
@@ -588,11 +765,26 @@
 	<cfelse>
 		<cfthrow message="The method #arguments.missingMethodName# was not found in component #getCurrentTemplatePath()#" detail=" Ensure that the method is defined, and that it is spelled correctly.">
 	</cfif>
-	
+
 	<cfif isDefined("result")>
 		<cfreturn result>
 	</cfif>
-	
+
+</cffunction>
+
+<cffunction name="notifyEvent" access="package" returntype="void" output="false" hint="">
+	<cfargument name="EventName" type="string" required="true">
+	<cfargument name="Args" type="struct" required="false">
+	<cfargument name="result" type="any" required="false">
+
+	<cfif StructKeyExists(variables,"Parent") AND isObject(variables.Parent) AND StructKeyExists(variables.Parent,"notifyEvent")>
+		<cfset variables.Parent.notifyEvent(ArgumentCollection=Arguments)>
+	</cfif>
+
+	<cfif StructKeyExists(Variables,"Observer")>
+		<cfset Variables.Observer.notifyEvent(ArgumentCollection=Arguments)>
+	</cfif>
+
 </cffunction>
 
 <cffunction name="throwError" access="public" returntype="void" output="false" hint="">
@@ -600,9 +792,9 @@
 	<cfargument name="errorcode" type="string" default="">
 	<cfargument name="detail" type="string" default="">
 	<cfargument name="extendedinfo" type="string" default="">
-	
+
 	<cfset var html = "">
-	
+
 	<cfif StructKeyExists(variables,"Parent") AND isObject(variables.Parent) AND StructKeyExists(variables.Parent,"throwError")>
 		<cfset variables.Parent.throwError(argumentCollection=arguments)>
 	<cfelse>
@@ -614,10 +806,11 @@
 			extendedinfo="#arguments.extendedinfo#"
 		>
 	</cfif>
-	
+
 </cffunction>
 
 <cfscript>
+function ListIntegers(list) { return ReReplaceNoCase(ReReplaceNoCase(list,'[^0-9]',',','ALL'),',{2,}',',','ALL'); }
 function makeCompName(str) { return variables.Manager.makeCompName(str); }
 </cfscript>
 
@@ -644,10 +837,10 @@ function makeCompName(str) { return variables.Manager.makeCompName(str); }
 	    //if there is a second argument, use that for the row number
 	    if(arrayLen(arguments) GT 1)
 	        row = arguments[2];
-	    //loop over the cols and build the struct from the query row    
+	    //loop over the cols and build the struct from the query row
 	    for(ii = 1; ii lte arraylen(cols); ii = ii + 1){
 	        stReturn[cols[ii]] = query[cols[ii]][row];
-	    }        
+	    }
 	    //return the struct
 	    return stReturn;
 	}
