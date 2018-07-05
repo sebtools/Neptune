@@ -35,6 +35,10 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 	TagInfo.sValidations["decimal"] = "^[0-9]{0,9}(\.[0-9]*)?$";
 	TagInfo.sValidations["url"] = "https?://([-\w\.]+)+(:\d+)?(/([\w/_\.]*(\?\S+)?)?)?";
 
+	Variables.sPhrases = {
+		Were_Sorry="We're sorry. Some information is missing or incomplete",
+		please_try_again="Please try again"
+	};
 
 	wysytypes = "xwysiwyg,htmlarea,xstandard";
 
@@ -126,6 +130,11 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 	setDefaultAtt("minimize","true");
 	setDefaultAtt("isSubmitting","false");
 	setDefaultAtt("isHandlingFiles",true);
+	if ( StructKeyExists(request,"lang") AND Len(Trim(request.lang)) ) {
+		setDefaultAtt("lang",request.lang);
+	} else {
+		setDefaultAtt("lang","");
+	}
 
 	Referrer = CGI.HTTP_REFERER;
 
@@ -182,7 +191,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 	setDefaultAtt("returnvar","sebForm");
 	setDefaultAtt("sebformjs",false);
 	setDefaultAtt("EmbedFields",false);
-	setDefaultAtt("SubmitBarLabels","Submit,Cancel,Delete");
+	setDefaultAtt("SubmitBarLabels","#phrase('Submit')#,#phrase('Cancel')#,#phrase('Delete')#");
 	setDefaultAtt("deletable",true);
 	setDefaultAtt("useSebFieldsOnly",false);
 	setDefaultAtt("useSebFormMetaFields",true);
@@ -233,13 +242,13 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 	}
 
 	if ( ListLen(attributes.SubmitBarLabels) LT 1 ) {
-		attributes.SubmitBarLabels = ListAppend(attributes.SubmitBarLabels,"Submit");
+		attributes.SubmitBarLabels = ListAppend(attributes.SubmitBarLabels,phrase("Submit"));
 	}
 	if ( ListLen(attributes.SubmitBarLabels) LT 2 ) {
-		attributes.SubmitBarLabels = ListAppend(attributes.SubmitBarLabels,"Cancel");
+		attributes.SubmitBarLabels = ListAppend(attributes.SubmitBarLabels,phrase("Cancel"));
 	}
 	if ( ListLen(attributes.SubmitBarLabels) LT 3 ) {
-		attributes.SubmitBarLabels = ListAppend(attributes.SubmitBarLabels,"Delete");
+		attributes.SubmitBarLabels = ListAppend(attributes.SubmitBarLabels,phrase("Delete"));
 	}
 
 	//Clean up all forms for Mac
@@ -365,7 +374,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 	<cfset ThisTag.config = StructNew()>
 	<cfset ThisTag.config.Fields = StructNew()>
 	<cfset ThisTag.config.EmailFields = StructNew()>
-	<cfsavecontent variable="ThisTag.config.ErrorHeader"><div class="sebform-error"><b>We're sorry. Some information is missing or incomplete:</b><br/><br/><ul>[Errors]</ul><br/>Please try again.</div></cfsavecontent>
+	<cfsavecontent variable="ThisTag.config.ErrorHeader"><div class="sebform-error"><cfoutput><b>#phrase("Were_Sorry")#:</b><br/><br/><ul>[Errors]</ul><br/>#phrase("please_try_again")#.</div></cfoutput></cfsavecontent>
 	<cfsavecontent variable="ThisTag.config.ErrorItem"><li>[Error]</li></cfsavecontent>
 	<cfsavecontent variable="ThisTag.config.ReqMark"><span class="sebReq">*</span></cfsavecontent>
 	<cfsavecontent variable="ThisTag.config.Colon">:</cfsavecontent>
