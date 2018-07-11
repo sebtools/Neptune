@@ -656,6 +656,24 @@
 	<cfreturn sMethods>
 </cffunction>
 
+<cffunction name="ListEquals" access="private" returntype="boolean" output="false">
+	<cfargument name="List1" type="string" required="true">
+	<cfargument name="List2" type="string" required="true">
+	<cfargument name="sort_type" type="string" required="false">
+
+    <!--- Determine default sort_type --->
+    <cfif NOT StructKeyExists(Arguments,"sort_type")>
+		<!--- Numeric lists default to "numeric", all other default to "text". --->
+        <cfif REFindNoCase("^(\d+,*)+$", "#Arguments.List1#,#Arguments.List2#")>
+            <cfset Arguments["sort_type"] = "numeric">
+        <cfelse>
+            <cfset Arguments["sort_type"] = "text">
+        </cfif>
+    </cfif>
+
+    <cfreturn ListSort(Arguments.List1,Arguments.sort_type) EQ ListSort(Arguments.List2,Arguments.sort_type)>
+</cffunction>
+
 <cffunction name="StructFromArgs" access="private" returntype="struct" output="false" hint="">
 
 	<cfset var sTemp = 0>
