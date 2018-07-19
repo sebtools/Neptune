@@ -422,7 +422,10 @@
 	<cfif ListLen(Arguments.FileName,variables.dirdelim) GT 1 AND FileExists(Arguments.FileName)>
 		<cfset result = Arguments.FileName>
 	<cfelse>
-		<cfset result = getDirectory(arguments.Folder) & cleanFileName(arguments.FileName)>
+		<cfset result = getDirectory(arguments.Folder) & arguments.FileName>
+		<cfif NOT FileExists(result)>
+			<cfset result = getDirectory(arguments.Folder) & cleanFileName(arguments.FileName)>
+		</cfif>
 	</cfif>
 
 	<cfreturn result>
