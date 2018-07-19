@@ -36,8 +36,11 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 	TagInfo.sValidations["url"] = "https?://([-\w\.]+)+(:\d+)?(/([\w/_\.]*(\?\S+)?)?)?";
 
 	Variables.sPhrases = {
-		Were_Sorry="We're sorry. Some information is missing or incomplete",
-		please_try_again="Please try again"
+		Were_Sorry="We're sorry. Some information is missing or incomplete:",
+		please_try_again="Please try again",
+		required="required",
+		Yes="Yes",
+		No="No"
 	};
 
 	wysytypes = "xwysiwyg,htmlarea,xstandard";
@@ -374,7 +377,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 	<cfset ThisTag.config = StructNew()>
 	<cfset ThisTag.config.Fields = StructNew()>
 	<cfset ThisTag.config.EmailFields = StructNew()>
-	<cfsavecontent variable="ThisTag.config.ErrorHeader"><div class="sebform-error"><cfoutput><b>#phrase("Were_Sorry")#:</b><br/><br/><ul>[Errors]</ul><br/>#phrase("please_try_again")#.</div></cfoutput></cfsavecontent>
+	<cfsavecontent variable="ThisTag.config.ErrorHeader"><div class="sebform-error"><cfoutput><b>#phrase("Were_Sorry")#</b><br/><br/><ul>[Errors]</ul><br/>#phrase("please_try_again")#.</div></cfoutput></cfsavecontent>
 	<cfsavecontent variable="ThisTag.config.ErrorItem"><li>[Error]</li></cfsavecontent>
 	<cfsavecontent variable="ThisTag.config.ReqMark"><span class="sebReq">*</span></cfsavecontent>
 	<cfsavecontent variable="ThisTag.config.Colon">:</cfsavecontent>
@@ -1404,6 +1407,7 @@ if ( isDefined("ThisTag.subforms") ) {
 									</cfif>
 									<cfset StructDelete(argCollection,FormFieldName)>
 									<cfset StructDelete(argCollection,"#FormFieldName#_countdown")>
+									<cfset StructDelete(argCollection,"#FormFieldName#_countup")>
 								</cfloop>
 								<cfif isDeletion AND StructKeyExists(ThisTag.subforms[i],"CFC_DeleteMethod")>
 									<!--- <cfdump var="#aSubFormData[Arraylen(aSubFormData)]#"><cfabort> --->
@@ -1439,12 +1443,14 @@ if ( isDefined("ThisTag.subforms") ) {
 										<cfset aSubFormData[Arraylen(aSubFormData)][ThisTag.subforms[i].qfields[thisField].dbfield] = sForm[FormFieldName]>
 										<cfset StructDelete(argCollection,FormFieldName)>
 										<cfset StructDelete(argCollection,"#FormFieldName#_countdown")>
+										<cfset StructDelete(argCollection,"#FormFieldName#_countup")>
 									</cfloop>
 								<cfelse>
 									<cfloop index="thisField" from="1" to="#ArrayLen(ThisTag.subforms[i].qfields)#" step="1">
 										<cfset FormFieldName = "#prefix##ThisTag.subforms[i].qfields[thisField].fieldname#">
 										<cfset StructDelete(argCollection,FormFieldName)>
 										<cfset StructDelete(argCollection,"#FormFieldName#_countdown")>
+										<cfset StructDelete(argCollection,"#FormFieldName#_countup")>
 									</cfloop>
 								</cfif>
 								<!--- /If this is a new record --->
@@ -1856,7 +1862,7 @@ ThisTag.GeneratedContent = "";
 wysifields = "";
 </cfscript>
 </cfsilent><cfoutput><!--- || DISPLAY OUTPUT || --->#Trim(ThisTag.output.Layout)#<cfif attributes.showReqMarkHint>
-	<div class="sebFormReqMarkHint">#attributes.config.ReqMark# = required</div>
+	<div class="sebFormReqMarkHint">#attributes.config.ReqMark# = #phrase("required")#</div>
 </cfif>
 <script language="JavaScript" type="text/javascript">
 function seb_addEvent(obj, evType, fn) {if (obj.addEventListener) {obj.addEventListener(evType, fn, true);return true;} else if (obj.attachEvent){var r = obj.attachEvent("on"+evType, fn);return r;} else {return false;}}
@@ -1930,10 +1936,10 @@ if ( navigator.appName != 'Microsoft Internet Explorer' ) {
 #attributes.objname#['#thisName#'].#thisqFormMethod#;</cfif></cfloop></cfif><cfif arrFields[thisField].type eq "file" AND Len(arrFields[thisField].extensions)>
 #attributes.objname#['#thisName#'].validateExp("checkExts(document.#attributes.formname#['#thisName#'],'#arrFields[thisField].extensions#')", '#arrFields[thisField].label# must have one of the following extensions: #arrFields[thisField].extensions#');<cfelseif arrFields[thisField].type eq "xdate">
 #attributes.objname#['#thisName#'].locked = true;<cfelseif arrFields[thisField].type eq "textarea" AND isNumeric(arrFields[thisField].length) AND arrFields[thisField].length gt 0>
-function sebTextareaLength_#arrFields[thisField].id#() {var limitField = document.getElementById('#arrFields[thisField].id#');var limitNum = #arrFields[thisField].length#;if (limitField.value.length > limitNum) {limitField.value = limitField.value.substring(0, limitNum);} else {document.getElementById('#arrFields[thisField].id#-countdown').value = #arrFields[thisField].length# - limitField.value.length;}}
+function sebTextareaLength_#arrFields[thisField].id#() {var limitField = document.getElementById('#arrFields[thisField].id#');var limitNum = #arrFields[thisField].length#;if (limitField.value.length > limitNum) {limitField.value = limitField.value.substring(0, limitNum);} else {document.getElementById('#arrFields[thisField].id#-countup').value = limitField.value.length;}}
 seb_addEventToId('#arrFields[thisField].id#', 'keydown', sebTextareaLength_#arrFields[thisField].id#);
 seb_addEventToId('#arrFields[thisField].id#', 'keyup', sebTextareaLength_#arrFields[thisField].id#);
-document.getElementById('#arrFields[thisField].id#-countdiv').style.display = 'block';</cfif></cfif><cfif StructKeyExists(arrFields[thisField],"hasOtherOption") AND arrFields[thisField].hasOtherOption IS true><cfif arrFields[thisField].type EQ "select">
+document.getElementById('#arrFields[thisField].id#-countspan').style.display = 'inline';</cfif></cfif><cfif StructKeyExists(arrFields[thisField],"hasOtherOption") AND arrFields[thisField].hasOtherOption IS true><cfif arrFields[thisField].type EQ "select">
 seb_addEventToId('#arrFields[thisField].id#', 'change', function() {seb_showHideOther('#arrFields[thisField].id#',#arrFields[thisField].requireother#)});
 seb_showHideOther('#arrFields[thisField].id#',#arrFields[thisField].requireother#);
 #attributes.objname#['#arrFields[thisField].OtherField#'].description = #attributes.objname#['#thisName#'].description + ': Other';<cfelse>

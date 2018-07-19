@@ -276,17 +276,26 @@ function QueryStringDeleteVar(variable) {
 	<cfargument name="key" type="string" required="yes">
 	<cfargument name="data" type="struct" required="no">
 
+	<cfset var result = Arguments.key>
+
 	<cfif StructKeyExists(Attributes,"lang") AND Len(Trim(Attributes.lang))>
 		<cfset Arguments.locale = Attributes.lang>
 	</cfif>
 
+
 	<cfif StructKeyExists(Attributes,"ContentService") AND StructKeyExists(Attributes.ContentService,"phrase")>
-		<cfreturn Attributes.ContentService.phrase(ArgumentCollection=Arguments)>
-	<cfelseif StructKeyExists(Variables,"sPhrases") AND StructKeyExists(Variables.sPhrases,Arguments.key)>
-		<cfreturn Variables.sPhrases[Arguments.key]>
+		<cfif StructKeyExists(Variables,"sPhrases") AND StructKeyExists(Variables.sPhrases,Arguments.key)>
+			<cfset Arguments.remember = true>
+			<cfset Arguments.default = Variables.sPhrases[Arguments.key]>
+		</cfif>
+		<cfset result = Attributes.ContentService.phrase(ArgumentCollection=Arguments)>
 	</cfif>
 
-	<cfreturn Arguments.key>
+	<cfif result EQ Arguments.key AND StructKeyExists(Variables,"sPhrases") AND StructKeyExists(Variables.sPhrases,Arguments.key)>
+		<cfset result = Variables.sPhrases[Arguments.key]>
+	</cfif>
+
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="setSessionMessage" returntype="void" output="false">
