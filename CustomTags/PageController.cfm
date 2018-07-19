@@ -41,66 +41,97 @@
 </cffunction>
 
 <cfscript>
-function getPageController(path) {
+function makeCompPath(Path,RootPath) {
+    var CompPath = Arguments.Path;
 
-	var ControllerFilePath = "";
-	var ControllerBrowserPath = "";
-	var oPageController = 0;
-	var oService = 0;
-	var CompPath = path;
-	var RootPath = ExpandPath("/");
+    if ( Left(CompPath,Len(RootPath)) EQ RootPath ) {
+        CompPath = ReplaceNoCase(CompPath,RootPath,"");
+    }
 
-	//Copy path to ControllerFilePath
-	ControllerFilePath = arguments.path;
+    CompPath = ListChangeDelims(CompPath,"/","\");
+
+    if ( ListLen(CompPath,".") GT 1 ) {
+        CompPath = reverse(ListRest(reverse(CompPath),"."));// Remove file extension
+    }
+
+    CompPath = ListChangeDelims(CompPath,".","/");// Change from browser path to component path
+
+    return CompPath;
+}
+function makeFilePath(Path,RootPath) {
+    var FilePath = Arguments.Path;
+
+    //Make sure ControllerFilePath is a valid file path
+	if ( NOT ( FileExists(FilePath) OR DirectoryExists(getDirectoryFromPath(FilePath)) ) ) {
+        if ( Left(FilePath,1) EQ "/" ) {
+            FilePath = ReplaceNoCase(FilePath,"/",RootPath,"ONE");
+            FilePath = ListChangeDelims(FilePath,Right(RootPath,1),"/");
+        } else {
+            FilePath = getDirectoryFromPath(getBaseTemplatePath()) & Arguments.path;
+            if ( ListLast(FilePath,".") NEQ "cfc" ) {
+                FilePath = "#FilePath#.cfc";;
+            }
+        }
+    }
+
+    return FilePath;
+}
+function FolderUp(FilePath,RootPath) {
+    var result= GetDirectoryFromPath(makeFilePath(Arguments.FilePath,Arguments.RootPath));
+    var delim = Right(result,1);
+
+    //Ditch last folder to move up a level
+    if ( ListLen(result,delim) ) {
+        result = ListDeleteAt(result,ListLen(result,delim),delim) & delim;
+    }
+
+    //Make sure not to go outside of the RootPath
+    if (
+        NOT
+        (
+                Len( result ) GT Len(Arguments.RootPath)
+            AND Left(result,Len(Arguments.RootPath)) EQ Arguments.RootPath
+        )
+    ) {
+        result = Arguments.RootPath;
+    }
+
+    return result;
+}
+function getPageControllerCompPath(Path,RootPath) {
+	var ControllerFilePath = arguments.Path;//Copy path to ControllerFilePath
+    var ii = 0;
 
 	//Change file extension to .cfc
 	if ( ListLen(ControllerFilePath,".") GT 1 ) {
 		ControllerFilePath = reverse(ListRest(reverse(ControllerFilePath),"."));
 	}
 	ControllerFilePath = "#ControllerFilePath#.cfc";
-
-	//Make sure ControllerFilePath is a valid file path
-	if ( NOT FileExists(ControllerFilePath) ) {
-		if ( Left(ControllerFilePath,1) EQ "/" ) {
-			ControllerFilePath = ReplaceNoCase(ControllerFilePath,"/",RootPath,"ONE");
-		} else {
-			ControllerFilePath = getDirectoryFromPath(getBaseTemplatePath()) & arguments.path;
-			if ( ListLast(ControllerFilePath,".") NEQ "cfc" ) {
-				ControllerFilePath = "#ControllerFilePath#.cfc";;
-			}
-		}
-	}
+    ControllerFilePath = makeFilePath(ControllerFilePath,RootPath);
 
 	if ( FileExists(ControllerFilePath) ) {
-		if ( Left(CompPath,Len(RootPath)) EQ RootPath ) {
-			CompPath = ReplaceNoCase(CompPath,RootPath,"");
-		}
-
-		CompPath = ListChangeDelims(CompPath,"/","\");
-
-		if ( ListLen(CompPath,".") GT 1 ) {
-			CompPath = reverse(ListRest(reverse(CompPath),"."));// Remove file extension
-		}
-
-		CompPath = ListChangeDelims(CompPath,".","/");// Change from browser path to component path
+		return makeCompPath(ControllerFilePath,RootPath);
 	} else {
-		CompPath = "_config.PageController";
+        ControllerFilePath = getDirectoryFromPath(ControllerFilePath) & "PageController.cfc";
+		//Go up the tree until you find a PageController (or fail to)
+        while ( ii LTE 16 ) {
+            if ( FileExists(ControllerFilePath) ) {
+                return makeCompPath(ControllerFilePath,RootPath);
+            } else if ( ControllerFilePath EQ "#RootPath#PageController.cfc" ) {
+                return "_config.PageController";
+            }
+            ii++;
+            ControllerFilePath = FolderUp(ControllerFilePath,RootPath) & "PageController.cfc";
+        }
+        //Only if 16 levels were reached without finding a PageController or the site root.
+        return "_config.PageController";
 	}
 
-	oPageController = CreateObject("component",CompPath).init(path=getBrowserPath(path));
-	/*
-	if ( FileExists(ControllerFilePath) ) {
-		oPageController = CreateObject("component",CompPath);
-	} else {
-		oPageController = CreateObject("component","_config.PageController");
-		oService = getService(getBrowserPath(path));
-		if ( isDefined("oService") ) {
-			oPageController.setScriptName(getBrowserPath(path));
-			oPageController.setInherits(oService);
-		}
-	}
-	*/
-	return oPageController;
+    //Shouldn't be a way to get here.
+	return "_config.PageController";
+}
+function getPageController(path) {
+	return CreateObject("component",getPageControllerCompPath(path)).init(path=getBrowserPath(path));
 }
 /** http://www.elliottsprehn.com/blog/2007/07/17/getting-the-expected-results-for-getcurrenttemplatepath-in-a-custom-tag/ */
 /** Gets the path to the page that called this custom tag. */
