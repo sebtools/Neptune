@@ -6,29 +6,29 @@
 	<cfargument name="vars" type="struct" required="true">
 	<cfargument name="path" type="string" required="true">
 	<cfargument name="reload" type="boolean" default="false">
-	
+
 	<cfif arguments.reload OR NOT ( StructKeyExists(request.cf_PageController,"isPageControllerLoaded") AND request.cf_PageController.isPageControllerLoaded )>
-		<cfset arguments.vars.Controller = getPageController(arguments.path)>
+		<cfset arguments.vars.Controller = getPageController(path=arguments.path,Caller=arguments.vars)>
 		<cfset arguments.vars.PageController = arguments.vars.Controller>
 		<cfif StructKeyExists(arguments.vars.Controller,"loadData")>
 			<cfset StructAppend(arguments.vars,arguments.vars.Controller.loadData(arguments.vars))>
 		</cfif>
 	</cfif>
-	
+
 	<cfset request.cf_PageController.isPageControllerLoaded = true>
-	
+
 	<cfreturn arguments.vars.PageController>
 </cffunction>
 
 <cffunction name="getBrowserPath" access="public" returntype="string" output="no">
 	<cfargument name="FilePath" type="string" required="yes">
-	
+
 	<cfset var dirdelim = CreateObject("java", "java.io.File").separator>
 	<cfset var result = ReplaceNoCase(arguments.FilePath,ExpandPath("/"),"")>
-	
+
 	<!--- Browser paths are always "/", regardless of OS --->
 	<cfset result = ListChangeDelims(result,"/","\")>
-	
+
 	<!--- Make sure browser path starts and ends with "/" --->
 	<cfif Left(result,1) NEQ "/">
 		<cfset result = "/#result#">
@@ -36,29 +36,29 @@
 	<cfif Right(arguments.FilePath,1) EQ dirdelim AND Right(result,1) NEQ "/">
 		<cfset result = "#result#/">
 	</cfif>
-	
+
 	<cfreturn result>
 </cffunction>
 
 <cfscript>
 function getPageController(path) {
-	
+
 	var ControllerFilePath = "";
 	var ControllerBrowserPath = "";
 	var oPageController = 0;
 	var oService = 0;
 	var CompPath = path;
 	var RootPath = ExpandPath("/");
-	
+
 	//Copy path to ControllerFilePath
 	ControllerFilePath = arguments.path;
-	
+
 	//Change file extension to .cfc
 	if ( ListLen(ControllerFilePath,".") GT 1 ) {
 		ControllerFilePath = reverse(ListRest(reverse(ControllerFilePath),"."));
 	}
 	ControllerFilePath = "#ControllerFilePath#.cfc";
-	
+
 	//Make sure ControllerFilePath is a valid file path
 	if ( NOT FileExists(ControllerFilePath) ) {
 		if ( Left(ControllerFilePath,1) EQ "/" ) {
@@ -70,23 +70,23 @@ function getPageController(path) {
 			}
 		}
 	}
-	
+
 	if ( FileExists(ControllerFilePath) ) {
 		if ( Left(CompPath,Len(RootPath)) EQ RootPath ) {
 			CompPath = ReplaceNoCase(CompPath,RootPath,"");
 		}
-		
+
 		CompPath = ListChangeDelims(CompPath,"/","\");
-		
+
 		if ( ListLen(CompPath,".") GT 1 ) {
 			CompPath = reverse(ListRest(reverse(CompPath),"."));// Remove file extension
 		}
-		
+
 		CompPath = ListChangeDelims(CompPath,".","/");// Change from browser path to component path
 	} else {
 		CompPath = "_config.PageController";
 	}
-	
+
 	oPageController = CreateObject("component",CompPath).init(path=getBrowserPath(path));
 	/*
 	if ( FileExists(ControllerFilePath) ) {
@@ -125,9 +125,12 @@ if (  NOT ( StructKeyExists(attributes,"vars") AND isStruct(attributes.vars) )  
 }
 //loadPageController(attributes.vars,attributes.page,attributes.reload);
 if (  StructKeyExists(Application,"Framework") AND isObject(Application.Framework) AND StructKeyExists(Application.Framework,"loadPageController")  ) {
-	Application.Framework.loadPageController(attributes.vars,attributes.page,attributes.reload);
+	oPageController = Application.Framework.loadPageController(attributes.vars,attributes.page,attributes.reload);
 } else {
-	loadPageController(attributes.vars,attributes.page,attributes.reload);
+	oPageController = loadPageController(attributes.vars,attributes.page,attributes.reload);
+}
+if ( StructKeyExists(oPageController,"checkAccess") ) {
+	oPageController.checkAccess();
 }
 </cfscript>
 </cfsilent>
