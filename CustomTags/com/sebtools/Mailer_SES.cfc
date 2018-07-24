@@ -25,16 +25,6 @@
 	<cfif NOT Len(Arguments.MailServer)>
 		<cfset Arguments.MailServer = "email-smtp.#Arguments.AWS.getRegion()#.amazonaws.com">
 	</cfif>
-	<!---
-	Get username and password from AWS Credentials if they aren't passed in.
-	Using Credentials is safer as you can keep that file out of source control.
-	--->
-	<cfif NOT Len(Arguments.username)>
-		<cfset Arguments.username = Arguments.AWS.Credentials.get("SMTP_username")>
-	</cfif>
-	<cfif NOT Len(Arguments.password)>
-		<cfset Arguments.password = Arguments.AWS.Credentials.get("SMTP_password")>
-	</cfif>
 
 	<cfset setUpVariables(ArgumentCollection=Arguments)>
 
@@ -99,6 +89,17 @@
 	</cfif>
 	<cfif NOT StructKeyExists(Arguments,"Server")>
 		<cfset Arguments.Server = Variables.MailServer>
+	</cfif>
+
+	<!---
+	Get username and password from AWS Credentials if they aren't passed in.
+	Using Credentials is safer as you can keep that file out of source control.
+	--->
+	<cfif NOT ( StructKeyExists(Arguments,"username") AND Len(Arguments.username) )>
+		<cfset Arguments.username = Variables.AWS.Credentials.get("SMTP_username")>
+	</cfif>
+	<cfif NOT ( StructKeyExists(Arguments,"password") AND Len(Arguments.password) )>
+		<cfset Arguments.password = Variables.AWS.Credentials.get("SMTP_password")>
 	</cfif>
 
 	<cfif
