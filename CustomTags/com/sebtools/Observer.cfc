@@ -27,7 +27,7 @@
 
 	<cfset var key = "">
 	<cfset var ii = 0>
-
+	
 	<!--- In case this is called before init(). --->
 	<cfif NOT StructKeyExists(Variables,"sEvents")>
 		<cfexit>
@@ -108,6 +108,20 @@
 	</cfif>
 
 	<cfset ArrayAppend(Variables.sEvents[Arguments.EventName],Arguments)>
+
+</cffunction>
+
+<cffunction name="registerListeners" access="public" returntype="void" output="no">
+	<cfargument name="Listener" type="any" required="true">
+	<cfargument name="ListenerName" type="string" required="true">
+	<cfargument name="ListenerMethod" type="string" default="listen">
+	<cfargument name="EventNames" type="string" required="true">
+
+	<cfset var event = "">
+
+	<cfloop list="#Arguments.EventNames#" index="event">
+		<cfset registerListener(Listener=Listener,ListenerName=ListenerName,ListenerMethod=ListenerMethod,EventName=event)>
+	</cfloop>
 
 </cffunction>
 

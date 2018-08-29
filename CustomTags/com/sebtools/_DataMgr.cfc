@@ -1,5 +1,5 @@
-<!--- 2.6.1 (Build 181) --->
-<!--- Last Updated: 2017-08-25 --->
+<!--- 2.6 (Build 180) --->
+<!--- Last Updated: 2017-08-08 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <!--- Information: http://www.bryantwebconsulting.com/docs/datamgr/?version=2.5 --->
 <cfcomponent displayname="Data Manager" hint="I manage data interactions with the database. I can be used to handle inserts/updates.">
@@ -16,6 +16,7 @@
 	<cfargument name="SpecialDateType" type="string" default="CF">
 	<cfargument name="XmlData" type="string" required="no">
 	<cfargument name="logfile" type="string" required="no">
+	<cfargument name="Observer" type="any" required="no">
 
 	<cfset var me = 0>
 
@@ -31,6 +32,10 @@
 
 	<cfif StructKeyExists(arguments,"logfile") AND Len(Arguments.logfile)>
 		<cfset variables.logfile = arguments.logfile>
+	</cfif>
+
+	<cfif StructKeyExists(arguments,"Observer")>
+		<cfset variables.Observer = arguments.Observer>
 	</cfif>
 
 	<cfif StructKeyExists(arguments,"defaultdatabase")>
@@ -64,9 +69,9 @@
 		<!--- This will make sure that if a database is passed the component for that database is returned --->
 		<cfif StructKeyExists(arguments,"database")>
 			<cfif StructKeyExists(variables,"username") AND StructKeyExists(variables,"password")>
-				<cfset me = CreateObject("component","DataMgr_#arguments.database#").init(datasource=arguments.datasource,username=arguments.username,password=arguments.password)>
+				<cfset me = CreateObject("component","DataMgr_#arguments.database#").init(ArgumentCollection=Arguments)>
 			<cfelse>
-				<cfset me = CreateObject("component","DataMgr_#arguments.database#").init(arguments.datasource)>
+				<cfset me = CreateObject("component","DataMgr_#arguments.database#").init(ArgumentCollection=Arguments)>
 			</cfif>
 		</cfif>
 	<cfelse>
@@ -168,8 +173,35 @@
 
 </cffunction>
 
+<cffunction name="announceEvent" access="private" returntype="void" output="no">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="action" type="string" required="yes" hint="The action taken.">
+	<cfargument name="method" type="string" required="yes" hint="The DataMgr method executed.">
+	<cfargument name="data" type="struct" required="yes" hint="The data passed to the method.">
+	<cfargument name="fieldlist" type="string" default="">
+	<cfargument name="Args" type="struct" required="yes" hint="The arguments passed to the method.">
+	<cfargument name="sql" type="any" required="no">
+	<cfargument name="pkvalue" type="any" required="no">
+	<cfargument name="ChangeUUID" type="string" required="no">
+
+	<cfif StructKeyExists(variables,"Observer") AND StructKeyExists(variables.Observer,"announceEvent")>
+		<cfset variables.Observer.announceEvent(
+			EventName="DataMgr:#arguments.action#",
+			Args=Arguments
+		)>
+	</cfif>
+
+</cffunction>
+
 <cffunction name="setCacheDate" access="public" returntype="void" output="no">
 	<cfset variables.CacheDate = now()>
+</cffunction>
+
+<cffunction name="setObserver" access="public" returntype="void" output="no">
+	<cfargument name="Observer" type="any" required="no">
+
+	<cfset variables.Observer = Arguments.Observer>
+	
 </cffunction>
 
 <cffunction name="getDefaultDatasource" access="public" returntype="string" output="no">
@@ -380,6 +412,7 @@
 	<!---<cfset var sArgs = StructNew()>--->
 	<cfset var conflicttables = "">
 	<cfset var sCascadeDeletions = 0>
+	<cfset var ChangeUUID = CreateUUID()>
 
 	<cfset var pklist = getPrimaryKeyFieldNames(arguments.tablename)>
 
@@ -444,6 +477,8 @@
 				</cfif>
 			</cfif>
 		</cfloop>--->
+
+		<cfset announceEvent(tablename=arguments.tablename,action="beforeDelete",method="deleteRecord",data=arguments.data,Args=Arguments,ChangeUUID=ChangeUUID)>
 
 		<!--- Look for onDelete cascade --->
 		<cfset sCascadeDeletions = getCascadeDeletions(tablename=arguments.tablename,data=arguments.data,qRecord=qRecord)>
@@ -510,6 +545,8 @@
 			</cfif>
 
 		</cfif>
+
+		<cfset announceEvent(tablename=arguments.tablename,action="afterDelete",method="deleteRecord",data=arguments.data,Args=Arguments,ChangeUUID=ChangeUUID)>
 
 		<cfset setCacheDate()>
 	</cfif>
@@ -2457,6 +2494,7 @@
 	<cfset var aInsertSQL = ArrayNew(1)>
 	<cfset var sMatchingKeys = 0>
 	<cfset var sCheckData = 0>
+	<cfset var ChangeUUID = CreateUUID()>
 
 	<cfif arguments.truncate>
 		<cfset in = variables.truncate(arguments.tablename,in)>
@@ -2499,6 +2537,7 @@
 	<!--- Perform insert --->
 	<cfset aInsertSQL = insertRecordSQL(tablename=arguments.tablename,data=in,fieldlist=arguments.fieldlist)>
 	<cfif ArrayLen(aInsertSQL)>
+		<cfset announceEvent(tablename=arguments.tablename,action="beforeInsert",method="insertRecord",data=in,fieldlist=Arguments.fieldlist,Args=Arguments,sql=aInsertSQL,ChangeUUID=ChangeUUID)>
 		<cfset qCheckKey = runSQLArray(aInsertSQL)>
 	</cfif>
 
@@ -2545,6 +2584,8 @@
 			<cfinvokeargument name="sql" value="#sqlarray#">
 		</cfinvoke>
 	</cfif>
+
+	<cfset announceEvent(tablename=arguments.tablename,action="afterInsert",method="insertRecord",data=in,fieldlist=Arguments.fieldlist,Args=Arguments,sql=aInsertSQL,pkvalue=result,ChangeUUID=ChangeUUID)>
 
 	<cfset setCacheDate()>
 
@@ -3809,6 +3850,7 @@
 	<cfset var temp = "">
 	<cfset var result = 0>
 	<cfset var sqlarray = ArrayNew(1)>
+	<cfset var ChangeUUID = CreateUUID()>
 
 	<cfif arguments.truncate>
 		<cfset in = variables.truncate(arguments.tablename,in)>
@@ -3840,6 +3882,8 @@
 
 	<cfset sqlarray = updateRecordSQL(argumentCollection=arguments)>
 
+	<cfset announceEvent(tablename=arguments.tablename,action="beforeUpdate",method="updateRecord",data=in,fieldlist=Arguments.fieldlist,Args=Arguments,sql=sqlarray,ChangeUUID=ChangeUUID)>
+
 	<cfif ArrayLen(sqlarray)>
 		<cfset runSQLArray(sqlarray)>
 	</cfif>
@@ -3862,6 +3906,8 @@
 			<cfinvokeargument name="sql" value="#sqlarray#">
 		</cfinvoke>
 	</cfif>
+
+	<cfset announceEvent(tablename=arguments.tablename,action="afterUpdate",method="updateRecord",data=in,fieldlist=Arguments.fieldlist,Args=Arguments,sql=sqlarray,ChangeUUID=ChangeUUID)>
 
 	<cfset setCacheDate()>
 
@@ -5188,7 +5234,7 @@
 	<cfreturn getRecords(tablename=arguments.tablename,function="count",FunctionAlias="NumRecords")>
 </cffunction>
 
-<cffunction name="getRelationFields" access="private" returntype="array" output="no" hint="I return an array of primary key fields.">
+<cffunction name="getRelationFields" access="public" returntype="array" output="no" hint="I return an array of relation fields.">
 	<cfargument name="tablename" type="string" required="yes">
 
 	<cfset var i = 0><!--- counter --->
