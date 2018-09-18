@@ -3,13 +3,22 @@
 <cffunction name="init" access="public" returntype="any" output="no" hint="I instantiate and return this object.">
 	<cfargument name="mutable" type="boolean" default="true" hint="Are the properties mutable (can they be changed)?">
 
-	<cfset Variables.Props = {}>
-	<cfset Variables.mutable = Arguments.mutable>
+	<cfif NOT StructKeyExists(Variables,"Props")>
+		<cfset Variables.Props = {}>
+	</cfif>
+	<cfif NOT StructKeyExists(Variables,"mutable")>
+		<cfset Variables.mutable = Arguments.mutable>
+	</cfif>
 	<cfset StructDelete(Arguments,"mutable")>
 
 	<cfset initProperties(ArgumentCollection=Arguments)>
 
 	<cfreturn This>
+</cffunction>
+
+<cffunction name="dump" access="public" returntype="any" output="no">
+
+	<cfreturn Variables.Props>
 </cffunction>
 
 <cffunction name="get" access="public" returntype="any" output="no" hint="I return the value for the property.">
@@ -57,7 +66,7 @@
 	<cfset var ii = 0>
 
 	<cfloop item="ii" collection="#Arguments#">
-		<cfif NOT StructKeyExists(Variables,"ii")>
+		<cfif NOT StructKeyExists(Variables,ii)>
 			<cfset Variables.Props[ii] = Arguments[ii]>
 		</cfif>
 	</cfloop>
