@@ -418,12 +418,13 @@
 	<cfargument name="Folder" type="string" default="">
 
 	<cfset var result = "">
+	<cfset var FileName_Clean = cleanFileName(arguments.FileName)>
 
 	<cfif ListLen(Arguments.FileName,variables.dirdelim) GT 1 AND FileExists(Arguments.FileName)>
 		<cfset result = Arguments.FileName>
 	<cfelse>
 		<cfset result = getDirectory(arguments.Folder) & arguments.FileName>
-		<cfif NOT FileExists(result)>
+		<cfif ( arguments.FileName NEQ FileName_Clean ) AND NOT FileExists(result)>
 			<cfset result = getDirectory(arguments.Folder) & cleanFileName(arguments.FileName)>
 		</cfif>
 	</cfif>
