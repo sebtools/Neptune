@@ -13,13 +13,14 @@
 	<cfreturn This>
 </cffunction>
 
-<cffunction name="clearCaches" access="public" returntype="any" output="false">
+<cffunction name="clearCaches" access="public" returntype="any" output="false" hint="I clear all caches that start with the given prefix.">
 	<cfargument name="prefix" type="string" default="">
 
-	<cfset var id = qualify(Arguments.prefix)>
+	<cfset var id = qualify(Arguments.prefix)><!--- Make sure to just get values for this instance of MrECache. --->
 	<cfset var aCacheNames = CacheGetAllIds()>
 	<cfset var ii = 0>
 
+	<!--- Loop through all existing cache ids to ditch the ones that match the prefix. --->
 	<cfloop index="ii" from="1" to="#ArrayLen(aCacheNames)#">
 		<cfif Left(aCacheNames[ii],Len(id)) EQ id>
 			<cfset remove(dequalify(aCacheNames[ii]))>
@@ -35,7 +36,10 @@
 	<cfset var key = qualify(Arguments.id)>
 	<cfset var ii = 0>
 
+	<!--- Could use, cacheIdExists(), but ditching just that allows this to run on versions before ColdFusion 10. --->
+
 	<cfscript>
+	//Loop through all cache names to see if the given one exists.
 	for ( ii=1; ii LTE ArrayLen(aCacheNames); ii=ii+1 ) {
 		if ( aCacheNames[ii] EQ key ) {
 			return true;
