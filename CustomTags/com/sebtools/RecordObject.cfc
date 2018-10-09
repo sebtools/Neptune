@@ -137,13 +137,9 @@
 	<cfset var result = "">
 	<cfset var sArgs = 0>
 	<cfset var sFields = 0>
-	<cfset var FieldBase = "">
 
-	<cfif NOT StructKeyExists(Variables.sFields,Arguments.field)>
-		<cfset FieldBase = ReReplaceNoCase(Arguments.field,"(File$)|(URL$)","")>
-		<cfif NOT ( StructKeyExists(Variables.sFields,FieldBase) AND Variables.sFields[FieldBase].type EQ "file" )>
-			<cfthrow message="#Variables.sServiceInfo.label_Singular# does not have a property named #Arguments.field#.">
-		</cfif>
+	<cfif NOT has(Arguments.field)>
+		<cfthrow message="#Variables.sServiceInfo.label_Singular# does not have a property named #Arguments.field#.">
 	</cfif>
 
 	<cfif NOT StructKeyExists(Variables.instance,Arguments.field)>
@@ -176,6 +172,25 @@
 
 <cffunction name="getVariables" access="public" returntype="any" output="no">
 	<cfreturn Variables>
+</cffunction>
+
+<cffunction name="has" access="public" returntype="boolean" output="no">
+	<cfargument name="field" type="string" required="true">
+
+	<cfset var FieldBase = "">
+
+	<cfif StructKeyExists(Variables.instance,Arguments.field)>
+		<cfreturn true>
+	</cfif>
+
+	<cfif NOT StructKeyExists(Variables.sFields,Arguments.field)>
+		<cfset FieldBase = ReReplaceNoCase(Arguments.field,"(File$)|(URL$)","")>
+		<cfif NOT ( StructKeyExists(Variables.sFields,FieldBase) AND Variables.sFields[FieldBase].type EQ "file" )>
+			<cfreturn false>
+		</cfif>
+	</cfif>
+
+	<cfreturn true>
 </cffunction>
 
 <cffunction name="isNewRecord" access="public" returntype="boolean" output="no">
