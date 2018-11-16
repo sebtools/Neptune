@@ -142,7 +142,7 @@
 		<cfthrow message="#Variables.sServiceInfo.label_Singular# does not have a property named #Arguments.field#.">
 	</cfif>
 
-	<cfif NOT StructKeyExists(Variables.instance,Arguments.field)>
+	<cfif NOT StructKeyExists(Variables.instance,Arguments.field) OR Variables.instance[Arguments.field] EQ 0>
 		<cfset sArgs = StructNew()>
 		<cfset StructAppend(sArgs,Variables.sKeys)>
 		<cfset sArgs["field"] = Arguments.field>
@@ -289,7 +289,8 @@
 	<cfset var sArgs = Duplicate(Arguments)>
 
 	<cfset StructAppend(sArgs,Variables.sKeys,true)>
-	<cfset sArgs[Variables.ObjectName] = This>
+
+	<cfset StructAppend(sArgs,Variables.instance,false)>
 
 	<cfinvoke
 		returnvariable="id"
