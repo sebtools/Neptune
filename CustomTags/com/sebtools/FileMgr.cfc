@@ -615,6 +615,12 @@
 	<!--- Upload to temp directory. --->
 	<cfif StructKeyExists(Form,Arguments.FieldName)>
 		<cfif StructKeyExists(arguments,"accept")>
+			<cfif ListFindNoCase(arguments.accept,"application/msword") AND NOT ListFindNoCase(arguments.accept,"application/unknown")>
+				<cfset arguments.accept = ListAppend(arguments.accept,"application/unknown")>
+			</cfif>
+			<cfif ListFindNoCase(arguments.accept,"application/vnd.ms-excel") AND NOT ListFindNoCase(arguments.accept,"application/octet-stream")>
+				<cfset arguments.accept = ListAppend(arguments.accept,"application/octet-stream")>
+			</cfif>
 			<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#Arguments.TempDirectory#" nameconflict="MakeUnique" result="CFFILE" accept="#arguments.accept#">
 		<cfelse>
 			<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#Arguments.TempDirectory#" nameconflict="MakeUnique" result="CFFILE">

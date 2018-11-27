@@ -91,6 +91,12 @@
 	<!--- Upload to temp directory. --->
 	<cfif StructKeyExists(Form,Arguments.FieldName)>
 		<cfif StructKeyExists(arguments,"accept")>
+			<cfif ListFindNoCase(arguments.accept,"application/msword") AND NOT ListFindNoCase(arguments.accept,"application/unknown")>
+				<cfset arguments.accept = ListAppend(arguments.accept,"application/unknown")>
+			</cfif>
+			<cfif ListFindNoCase(arguments.accept,"application/vnd.ms-excel") AND NOT ListFindNoCase(arguments.accept,"application/octet-stream")>
+				<cfset arguments.accept = ListAppend(arguments.accept,"application/octet-stream")>
+			</cfif>
 			<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#destination##cleanFileName(getClientFileName(Arguments.FieldName))#" nameconflict="#Arguments.NameConflict#" result="CFFILE" accept="#arguments.accept#">
 		<cfelse>
 			<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#destination##cleanFileName(getClientFileName(Arguments.FieldName))#" nameconflict="#Arguments.NameConflict#" result="CFFILE">
@@ -161,69 +167,6 @@
 	<cfset StoreSetACL("#destination#",getStandardS3Permissions())>
 
 	<cfreturn destination>
-</cffunction>
-
-<cffunction name="unzip" access="public" returntype="any" output="false">
-	<cfargument name="file" type="string" required="yes">
-	<cfargument name="destination" type="string" required="yes">
-
-	<cfset var LocalDelim = Right(variables.TempDir,1)>
-	<cfset var FromTemp = "#variables.TempDir##CreateUUID()##LocalDelim#">
-	<cfset var ToTemp = "#variables.TempDir##CreateUUID()##LocalDelim#">
-	<cfset var OriginalFile = Arguments.file>
-	<cfset var OriginalDestination = Arguments.destination>
-	<cfset var FileName = getFileFromPath(OriginalFile)>
-
-	<!--- Need to move the zip file to a local place first. --->
-	<cfdirectory action="create" directory="#FromTemp#">
-	<cffile source="#Arguments.file#" destination="#FromTemp##FileName#" action="copy">
-
-	<!--- Perform the request action locally --->
-	<cfset Arguments.action = "unzip">
-	<cfset Arguments.file = FromTemp & FileName>
-	<cfset Arguments.destination = ToTemp>
-
-	<cfdirectory action="create" directory="#ToTemp#">
-
-	<cfzip AttributeCollection="#Arguments#">
-
-	<!--- Copy the resulting files to their target destination --->
-	<cfset copyDirectories(ToTemp,OriginalDestination)>
-
-	<cfdirectory action="delete" directory="#FromTemp#" recurse="true">
-	<cfdirectory action="delete" directory="#ToTemp#" recurse="true">
-
-</cffunction>
-
-<cffunction name="zip" access="public" returntype="any" output="false">
-	<cfargument name="source" type="string" required="yes">
-	<cfargument name="file" type="string" required="yes">
-
-	<cfset var LocalDelim = Right(variables.TempDir,1)>
-	<cfset var FromTemp = "#variables.TempDir##CreateUUID()##LocalDelim#">
-	<cfset var ToTemp = "#variables.TempDir##CreateUUID()##LocalDelim#">
-	<cfset var OriginalSource = Arguments.source>
-	<cfset var OriginalFile = Arguments.file>
-	<cfset var FileName = getFileFromPath(OriginalFile)>
-
-	<!--- Need to move the zip file to a local place first. --->
-	<cfset copyDirectories(OriginalSource,FromTemp)>
-
-	<!--- Perform the request action locally --->
-	<cfset Arguments.action = "zip">
-	<cfset Arguments.source = FromTemp>
-	<cfset Arguments.file = ToTemp & FileName>
-
-	<cfdirectory action="create" directory="#ToTemp#">
-		
-	<cfzip AttributeCollection="#Arguments#">
-
-	<!--- Copy the resulting file to its target destination --->
-	<cffile source="#Arguments.file#" destination="#OriginalFile#" action="copy">
-
-	<cfdirectory action="delete" directory="#FromTemp#" recurse="true">
-	<cfdirectory action="delete" directory="#ToTemp#" recurse="true">
-
 </cffunction>
 
 <cffunction name="getStandardS3Permissions" access="private" returntype="array" output="no">
