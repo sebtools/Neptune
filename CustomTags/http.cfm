@@ -5,8 +5,11 @@
 	<cfparam name="Attributes.result" default="CFHTTP">
 	<cfparam name="Attributes.log" type="boolean" default="true">
 	<cfparam name="Attributes.log_result" type="boolean" default="true">
+	<cfparam name="Attributes.stripBodyWhitespace" type="boolean" default="false">
+	<cfparam name="Attributes.setContentLength" type="boolean" default="false">
 </cfif>
 <cfif ThisTag.ExecutionMode EQ "End" OR NOT ThisTag.HasEndTag>
+
 	<!--- Default to cache get requests, but not other requests. --->
 	<cfif NOT (StructKeyExists(Attributes,"cache") AND isBoolean(Attributes.cache) )>
 		<!---
@@ -69,6 +72,39 @@
 		because it couldn't be reached if it was - thanks to this exit.
 		--->
 		<cfexit>
+	</cfif>
+	<!--- Handle whitespace stripping and/or Content-Length calculation --->
+	<cfset loc = {}>
+	<cfset loc.body = "">
+	<cfset loc.bodyIdx = 0>
+	<cfif StructKeyExists(ThisTag,"aParams") AND ArrayLen(ThisTag.aParams)>
+		<cfloop index="ii" from="1" to="#ArrayLen(ThisTag.aParams)#">
+			<cfif StructKeyExists(ThisTag.aParams[ii],"type") AND ThisTag.aParams[ii]["type"] EQ "body">
+				<cfset loc.body = ThisTag.aParams[ii]["value"]>
+				<cfset loc.bodyIdx = ii>
+				<cfbreak>
+			</cfif>
+		</cfloop>
+	</cfif>
+
+	<cfif Attributes.stripBodyWhitespace AND Len(loc.body)>
+		<cfset loc.body = REReplaceNoCase(loc.body,"[\s]+(?![^><]*(?:>|<\/))","","All")>
+		<cfset ThisTag.aParams[loc.bodyIdx]["value"] = loc.body>
+	</cfif>
+	<cfif Attributes.setContentLength AND Len(loc.body)>
+		<cfset loc.ContentLengthIdx = 0>
+			<cfloop index="ii" from="1" to="#ArrayLen(ThisTag.aParams)#">
+			<cfif StructKeyExists(ThisTag.aParams[ii],"type") AND ThisTag.aParams[ii]["type"] EQ "Content-Length">
+				<cfset loc.ContentLengthIdx = ii>
+				<cfbreak>
+			</cfif>
+		</cfloop>
+		<cfif loc.ContentLengthIdx>
+			<cfset ThisTag.aParams[loc.ContentLengthIdx]["value"] = Len(loc.body)>
+		<cfelse>
+			<cfset loc.sContentLength = {type="Content-Length",value=Len(loc.body)}>
+			<cfset ArrayAppend(ThisTag.aParams,loc.sContentLength)>
+		</cfif>
 	</cfif>
 
 	<cfset sArgs = StructCopy(Attributes)>
