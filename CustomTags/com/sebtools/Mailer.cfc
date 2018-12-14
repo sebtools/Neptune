@@ -344,7 +344,7 @@
 	<cfreturn sent>
 </cffunction>
 
-<cffunction name="sendEmail" access="package" returntype="boolean" output="no">
+<cffunction name="sendEmail" access="public" returntype="boolean" output="no" hint="Internal method. Do not use.">
 
 	<cfset var sent = false>
 	<cfset var Attachment = "">
@@ -719,6 +719,7 @@
 			<field ColumnName="Server" CF_DataType="CF_SQL_VARCHAR" Length="180" />
 			<field ColumnName="ResendOfLogID" CF_DataType="CF_SQL_INTEGER" />
 			<field ColumnName="MessageID" CF_DataType="CF_SQL_VARCHAR" Length="240" />
+			<field ColumnName="ErrorMsg" CF_DataType="CF_SQL_VARCHAR" Length="250" />
 		</table>
 	</tables>
 	</cfoutput></cfsavecontent>

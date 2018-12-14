@@ -133,10 +133,14 @@
 					ArgumentCollection=Arguments
 				)>
 			<cfcatch>
+				<cfset Arguments.ErrorMsg = CFCATCH.message>
+				<cfset logSend(argumentCollection=arguments)>
 				<cfset rethrowMessage(CFCATCH,"#CFCATCH.message# (to=#Arguments.To#)")>
 			</cfcatch>
 			</cftry>
 		</cfif>
+		<cfset Arguments.ErrorMsg = CFCATCH.message>
+		<cfset logSend(argumentCollection=arguments)>
 		<cfset rethrowMessage(CFCATCH,"#CFCATCH.message# (to=#Arguments.To#)")>
 	</cfcatch>
 	</cftry>
