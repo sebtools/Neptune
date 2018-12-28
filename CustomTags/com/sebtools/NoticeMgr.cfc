@@ -17,6 +17,16 @@
 	<cfargument name="Mailer" type="any" required="yes">
 	<cfargument name="Observer" type="any" required="no">
 
+	<cfset initInternal(ArgumentCollection=Arguments)>
+
+	<cfreturn This>
+</cffunction>
+
+<cffunction name="initInternal" access="public" returntype="void" output="no" hint="I handle instantiate tasks.">
+	<cfargument name="DataMgr" type="any" required="yes">
+	<cfargument name="Mailer" type="any" required="yes">
+	<cfargument name="Observer" type="any" required="no">
+
 	<cfscript>
 	variables.DataMgr = arguments.DataMgr;
 	variables.Mailer = arguments.Mailer;
@@ -34,7 +44,6 @@
 	//upgrade();
 	</cfscript>
 
-	<cfreturn this>
 </cffunction>
 
 <cffunction name="addNotice" access="public" returntype="any" output="no" hint="I add the given notice if it doesn't yet exist.">
