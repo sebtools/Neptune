@@ -189,6 +189,11 @@
 
 			<cfset This.Loader.loadConfig(This.Config)>
 
+			<!--- Need ServiceWatcher to watch other services load. Won't be loaded independently. --->
+			<cfif This.Loader.hasService("ServiceWatcher")>
+				<cfset This.Loader.loadService("ServiceWatcher")>
+			</cfif>
+
 			<!--- Seed all services unless the framework is told to lazy load services. --->
 			<cfif variables.instance["lazy"]>
 				<cfset This.Loader.getAlwaysServices()>
@@ -198,10 +203,6 @@
 			<cfset This.Loader.setScope(Application)>
 			<cfset This.Loader.Framework = This>
 			<cfset variables.instance.LoaderLoaded = now()>
-			<!--- Need ServiceWatcher to watch other services load. Won't be loaded independently. --->
-			<cfif This.Loader.hasService("ServiceWatcher")>
-				<cfset This.Loader.loadService("ServiceWatcher")>
-			</cfif>
 		<cfcatch>
 			<cfset StructDelete(Variables,"LoaderBegin")>
 			<cfrethrow>
@@ -272,7 +273,7 @@
 		</cfif>
 		<cfset ChangedSettings = loadConfigSettings()>
 		<cfset runConfigFiles()>
-		<cfif NOT variables.instance["lazy"]>
+		<cfif NOT variables.instance["lazy"] AND NOT doLoad>
 			<cfset This.Loader.refreshServices(arguments.refresh)>
 		</cfif>
 		<cfset isAnyProgramRegistered = registerAllPrograms(false)>
