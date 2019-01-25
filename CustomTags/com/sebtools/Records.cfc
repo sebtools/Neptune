@@ -795,6 +795,8 @@
 	<cfargument name="Args" type="struct" required="false">
 	<cfargument name="result" type="any" required="false">
 
+	<cfset Arguments["This"] = This>
+
 	<cfif StructKeyExists(variables,"Parent") AND isObject(variables.Parent) AND StructKeyExists(variables.Parent,"notifyEvent")>
 		<cfset variables.Parent.notifyEvent(ArgumentCollection=Arguments)>
 	</cfif>

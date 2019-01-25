@@ -9,6 +9,7 @@
 	<cfargument name="wysiwyg" type="string" default="FCKeditor">
 	<cfargument name="RootURL" type="string" default="">
 	<cfargument name="RootPath" type="string" default="">
+	<cfargument name="Observer" type="any" required="no">
 
 	<cfset var arg = "">
 	<cfset var sTemp = StructNew()>
@@ -488,6 +489,8 @@
 		</cfloop>
 	</cfif>
 
+	<cfset notifyEvent("makeThumbs",Arguments)>
+
 </cffunction>
 
 <cffunction name="makeThumbsInternal" access="private" returntype="void" output="no">
@@ -945,6 +948,8 @@
 
 	</cfif>
 
+	<cfset notifyEvent("removeRecord",Arguments)>
+
 </cffunction>
 
 <cffunction name="copyRecord" access="public" returntype="string" output="no">
@@ -1028,6 +1033,8 @@
 			</cfif>
 		</cfloop>
 	</cfif>
+
+	<cfset notifyEvent("copyRecord",Arguments,result)>
 
 	<cfreturn result>
 </cffunction>
@@ -1160,6 +1167,8 @@
 	<cfset arguments.data = Duplicate(in)>
 	<cfset arguments.alterargs_for = "save">
 	<cfset result = variables.DataMgr.insertRecord(argumentCollection=alterArgs(argumentCollection=arguments))>
+
+	<cfset notifyEvent("saveRecord",Arguments,result)>
 
 	<cfreturn result>
 </cffunction>
@@ -2868,6 +2877,18 @@
 
 <cffunction name="manageTableFieldSorts" access="private" returntype="any" output="false" hint="">
 	<cfargument name="tablename" type="string" required="yes">
+
+</cffunction>
+
+<cffunction name="notifyEvent" access="private" returntype="void" output="false" hint="">
+	<cfargument name="EventName" type="string" required="true">
+	<cfargument name="Args" type="struct" required="false">
+	<cfargument name="result" type="any" required="false">
+
+	<cfif StructKeyExists(Variables,"Observer")>
+		<cfset Arguments.EventName = "Manager:#Arguments.eventName#">
+		<cfset Variables.Observer.notifyEvent(ArgumentCollection=Arguments)>
+	</cfif>
 
 </cffunction>
 

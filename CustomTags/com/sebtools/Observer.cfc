@@ -27,6 +27,8 @@
 <cffunction name="announceEvent" access="public" returntype="void" output="no" hint="I am called any time an event is run for which a listener may be attached.">
 	<cfargument name="EventName" type="string" default="update">
 	<cfargument name="Args" type="struct" required="false">
+	<cfargument name="result" type="any" required="false">
+	<cfargument name="This" type="any" required="false">
 	<cfargument name="RecursionLimit" type="numeric" required="false">
 
 	<cfset var key = "">
@@ -40,6 +42,18 @@
 	<!--- Set default for RecursionLimit. Must be after above line in case this is called before init(). --->
 	<cfif NOT StructKeyExists(Arguments,"RecursionLimit")>
 		<cfset Arguments.RecursionLimit = Variables.RecursionLimit>
+	</cfif>
+
+	<!--- Ensure arguments exist. --->
+	<cfif NOT StructKeyExists(Arguments,"Args")>
+		<cfset Arguments["Args"] = {}>
+	</cfif>
+	<!--- Pass on result and This. --->
+	<cfif StructKeyExists(Arguments,"result") AND NOT StructKeyExists(Arguments.Args,"result")>
+		<cfset Arguments.Args.result = Arguments.result>
+	</cfif>
+	<cfif StructKeyExists(Arguments,"This") AND NOT StructKeyExists(Arguments.Args,"This")>
+		<cfset Arguments.Args.This = Arguments.This>
 	</cfif>
 
 	<!--- Make sure that the event hasn't been called more times that Observer allows per request. --->
@@ -154,6 +168,25 @@
 				<cfbreak>
 			</cfif>
 		</cfloop>
+	</cfif>
+
+</cffunction>
+
+<cffunction name="injectObserver" access="public" returntype="string" output="no">
+	<cfargument name="Component" type="any" required="true">
+
+	<cfset Arguments.Component.setObserver = setObserver>
+
+	<cfset Arguments.Component.setObserver(This)>
+
+</cffunction>
+
+<cffunction name="setObserver" access="public" returntype="string" output="no">
+	<cfargument name="Observer" type="any" required="true">
+
+	<cfif NOT StructKeyExists(Variables,"Observer")>
+		<cfset Variables.Observer = Arguments.Observer>
+		<cfset This.Observer = Arguments.Observer>
 	</cfif>
 
 </cffunction>

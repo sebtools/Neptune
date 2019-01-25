@@ -6,11 +6,16 @@
 <cffunction name="init" access="public" returntype="FileMgr" output="no" hint="I instantiate and return this object.">
 	<cfargument name="UploadPath" type="string" required="yes" hint="The file path for uploads.">
 	<cfargument name="UploadURL" type="string" default="" hint="The URL path for uploads.">
+	<cfargument name="Observer" type="any" required="no">
 
 	<cfset setUpVariables(ArgumentCollection=Arguments)>
 	<cfset Variables.StorageMechanism = "local">
 
 	<cfset makedir(Variables.UploadPath)>
+
+	<cfif StructKeyExists(Arguments,"Observer")>
+		<cfset Variables.Observer = Arguments.Observer>
+	</cfif>
 
 	<cftry>
 		<cfset Variables.MrECache = CreateObject("component","MrECache").init("FileMgr",CreateTimeSpan(2,0,0,0))>
@@ -232,8 +237,14 @@
 	<cfloop query="qFiles">
 		<cfif arguments.overwrite OR NOT FileExists("#dir_to##name#")>
 			<cffile action="copy" source="#dir_from##name#" destination="#dir_to#">
+			<cfset notifyEvent(
+				"copyFiles:file",
+				StructFromArgs(source="#dir_from##name#",destination="#dir_to#")
+			)>
 		</cfif>
 	</cfloop>
+
+	<cfset notifyEvent("copyFiles",Arguments)>
 
 </cffunction>
 
@@ -241,10 +252,11 @@
 	<cfargument name="FileName" type="string" required="yes">
 	<cfargument name="Folder" type="string" required="no">
 
-	<cfset var destination = getFilePath(argumentCollection=arguments)>
+	<cfset Arguments.destination = getFilePath(argumentCollection=arguments)>
 
-	<cfif FileExists(destination)>
-		<cfset FileDelete(destination)>
+	<cfif FileExists(Arguments.destination)>
+		<cfset FileDelete(Arguments.destination)>
+		<cfset notifyEvent("deleteFile",Arguments)>
 	</cfif>
 
 </cffunction>
@@ -468,6 +480,7 @@
 			<cfset makedir(parent)>
 		</cfif>
 		<cfset makedir_private(Arguments.Directory)>
+		<cfset notifyEvent("makedir",Arguments)>
 	</cfif>
 
 </cffunction>
@@ -547,6 +560,8 @@
 
 	<cffile action="WRITE" file="#destination#" output="#arguments.Contents#" addnewline="no">
 
+	<cfset notifyEvent("writeFile",Arguments)>
+
 	<cfreturn destination>
 </cffunction>
 
@@ -562,6 +577,8 @@
 	</cfif>
 
 	<cffile action="WRITE" file="#destination#" output="#arguments.Contents#" addnewline="no">
+
+	<cfset notifyEvent("writeBinaryFile",Arguments)>
 
 	<cfreturn destination>
 </cffunction>
@@ -615,12 +632,6 @@
 	<!--- Upload to temp directory. --->
 	<cfif StructKeyExists(Form,Arguments.FieldName)>
 		<cfif StructKeyExists(arguments,"accept")>
-			<cfif ListFindNoCase(arguments.accept,"application/msword") AND NOT ListFindNoCase(arguments.accept,"application/unknown")>
-				<cfset arguments.accept = ListAppend(arguments.accept,"application/unknown")>
-			</cfif>
-			<cfif ListFindNoCase(arguments.accept,"application/vnd.ms-excel") AND NOT ListFindNoCase(arguments.accept,"application/octet-stream")>
-				<cfset arguments.accept = ListAppend(arguments.accept,"application/octet-stream")>
-			</cfif>
 			<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#Arguments.TempDirectory#" nameconflict="MakeUnique" result="CFFILE" accept="#arguments.accept#">
 		<cfelse>
 			<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#Arguments.TempDirectory#" nameconflict="MakeUnique" result="CFFILE">
@@ -699,6 +710,8 @@
 		<cfset result = CFFILE>
 	</cfif>
 
+	<cfset notifyEvent("uploadFile",Arguments)>
+
 	<cfreturn result>
 </cffunction>
 
@@ -714,6 +727,12 @@
 	<cfset result = ListChangeDelims(result,arguments.delimiter,variables.dirdelim)>
 
 	<cfreturn result>
+</cffunction>
+
+<cffunction name="getFilePrefix" access="public" returntype="string" output="no" hint="I return the file name without the extension.">
+	<cfargument name="FileName" type="string" required="yes">
+
+	<cfreturn Reverse(ListRest(Reverse(getFileFromPath(arguments.FileName)),"."))>
 </cffunction>
 
 <!---
@@ -747,6 +766,7 @@ Copies a directory.
             <cfset copyDirectories(arguments.source & dirDelim & name, arguments.destination & dirDelim & name) />
         </cfif>
     </cfloop>
+
 </cffunction>
 
 <!---
@@ -822,6 +842,8 @@ Copies a directory.
 
 	<cfzip AttributeCollection="#Arguments#">
 
+	<cfset notifyEvent("unzip",Arguments)>
+
 </cffunction>
 
 <cffunction name="zip" access="public" returntype="any" output="false">
@@ -831,6 +853,20 @@ Copies a directory.
 	<cfset Arguments.action = "zip">
 
 	<cfzip AttributeCollection="#Arguments#">
+
+	<cfset notifyEvent("zip",Arguments)>
+
+</cffunction>
+
+<cffunction name="notifyEvent" access="package" returntype="void" output="false" hint="">
+	<cfargument name="EventName" type="string" required="true">
+	<cfargument name="Args" type="struct" required="false">
+	<cfargument name="result" type="any" required="false">
+
+	<cfif StructKeyExists(Variables,"Observer")>
+		<cfset Arguments.EventName = "FileMgr:#Arguments.eventName#">
+		<cfset Variables.Observer.notifyEvent(ArgumentCollection=Arguments)>
+	</cfif>
 
 </cffunction>
 
@@ -851,6 +887,28 @@ Copies a directory.
 	</cfif>
 
 	<cfreturn result>
+</cffunction>
+
+<cffunction name="StructFromArgs" access="public" returntype="struct" output="false" hint="">
+
+	<cfset var sTemp = 0>
+	<cfset var sResult = StructNew()>
+	<cfset var key = "">
+
+	<cfif ArrayLen(arguments) EQ 1 AND isStruct(arguments[1])>
+		<cfset sTemp = arguments[1]>
+	<cfelse>
+		<cfset sTemp = arguments>
+	</cfif>
+
+	<!--- set all arguments into the return struct --->
+	<cfloop collection="#sTemp#" item="key">
+		<cfif StructKeyExists(sTemp, key)>
+			<cfset sResult[key] = sTemp[key]>
+		</cfif>
+	</cfloop>
+
+	<cfreturn sResult>
 </cffunction>
 
 </cfcomponent>
