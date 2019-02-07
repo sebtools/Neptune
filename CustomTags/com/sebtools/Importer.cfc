@@ -181,7 +181,7 @@
 	<cfset var aReturnSheets = Duplicate(aSheets)>
 	<cfset var isSuccessful = true>
 	<cfset var sImport = StructNew()>
-	<cfset var sArgs = Duplicate(arguments)>
+	<cfset var sArgs = StructCopy(arguments)>
 	<cfset var sFields = StructNew()>
 	<cfset var sData = {}>
 
