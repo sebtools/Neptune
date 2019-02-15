@@ -60,22 +60,27 @@
 	<cfset var local = StructNew()>
 	<cfset var begin = 0>
 
-	<cfif NOT exists(Arguments.id)>
+	<!--- Try to get this from cache. If it isn't there, this will return void and obliterate the key from the struct. --->
+	<cfset local.result = get(Arguments.id)>
+
+	<cfif NOT StructKeyExists(local,"result")>
 		<cfif NOT StructKeyExists(Arguments,"Args")>
 			<cfset Arguments["Args"] = {}>
 		</cfif>
 		<cfset begin = getTickCount()>
 		<cfset local.result = Arguments.Fun(ArgumentCollection=Arguments.Args)>
 		<cfset logCall(type="func",id=Arguments.id,began=begin,args=Arguments)>
+		<!--- Need something to return and store in the cache so we don't call the method every time. --->
 		<cfif StructKeyExists(local,"result")>
-			<cfset StructDelete(Arguments,"Fun")>
-			<cfset StructDelete(Arguments,"Args")>
-			<cfset Arguments["value"] = local.result>
-			<cfset put(ArgumentCollection=Arguments)>
+			<cfset local.result = "">
 		</cfif>
+		<cfset StructDelete(Arguments,"Fun")>
+		<cfset StructDelete(Arguments,"Args")>
+		<cfset Arguments["value"] = local.result>
+		<cfset put(ArgumentCollection=Arguments)>
 	</cfif>
 
-	<cfreturn get(Arguments.id)>
+	<cfreturn local.result>
 </cffunction>
 
 <cffunction name="get" access="public" returntype="any" output="false" hint="I get data from the cache (first using the default if it is given but the id isn't in the cache).">
@@ -139,7 +144,10 @@
 	<cfset var local = StructNew()>
 	<cfset var begin = 0>
 
-	<cfif NOT exists(Arguments.id)>
+	<!--- Try to get this from cache. If it isn't there, this will return void and obliterate the key from the struct. --->
+	<cfset local.result = get(Arguments.id)>
+
+	<cfif NOT StructKeyExists(local,"result")>
 		<cfif NOT StructKeyExists(Arguments,"Args")>
 			<cfset Arguments["Args"] = {}>
 		</cfif>
@@ -154,15 +162,15 @@
 			<cfset StructDelete(Arguments,"Component")>
 			<cfset StructDelete(Arguments,"MethodName")>
 			<cfset StructDelete(Arguments,"Args")>
-			<cfif StructKeyExists(local,"result")>
-				<cfset Arguments["value"] = local.result>
-			<cfelse>
-				<cfset Arguments["value"] = "">
+			<!--- Need something to return and store in the cache so we don't call the method every time. --->
+			<cfif NOT StructKeyExists(local,"result")>
+				<cfset local.result = "">
 			</cfif>
+			<cfset Arguments["value"] = local.result>
 			<cfset put(ArgumentCollection=Arguments)>
 	</cfif>
 
-	<cfreturn get(Arguments.id)>
+	<cfreturn local.result>
 </cffunction>
 
 <cffunction name="put" access="public" returntype="void" output="false" hint="I put data into the cache.">
