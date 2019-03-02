@@ -249,6 +249,18 @@
 
 </cffunction>
 
+<cffunction name="spawn" access="public" returntype="any" output="false" hint="I spawn and return a new instance of MrECache.">
+	<cfargument name="id" type="string" required="true">
+	<cfargument name="timeSpan" type="string" required="false">
+	<cfargument name="idleTime" type="string" required="false">
+
+	<cfif StructKeyExists(Variables.Instance,"Observer")>
+		<cfset Arguments.Observer = Variables.Instance.Observer>
+	</cfif>
+
+	<cfreturn CreateObject("component","MRECache").init(ArgumentCollection=Arguments)>
+</cffunction>
+
 <cffunction name="convertTimeSpan" access="public" returntype="numeric" output="false" hint="I return a timespan from an interval string.">
 	<cfargument name="interval" type="string" required="true">
 
