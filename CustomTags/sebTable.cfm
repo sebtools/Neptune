@@ -27,11 +27,11 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebtable-overview.cfm?version=1.
 		attributes.suffix = "";
 	}
 	sfx = attributes.suffix;
-	
+
 	liHtmlAtts = "id,class,title,style,dir,lang,xml:lang,onclick,ondblclick,onmousedown,onmouseup,onmouseover,onmousemove,onmouseout,onkeypress,onkeydown,onkeyup";
 	liColAtts = liHtmlAtts & ",align,char,charoff,span,valign";
 	NonTextSortTypes = "date,datetime,numeric,time,money,yesno";
-	
+
 	</cfscript>
 	<cfparam name="attributes.suffix" default="">
 	<cfparam name="attributes.query" default="">
@@ -93,7 +93,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebtable-overview.cfm?version=1.
 	</cfif>
 	<cfparam name="url.sebrolodex#sfx#" default="">
 	<cfparam name="request.sebTableHasSorter#sfx#" default="false">
-	
+
 	<!--- <cfparam name="attributes.CFC_Component" default=""> --->
 	<cfparam name="attributes.CFC_GetMethod" default="">
 	<cfparam name="attributes.CFC_GetArgs" default="">
@@ -103,20 +103,20 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebtable-overview.cfm?version=1.
 	<cfparam name="attributes.CFC_SortListArg" default="">
 	<cfparam name="attributes.CFC_SortArgs" default="">
 	<cfparam name="attributes.CFC_HideGetArgCols" default="">
-	
+
 	<cfif Len(attributes.stripurlvars)>
 		<cfset attributes.Query_String = QueryStringDeleteVar(attributes.stripurlvars,attributes.Query_String)>
 	</cfif>
-	
+
 	<cfif isDefined("attributes.CFC_Component")>
 		<cfparam name="attributes.isForm" default="true" type="boolean">
 	<cfelse>
 		<cfparam name="attributes.isForm" default="false" type="boolean">
 	</cfif><!--- Create form if isForm is true --->
-	
+
 	<cfset sortorders = "ASC,DESC">
 	<cfif NOT ListFindNoCase(sortorders,url["sebsortorder#sfx#"])><cfset url["sebsortorder#sfx#"] = "ASC"></cfif>
-	
+
 	<!--- Get table defaults from component --->
 	<cfif
 			isDefined("attributes.CFC_Component")
@@ -169,20 +169,20 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebtable-overview.cfm?version=1.
 		</cfcatch>
 		</cftry>
 	</cfif>
-	
+
 	<cfif NOT Len(attributes.isDeletable)>
 		<cfset attributes.isDeletable = false>
 	</cfif>
 	<cfif NOT Len(attributes.isEditable)>
 		<cfset attributes.isEditable = false>
 	</cfif>
-	
+
 	<cfif Len(attributes.label) AND NOT attributes.isExcel>
 		<cfparam name="attributes.showHeader" type="boolean" default="true">
 	<cfelse>
 		<cfparam name="attributes.showHeader" type="boolean" default="false">
 	</cfif>
-	
+
 	<cfset isProbableRecordsComponent = (
 			isDefined("attributes.CFC_Component")
 		AND (
@@ -194,7 +194,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebtable-overview.cfm?version=1.
 				OR	getMetaData(attributes.CFC_Component).extends.name CONTAINS "Records"
 			)
 	)>
-	
+
 	<!--- Get field defaults from component --->
 	<cfif
 			isDefined("attributes.CFC_Component")
@@ -209,20 +209,20 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebtable-overview.cfm?version=1.
 		</cfcatch>
 		</cftry>
 	</cfif>
-	
+
 	<!--- Remove any cols in CFC_GetArgs if CFC_HideGetArgCols is true  --->
 	<cfif attributes.CFC_HideGetArgCols IS true AND StructKeyExists(attributes,"CFC_GetArgs") AND isStruct(attributes.CFC_GetArgs)>
 		<cfset attributes.exclude = ListAppend(attributes.exclude,StructKeyList(attributes.CFC_GetArgs))>
 	</cfif>
-	
+
 	<cfif NOT Len(Trim(attributes.pkfield))>
 		<cfthrow message="The pkfield attribute for cf_sebTable is required." type="ctag" errorcode="nopkfield">
 	</cfif>
-	
+
 	<cfif NOT ( Len(attributes.query) OR Len(attributes.datasource) OR ( isDefined("attributes.CFC_Component") AND Len(attributes.CFC_GetMethod) ) )>
 		<cfthrow message="Either the query attribute or datasource attribute must be provided." type="ctag">
 	</cfif>
-	
+
 	<cfif attributes.isExcel>
 		<cfset attributes.isDeletable = false>
 		<cfset attributes.isEditable = false>
@@ -248,7 +248,7 @@ if ( attributes.maxrows ) {
 	CurrPage = 1;
 }
 if ( attributes.maxpages ) {
-	url['sebstartpage#sfx#'] = int((CurrPage-1) / attributes.maxpages) * attributes.maxpages + 1;	
+	url['sebstartpage#sfx#'] = int((CurrPage-1) / attributes.maxpages) * attributes.maxpages + 1;
 } else {
 	url['sebstartpage#sfx#'] = 1;
 }
@@ -530,19 +530,28 @@ request.cftags[TagName].attributes = attributes;
 		<cfif StructKeyExists(ThisTag.qColumns[ii],"name") AND Len(Trim(ThisTag.qColumns[ii].name))>
 		</cfif>
 	</cfloop>
-	<cfinvoke component="#attributes.CFC_Component#" method="#attributes.CFC_Method#" returnvariable="CFC_Result">
-		<cfif StructKeyExists(attributes,"CFC_MethodArgs") AND isStruct(attributes.CFC_MethodArgs)>
-			<cfloop collection="#attributes.CFC_MethodArgs#" item="arg">
-				<cfinvokeargument name="#arg#" value="#attributes.CFC_MethodArgs[arg]#">
-			</cfloop>
-		</cfif>
-		<cfloop collection="#Form#" item="arg">
-			<!--- NOT Left(arg,8) eq "sebTable" AND  ---><cfif NOT ( StructKeyExists(attributes,"CFC_MethodArgs") AND StructKeyExists(attributes["CFC_MethodArgs"],arg) )>
-				<cfinvokeargument name="#arg#" value="#Form[arg]#">
+	<cftry>
+		<cfinvoke component="#attributes.CFC_Component#" method="#attributes.CFC_Method#" returnvariable="CFC_Result">
+			<cfif StructKeyExists(attributes,"CFC_MethodArgs") AND isStruct(attributes.CFC_MethodArgs)>
+				<cfloop collection="#attributes.CFC_MethodArgs#" item="arg">
+					<cfinvokeargument name="#arg#" value="#attributes.CFC_MethodArgs[arg]#">
+				</cfloop>
 			</cfif>
-		</cfloop>
-		<cfinvokeargument name="aSebTableRows" value="#aRows#">
-	</cfinvoke>
+			<cfloop collection="#Form#" item="arg">
+				<!--- NOT Left(arg,8) eq "sebTable" AND  ---><cfif NOT ( StructKeyExists(attributes,"CFC_MethodArgs") AND StructKeyExists(attributes["CFC_MethodArgs"],arg) )>
+					<cfinvokeargument name="#arg#" value="#Form[arg]#">
+				</cfif>
+			</cfloop>
+			<cfinvokeargument name="aSebTableRows" value="#aRows#">
+		</cfinvoke>
+	<cfcatch type="Any">
+		<cfif Len(attributes.CatchErrTypes) AND ListFindNoCase(attributes.CatchErrTypes,cfcatch.type)>
+			<cfset ErrMessage = CFCATCH.Message>
+		<cfelse>
+			<cfrethrow>
+		</cfif>
+	</cfcatch>
+	</cftry>
 	<cfif StructKeyExists(attributes,"Message_Completion") AND Len(attributes.Message_Completion)>
 		<cfset Message = attributes.Message_Completion>
 		<cfif isDefined("CFC_Result")>
@@ -566,8 +575,17 @@ request.cftags[TagName].attributes = attributes;
 				<cfset sArgs[arg] = attributes.CFC_DeleteArgs[arg]>
 			</cfloop>
 		</cfif>
-		<cfinvoke component="#attributes.CFC_Component#" method="#attributes.CFC_DeleteMethod#" argumentcollection="#sArgs#">
-		</cfinvoke>
+		<cftry>
+			<cfinvoke component="#attributes.CFC_Component#" method="#attributes.CFC_DeleteMethod#" argumentcollection="#sArgs#">
+			</cfinvoke>
+		<cfcatch type="Any">
+			<cfif Len(attributes.CatchErrTypes) AND ListFindNoCase(attributes.CatchErrTypes,cfcatch.type)>
+				<cfset ErrMessage = CFCATCH.Message>
+			<cfelse>
+				<cfrethrow>
+			</cfif>
+		</cfcatch>
+		</cftry>
 	<cfelseif Len(attributes.table)>
 		<cfquery name="qTableDelete" datasource="#attributes.datasource#">
 		DELETE
@@ -703,16 +721,16 @@ request.cftags[TagName].attributes = attributes;
 				<cfif NOT ( isNumeric(CFCATCH.Message) OR CFCATCH.Message CONTAINS "cannot be converted" ) >
 					<cfrethrow>
 				</cfif>
-				
+
 				<!--- Need to create a temporary query to workaround this bug in cf --->
 				<cfset qTableData2 = QueryNew(qTableData.ColumnList)>
-				
+
 				<!--- Fake row --->
 				<cfset QueryAddRow(qTableData2)>
 				<cfloop index="col" list="#qTableData.ColumnList#">
 					<cfset QuerySetCell(qTableData2, col, "sebTable_FakeData")>
 				</cfloop>
-				
+
 				<!--- Populate from original query --->
 				<cfoutput query="qTableData">
 					<cfset QueryAddRow(qTableData2)>
@@ -720,7 +738,7 @@ request.cftags[TagName].attributes = attributes;
 						<cfset QuerySetCell(qTableData2, col, qTableData[col][CurrentRow])>
 					</cfloop>
 				</cfoutput>
-				
+
 				<cfquery name="qTableData" dbtype="query">
 				SELECT		*
 				FROM		qTableData2
@@ -1011,7 +1029,7 @@ $(document).ready(function() {
 	}
 	/*
 	if ( attributes.xhtml AND NOT ThisTag.qColumns[i].type eq "date" ) {
-		thisDisplay = XmlFormat(thisValue);	
+		thisDisplay = XmlFormat(thisValue);
 	} else {
 		thisDisplay = thisValue;
 	}
@@ -1047,7 +1065,7 @@ $(document).ready(function() {
 	} else {
 		thisDisplay = ThisTag.qColumns[i].noshowalt;
 	}
-	
+
 	if ( hasInputs AND NOT arrHiddenPK[CurrentRow] ) {//ThisTag.qColumns[i].isInput AND NOT arrHiddenPK[CurrentRow]
 		thisDisplayHidden = '<input type="hidden" name="sebTable_#CurrentRow#" class="sebcolval" id="sebTable#CurrentRow#" value="#pkid#"/>';
 		thisDisplay = thisDisplay & thisDisplayHidden;
