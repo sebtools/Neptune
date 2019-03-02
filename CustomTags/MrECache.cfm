@@ -26,7 +26,7 @@ This allows for long cache times that still stay current.
 
 2. Extra data:
 The data attribute can allow for caching the page multiple times depending on different data.
-For example, maybe you have a finite list of templates for you site, saved in session scope.
+For example, maybe you have a finite list of templates for your site, saved in session scope.
 If so, you could call the tag with <CF_MrECache data="#Session.style#">
 Then you would get a different cache for that page for each different value of Session.style.
 
@@ -63,7 +63,7 @@ However, your page could have lots of values for which it returns the same resul
 For example, if you have a product.cfm with 100 products.
 product.cfm?id=1 through prouct.cfm?id=100 would al return different product pages.
 product.cfm?id=101 and above, however, would all return the same content indicating that no product was found.
-CF_MrECache will store a seperate key for each page, but will only store the full text of the page once.
+CF_MrECache will store a separate key for each page, but will only store the full text of the page once.
 This will save space in the cache.
 See the bottom of this file for more information.
 
