@@ -46,6 +46,35 @@
 
 </cffunction>
 
+<cffunction name="logRunObservable" access="public" returntype="any" output="no" hint="I log information about running of cacheable code.">
+	<cfargument name="RunTime" type="numeric" required="true">
+	<cfargument name="ListenerName" type="string" required="true">
+
+	<cfset var sArgs = {time_ms=Arguments.RunTime,name=Arguments.ListenerName}>
+	<cfset var sComp = 0>
+
+	<cfif StructKeyExists(Arguments,"Fun")>
+		<cfset sArgs["Label"] = Arguments.Fun.Metadata.Name>
+	</cfif>
+
+	<cfif StructKeyExists(Arguments,"Component") AND StructKeyExists(Arguments,"MethodName")>
+		<cfset sComp = getMetaData(Arguments.Component)>
+		<cfif StructKeyExists(sComp,"DisplayName")>
+			<cfset sArgs["Label"] = sComp.DisplayName & ": " & Arguments.MethodName>
+		<cfelse>
+			<cfset sArgs["Label"] = sComp.Name & "." & Arguments.MethodName>
+		</cfif>
+	</cfif>
+
+	<cfif StructKeyExists(Arguments,"Args") AND StructCount(Arguments.Args)>
+		<cfset sArgs.Data = Arguments.Args>
+	</cfif>
+
+	<!---<cfset Variables.instance.Timer.hearMrECache(Arguments.id,Arguments.RunTime)>--->
+	<cfset Variables.instance.Timer.logTime(ArgumentCollection=sArgs)>
+
+</cffunction>
+
 <cffunction name="startTracking" access="public" returntype="void" output="no" hint="I register a listener with Observer to listen for services being loaded.">
 
 	<cfset Variables.isTracking = true>
@@ -55,6 +84,13 @@
 		ListenerMethod = "logRunCacheable",
 		EventName = "MrECache:run"
 	)>
+	<cfset Variables.instance.Observer.registerListener(
+		Listener = This,
+		ListenerName = "MrPerformanceObserv",
+		ListenerMethod = "logRunObservable",
+		EventName = "Observer:announceEvent"
+	)>
+
 
 </cffunction>
 
@@ -65,6 +101,11 @@
 		ListenerName = "MrPerformance",
 		ListenerMethod = "logRunCacheable",
 		EventName = "MrECache:run"
+	)>
+	<cfset Variables.instance.Observer.unregisterListener(
+		ListenerName = "MrPerformanceObserv",
+		ListenerMethod = "logRunObservable",
+		EventName = "Observer:announceEvent"
 	)>
 
 </cffunction>
