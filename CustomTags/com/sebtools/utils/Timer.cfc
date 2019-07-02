@@ -3,19 +3,19 @@
 <cffunction name="init" access="public" returntype="any" output="no">
 	<cfargument name="DataMgr" type="any" required="yes">
 	<cfargument name="Observer" type="any" required="yes">
-	
+
 	<cfset Variables.DataMgr = Arguments.DataMgr>
 	<cfset Variables.Observer = Arguments.Observer>
-	
+
 	<cfset Variables.datasource = Variables.DataMgr.getDatasource()>
 	<cfset Variables.DataMgr.loadXml(getDbXml(),true,true)>
-	
+
 	<cfset Variables.DateTimeLoaded = now()>
 
 	<cfset Variables.MrECache = CreateObject("component","com.sebtools.MrECache").init("timer",CreateTimeSpan(0,0,5,0))>
 
 	<cfset registerListeners()>
-	
+
 	<cfreturn This>
 </cffunction>
 
@@ -28,23 +28,41 @@
 </cffunction>
 
 <cffunction name="logTime" access="public" returntype="any" output="no">
-	
+	<cfargument name="Time_ms" type="numeric" required="true">
+	<cfargument name="Name" type="string" required="false">
+	<cfargument name="Label" type="string" required="false">
+	<cfargument name="Template" type="string" default="#CGI.SCRIPT_NAME#">
+	<cfargument name="data" type="struct" required="false">
+
+	<!--- We need a load time for the page so we can group data by request --->
+	<cfif NOT StructKeyExists(request,"TimerPageDate")>
+		<cfset request.TimerPageDate = now()>
+	</cfif>
+
+	<cfif NOT StructKeyExists(Arguments,"DatePageLoaded")>
+		<cfset Arguments.DatePageLoaded = request.TimerPageDate>
+	</cfif>
+
+	<!--- Actually, we need a UUID so we can group data by request. --->
+	<cfif NOT StructKeyExists(request,"TimerUUID")>
+		<cfset request.TimerUUID = CreateUUID()>
+	</cfif>
+	<cfset Arguments.RequestUUID = request.TimerUUID>
+
 	<cfif StructKeyExists(Arguments,"data") AND NOT StructIsEmpty(Arguments.data)>
 		<cfset Arguments.data = SerializeJSON(Arguments.data)>
 	<cfelse>
 		<cfset StructDelete(Arguments,"data")>
 	</cfif>
 
-	<cfif NOT StructKeyExists(Arguments,"Template")>
-		<cfset Arguments.Template = CGI.SCRIPT_NAME>
-	</cfif>
-	
-	<cfset Variables.DataMgr.insertRecord(
-		tablename="cf_timer",
-		OnExists="insert",
-		data=Arguments
+	<cfset Variables.DataMgr.runSQLArray(
+		Variables.DataMgr.insertRecordSQL(
+			tablename="cf_timer",
+			OnExists="insert",
+			data=Arguments
+		)
 	)>
-	
+
 </cffunction>
 
 <cffunction name="hearMrECache" access="public" returntype="void" output="no">
@@ -105,27 +123,27 @@
 </cffunction>
 
 <cffunction name="resetFilters" access="public" returntype="void" output="no">
-	
+
 	<cfset Variables.MrECache.remove("filters")>
 	<cfset Variables.MrECache.clearCaches("isfiltered")>
 
 </cffunction>
 
 <cffunction name="registerListeners" access="private" returntype="void" output="no" hint="I register a listener with Observer to listen for timed events.">
-	
+
 	<cfset Variables.Observer.registerListener(
 		Listener = This,
 		ListenerName = "TimeMrECache",
 		ListenerMethod = "hearMrECache",
 		EventName = "MrECache:run"
 	)>
-	
+
 </cffunction>
 
 <cffunction name="getDbXml" access="private" returntype="string" output="no">
-	
+
 	<cfset var result = "">
-	
+
 	<cfsavecontent variable="result"><cfoutput>
 	<tables>
 		<table name="cf_timer">
@@ -137,6 +155,7 @@
 			<field ColumnName="data" CF_DataType="CF_SQL_LONGVARCHAR" Length="60" />
 			<field ColumnName="DatePageLoaded" CF_DataType="CF_SQL_DATE" />
 			<field ColumnName="DateAdded" CF_DataType="CF_SQL_DATE" Special="CreationDate" />
+			<field ColumnName="RequestUUID" CF_DataType="CF_SQL_VARCHAR" Length="50" />
 		</table>
 		<table name="cf_timer_filters">
 			<field ColumnName="FilterID" CF_DataType="CF_SQL_INTEGER" PrimaryKey="true" Increment="true" />
@@ -146,7 +165,7 @@
 		</table>
 	</tables>
 	</cfoutput></cfsavecontent>
-	
+
 	<cfreturn result>
 </cffunction>
 

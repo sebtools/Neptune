@@ -22,6 +22,26 @@
 </cffunction>
 
 <cffunction name="logTime" access="public" returntype="any" output="no">
+	<cfargument name="Time_ms" type="numeric" required="true">
+	<cfargument name="Name" type="string" required="false">
+	<cfargument name="Label" type="string" required="false">
+	<cfargument name="Template" type="string" default="#CGI.SCRIPT_NAME#">
+	<cfargument name="data" type="struct" required="false">
+
+	<!--- We need a load time for the page so we can group data by request --->
+	<cfif NOT StructKeyExists(request,"TimerPageDate")>
+		<cfset request.TimerPageDate = now()>
+	</cfif>
+
+	<cfif NOT StructKeyExists(Arguments,"DatePageLoaded")>
+		<cfset Arguments.DatePageLoaded = request.TimerPageDate>
+	</cfif>
+
+	<!--- Actually, we need a UUID so we can group data by request. --->
+	<cfif NOT StructKeyExists(request,"TimerUUID")>
+		<cfset request.TimerUUID = CreateUUID()>
+	</cfif>
+	<cfset Arguments.RequestUUID = request.TimerUUID>
 
 	<cfif StructKeyExists(Arguments,"data") AND NOT StructIsEmpty(Arguments.data)>
 		<cfset Arguments.data = SerializeJSON(Arguments.data)>
@@ -29,11 +49,24 @@
 		<cfset StructDelete(Arguments,"data")>
 	</cfif>
 
-	<cfset Variables.DataMgr.insertRecord(
-		tablename="cf_timer",
-		OnExists="insert",
-		data=Arguments,
-		truncate=true
+	<!---
+	<cfquery datasource="#Variables.DataMgr.getDatasource()#">
+	INSERT INTO cf_timer (
+
+		Template
+	)
+	VALUES (
+		<cfqueryparam value="#Arguments.Template#" cfsqltype="CF_SQL_INTEGER">
+	)
+	</cfquery>
+	--->
+
+	<cfset Variables.DataMgr.runSQLArray(
+		Variables.DataMgr.insertRecordSQL(
+			tablename="cf_timer",
+			OnExists="insert",
+			data=Arguments
+		)
 	)>
 
 </cffunction>
@@ -53,6 +86,7 @@
 			<field ColumnName="data" CF_DataType="CF_SQL_LONGVARCHAR" Length="60" />
 			<field ColumnName="DatePageLoaded" CF_DataType="CF_SQL_DATE" />
 			<field ColumnName="DateAdded" CF_DataType="CF_SQL_DATE" Special="CreationDate" />
+			<field ColumnName="RequestUUID" CF_DataType="CF_SQL_VARCHAR" Length="50" />
 		</table>
 	</tables>
 	</cfoutput></cfsavecontent>
