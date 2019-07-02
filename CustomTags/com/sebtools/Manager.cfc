@@ -753,17 +753,38 @@
 	<cfreturn aFields>
 </cffunction>
 
+<cffunction name="hasOrdinalArgs" access="private" returntype="boolean" output="no">
+	<cfargument name="Args" type="struct" required="yes">
+
+	<cfset var ii = 0>
+
+	<cfif NOT StructCount(Args)>
+		<cfreturn false>
+	</cfif>
+
+	<cfloop item="ii" collection="#Args#">
+		<cfif NOT isNumeric(ii)>
+			<cfreturn false>
+		</cfif>
+	</cfloop>
+
+	<cfreturn true>
+</cffunction>
+
 <cffunction name="getPKRecord" access="public" returntype="query" output="no">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="data" type="struct" required="yes">
 	<cfargument name="fieldlist" type="string" default="" hint="A list of fields to return. If left blank, all fields will be returned.">
 
-	<cfset var in = Duplicate(arguments.data)>
-	<cfset var pkfields = variables.DataMgr.getPKFields(arguments.tablename)>
+	<cfset var in = arguments.data>
+	<cfset var pkfields = 0>
 	<cfset var ii = 0>
 	<cfset var qRecord = QueryNew("none")>
 	<cfset var pklist = "">
-	<cfset var isOrdinal = true>
+	<cfset var sPKs = {}>
+	<cfset var sTable = {table=Arguments.tablename}>
+
+	<cfset pkfields = variables.DataMgr.getPKFields(arguments.tablename)>
 
 	<cfif NOT ArrayLen(pkfields)>
 		<cfthrow message="getRecord can only be used against tables with at least one primary key field." type="Manager">
@@ -774,15 +795,9 @@
 		<cfset pklist = ListAppend(pklist,pkfields[ii].ColumnName)>
 	</cfloop>
 
-	<cfloop item="ii" collection="#in#">
-		<cfif NOT isNumeric(ii)>
-			<cfset isOrdinal = false>
-		</cfif>
-	</cfloop>
-
 	<!--- Set argument names if not given by names --->
 	<cfif
-			isOrdinal
+			hasOrdinalArgs(in)
 		AND	ArrayLen(in) GTE ArrayLen(pkfields)
 		AND NOT StructKeyExists(in,pkfields[1].ColumnName)
 	>
@@ -794,14 +809,14 @@
 	<!--- Delete any arguments that aren't simple and primary keys --->
 	<cfloop collection="#in#" item="ii">
 		<cfif
-				NOT (
+				(
 							StructKeyExists(in,ii)
 						AND	isSimpleValue(in[ii])
 						AND	ListFindNoCase(pklist,ii)
 						AND	Len(in[ii])
 					)
 		>
-			<cfset StructDelete(in,ii)>
+			<cfset sPKs[ii] = in[ii]>
 		</cfif>
 	</cfloop>
 
@@ -809,7 +824,7 @@
 	<cfif ArrayLen(pkfields) GT 0 AND StructCount(in) GT 0 AND ArrayLen(pkfields) EQ StructCount(in)>
 		<cfinvoke returnvariable="qRecord" component="#variables.DataMgr#" method="getRecord">
 			<cfinvokeargument name="tablename" value="#arguments.tablename#">
-			<cfinvokeargument name="data" value="#in#">
+			<cfinvokeargument name="data" value="#sPKs#">
 			<cfinvokeargument name="fieldlist" value="#arguments.fieldlist#">
 		</cfinvoke>
 	</cfif>
@@ -1049,8 +1064,8 @@
 	<cfargument name="data" type="struct" default="#StructNew()#">
 	<cfargument name="OnExists" type="string" required="no" hint="defaults to update.">
 
-	<cfset var in = Duplicate(arguments.data)>
-	<cfset var aFileFields = getFileFields(tablename=arguments.tablename,data=arguments.data)>
+	<cfset var in = arguments.data>
+	<cfset var aFileFields = 0>
 	<cfset var ii = 0>
 	<cfset var qRecord = 0>
 	<cfset var result = "">
@@ -1058,6 +1073,10 @@
 	<cfset var FileResult = "">
 	<cfset var isUpload = false>
 	<cfset var isFormUpload = false>
+	<cfset var isFileHandling = false>
+	<cfset var sTable = {table=Arguments.tablename}>
+
+	<cfset aFileFields = getFileFields(tablename=arguments.tablename,data=arguments.data)>
 
 	<!--- Default OnExists to update, but use key from data if it exists --->
 	<cfif NOT StructKeyExists(arguments,"OnExists")>
@@ -1071,7 +1090,6 @@
 	<!--- Take actions on any file fields --->
 	<cfif ArrayLen(aFileFields) AND StructCount(in)>
 		<cfset qRecord = getPKRecord(tablename=arguments.tablename,data=in,fieldlist=getFieldListFromArray(aFileFields))>
-
 		<cfloop index="ii" from="1" to="#ArrayLen(aFileFields)#">
 			<cfset FormField = aFileFields[ii].name>
 			<cfif
@@ -1097,10 +1115,12 @@
 				<cfabort>
 			</cfif>--->
 			<cfif isUpload>
+				<cfset isFileHandling = true>
 				<!--- Ditch old file if it is being replaced my new upload. --->
 				<cfif qRecord.RecordCount AND Len(qRecord[aFileFields[ii].name][1])>
 					<cfset variables.FileMgr.deleteFile(qRecord[aFileFields[ii].name][1],aFileFields[ii].Folder)>
 				</cfif>
+
 				<cfif isFormUpload>
 					<cfinvoke returnvariable="FileResult" component="#variables.FileMgr#" method="uploadFile">
 						<cfif isFormUpload>
@@ -1133,38 +1153,28 @@
 						<cfset in[aFileFields[ii].name] = fixFileName(in[aFileFields[ii].name],variables.FileMgr.getDirectory(aFileFields[ii].Folder),aFileFields[ii].Length)>
 					</cfif>
 				<cfelse>
-					<cftry>
-						<cfset Variables.FileMgr.makeFileCopy(in[aFileFields[ii].name],aFileFields[ii].Folder)>
-						<!---<cffile destination="#Variables.FileMgr.getDirectory(aFileFields[ii].Folder)#" source="#in[aFileFields[ii].name]#" action="copy">--->
-					<cfcatch>
-						<cfdump var="#qRecord#">
-						<cfdump var="#in#">
-						<cfdump var="#Form#">
-						<cfdump var="#aFileFields[ii]#">
-						<cfdump var="#CFCATCH#">
-						<cfabort>
-					</cfcatch>
-					</cftry>
+					<cfset Variables.FileMgr.makeFileCopy(in[aFileFields[ii].name],aFileFields[ii].Folder)>
+					<!---<cffile destination="#Variables.FileMgr.getDirectory(aFileFields[ii].Folder)#" source="#in[aFileFields[ii].name]#" action="copy">--->
 					<cfset in[aFileFields[ii].name] = getFileFromPath(in[aFileFields[ii].name])>
 				</cfif>
 			</cfif>
 		</cfloop>
 
-		<!--- fit any images into box (if possible) --->
-		<cfset in = adjustImages(tablename=arguments.tablename,data=in)>
-
-		<!--- Delete any files that are cleared out --->
-		<cfif qRecord.RecordCount>
-			<cfloop index="ii" from="1" to="#ArrayLen(aFileFields)#" step="1">
-				<cfif Len(qRecord[aFileFields[ii].name][1]) AND StructKeyExists(in,aFileFields[ii].name) AND NOT Len(Trim(in[aFileFields[ii].name]))>
-					<cfset variables.FileMgr.deleteFile(qRecord[aFileFields[ii].name][1],aFileFields[ii].Folder)>
-				</cfif>
-			</cfloop>
+		<cfif isFileHandling>
+			<!--- fit any images into box (if possible) --->
+			<cfset in = adjustImages(tablename=arguments.tablename,data=in)>
+			<!--- Delete any files that are cleared out --->
+			<cfif qRecord.RecordCount>
+				<cfloop index="ii" from="1" to="#ArrayLen(aFileFields)#" step="1">
+					<cfif Len(qRecord[aFileFields[ii].name][1]) AND StructKeyExists(in,aFileFields[ii].name) AND NOT Len(Trim(in[aFileFields[ii].name]))>
+						<cfset variables.FileMgr.deleteFile(qRecord[aFileFields[ii].name][1],aFileFields[ii].Folder)>
+					</cfif>
+				</cfloop>
+			</cfif>
 		</cfif>
 
 	</cfif>
 
-	<cfset arguments.data = Duplicate(in)>
 	<cfset arguments.alterargs_for = "save">
 	<cfset result = variables.DataMgr.insertRecord(argumentCollection=alterArgs(argumentCollection=arguments))>
 
@@ -1190,30 +1200,39 @@
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="data" type="struct" default="#StructNew()#">
 
-	<cfset var aResults = ArrayNew(1)>
-	<cfset var in = Duplicate(arguments.data)>
-	<cfset var aFields = getFieldsArray(tablename=arguments.tablename)>
+	<cfset var aResults = 0>
+	<cfset var in = 0>
+	<cfset var aFields = 0>
 	<cfset var ii = 0>
 
-	<cfloop index="ii" from="1" to="#ArrayLen(aFields)#" step="1">
-		<cfif
-				( StructKeyExists(aFields[ii],"Folder") AND	Len(aFields[ii].Folder) )
-			AND	(
-						(
-								StructCount(in) EQ 0
-							OR	StructKeyExists(in,aFields[ii].name)
-						)
-					OR	(
-								StructKeyExists(aFields[ii],"original")
-							AND	StructKeyExists(in,aFields[ii].original)
-						)
-				)
-		>
-			<cfset ArrayAppend(aResults,aFields[ii])>
-		</cfif>
-	</cfloop>
+	<cfif NOT StructKeyExists(variables.sMetaData[arguments.tablename],"fields_files")>
 
-	<cfreturn aResults>
+		<cfset aResults = ArrayNew(1)>
+		<cfset in = arguments.data>
+		<cfset aFields = getFieldsArray(tablename=arguments.tablename)>
+
+		<cfloop index="ii" from="1" to="#ArrayLen(aFields)#" step="1">
+			<cfif
+					( StructKeyExists(aFields[ii],"Folder") AND	Len(aFields[ii].Folder) )
+				AND	(
+							(
+									StructCount(in) EQ 0
+								OR	StructKeyExists(in,aFields[ii].name)
+							)
+						OR	(
+									StructKeyExists(aFields[ii],"original")
+								AND	StructKeyExists(in,aFields[ii].original)
+							)
+					)
+			>
+				<cfset ArrayAppend(aResults,aFields[ii])>
+			</cfif>
+		</cfloop>
+
+		<cfset variables.sMetaData[arguments.tablename]["fields_files"] = aResults>
+	</cfif>
+
+	<cfreturn variables.sMetaData[arguments.tablename]["fields_files"]>
 </cffunction>
 
 <cffunction name="alterRecords" access="public" returntype="query" output="false" hint="">
