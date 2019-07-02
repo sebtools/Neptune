@@ -85,7 +85,7 @@
 		<cfset saveNotice(argumentCollection=arguments)>
 	<cfelseif NOT StructKeyExists(variables.Mailer.getNotices(),qCheckNotice.Name)>
 		<!--- If it does exist, make sure Mailer has it (don't send it to Mailer again if it doesn't though. --->
-		<cfinvoke component="#variables.Mailer#" method="addNotice">
+		<cfinvoke method="addMailerNotice">
 			<cfinvokeargument name="name" value="#qCheckNotice.Name#">
 			<cfinvokeargument name="Subject" value="#qCheckNotice.Subject#">
 			<cfinvokeargument name="datakeys" value="#qCheckNotice.DataKeys#">
@@ -111,7 +111,7 @@
 		<cfset data["NoticeID"] = qCheckNotice.NoticeID>
 		<cfset data["DataKeys"] = arguments.DataKeys>
 		<cfset variables.DataMgr.updateRecord("emlNotices",data)>
-		<cfinvoke component="#variables.Mailer#" method="addNotice">
+		<cfinvoke method="addMailerNotice">
 			<cfinvokeargument name="name" value="#arguments.Name#">
 			<cfinvokeargument name="Subject" value="#qCheckNotice.Subject#">
 			<cfinvokeargument name="datakeys" value="#arguments.DataKeys#">
@@ -171,7 +171,7 @@
 	<cfset var qNotices = getNotices(fieldlist="Name,Subject,DataKeys,HTML,Text")>
 
 	<cfloop query="qNotices">
-		<cfinvoke component="#variables.Mailer#" method="addNotice">
+		<cfinvoke method="addMailerNotice">
 			<cfinvokeargument name="name" value="#Name#">
 			<cfinvokeargument name="Subject" value="#Subject#">
 			<cfinvokeargument name="datakeys" value="#DataKeys#">
@@ -180,6 +180,10 @@
 		</cfinvoke>
 	</cfloop>
 
+</cffunction>
+
+<cffunction name="addMailerNotice" access="private" returntype="void" output="no" hint="I add a notice to the mailer.">
+	<cfset Variables.Mailer.addNotice(ArgumentCollection=Arguments)>
 </cffunction>
 
 <cffunction name="removeNotice" access="public" returntype="void" output="no" hint="I remove a notice.">
@@ -240,7 +244,7 @@
 
 	<!--- Add/save notice to mailer --->
 	<cfif Len(qNotice.HTML) OR Len(qNotice.Text)>
-		<cfinvoke component="#variables.Mailer#" method="addNotice">
+		<cfinvoke method="addMailerNotice">
 			<cfinvokeargument name="name" value="#qNotice.Name#">
 			<cfinvokeargument name="Subject" value="#qNotice.Subject#">
 			<cfinvokeargument name="datakeys" value="#qNotice.DataKeys#">
