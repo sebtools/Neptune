@@ -95,7 +95,9 @@
 
 	<cfset got(Arguments.id)>
 
-	<cfreturn CacheGet(qualify(Arguments.id))>
+	<cfif exists(Arguments.id)>
+		<cfreturn CacheGet(qualify(Arguments.id))>
+	</cfif>
 </cffunction>
 
 <cffunction name="id" access="public" returntype="any" output="false" hint="I make an id from a key and data.">
