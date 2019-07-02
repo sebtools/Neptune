@@ -21,6 +21,8 @@
 		<cfset setSubject(Arguments.Subject)>
 	</cfif>
 
+	<cfset Variables.Me = This>
+
 	<cfreturn This>
 </cffunction>
 
@@ -33,6 +35,10 @@
 
 	<cfset var key = "">
 	<cfset var ii = 0>
+	<cfset var begin = 0>
+	<cfset var end = 0>
+	<cfset var sRecursiveEvent = 0>
+	<cfset var ArrLen = 0>
 
 	<!--- In case this is called before init(). --->
 	<cfif NOT StructKeyExists(Variables,"sEvents")>
@@ -43,7 +49,6 @@
 	<cfif NOT StructKeyExists(Arguments,"RecursionLimit")>
 		<cfset Arguments.RecursionLimit = Variables.RecursionLimit>
 	</cfif>
-
 	<!--- Ensure arguments exist. --->
 	<cfif NOT StructKeyExists(Arguments,"Args")>
 		<cfset Arguments["Args"] = {}>
@@ -60,18 +65,44 @@
 	<cfset checkEventRecursion(Arguments.EventName,Arguments.RecursionLimit)>
 
 	<!--- If the event has listeners, call the listener method for each. --->
-	<cfif StructKeyExists(Variables.sEvents,Arguments.EventName) AND ArrayLen(Variables.sEvents[Arguments.EventName])>
-		<cfloop index="ii" from="1" to="#ArrayLen(Variables.sEvents[Arguments.EventName])#">
-			<cfinvoke
-				component="#Variables.sEvents[EventName][ii].Listener#"
-				method="#Variables.sEvents[EventName][ii].ListenerMethod#"
-				argumentcollection="#Arguments.Args#"
-			>
-			</cfinvoke>
-		</cfloop>
+	<cfif StructKeyExists(Variables.sEvents,Arguments.EventName)>
+		<cfset ArrLen = ArrayLen(Variables.sEvents[Arguments.EventName])>
+		<cfif ArrLen>
+			<cfloop index="ii" from="1" to="#ArrLen#">
+				<cfset begin = getTickCount()>
+				<cfinvoke
+					component="#Variables.sEvents[EventName][ii].Listener#"
+					method="#Variables.sEvents[EventName][ii].ListenerMethod#"
+					argumentcollection="#Arguments.Args#"
+				>
+				</cfinvoke>
+				<cfset end = getTickCount()>
+				<!--- Observer should know about its own announcements. --->
+				<cfif NOT StructKeyExists(request,"Observer_announcingevent")>
+					<cfset request["Observer_announcingevent"] = now()>
+					<cfset sRecursiveEvent = {
+						EventName="Observer:announceEvent",
+						Args={
+							RunTime=end-begin,
+							EventName=Arguments.EventName,
+							ListenerName="#Variables.sEvents[EventName][ii].ListenerName#",
+							Component=Variables.sEvents[EventName][ii].Listener,
+							MethodName="#Variables.sEvents[EventName][ii].ListenerMethod#",
+							args=Arguments.Args
+						}
+					}>
+					<cfinvoke
+						component="#Variables.Me#"
+						method="announceEvent"
+						argumentcollection="#sRecursiveEvent#"
+					>
+					</cfinvoke>
+					<cfset StructDelete(request,"Observer_announcingevent")>
+				</cfif>
+			</cfloop>
+		</cfif>
 	</cfif>
 
-	<!--- Decrement the event from the request stack. The limit is just for recurive calls. --->
 	<cfset request.ObserverEventStack[Arguments.EventName] = request.ObserverEventStack[Arguments.EventName] - 1>
 
 </cffunction>
