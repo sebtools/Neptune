@@ -54,10 +54,6 @@
 		<cfreturn false>
 	</cfif>
 
-	<cfif Arguments.action CONTAINS "after">
-		<cfreturn logActionComplete(ArgumentCollection=Arguments)>
-	</cfif>
-
 	<!--- Convert action arguments. --->
 	<cfif Arguments.action CONTAINS "insert">
 		<cfset sArgs["action"] = "insert">
@@ -70,6 +66,19 @@
 		<cfreturn false>
 	</cfif>
 
+	<cfif Arguments.action CONTAINS "after">
+		<cfif sArgs["action"] EQ "update">
+			<cfreturn logActionComplete(ArgumentCollection=Arguments)>
+		<cfelse>
+			<cfset sArgs["DateCompleted"] = now()>
+		</cfif>
+	</cfif>
+
+	<!--- We won't know the primary key value yet for an insert --->
+	<cfif sArgs["action"] NEQ "insert" AND NOT StructKeyExists(Arguments,"pkvalue")>
+		<cfset Arguments["pkvalue"] = getPKValue(Arguments.tablename,Arguments.data)>
+	</cfif>
+
 	<cfset sArgs["tablename"] = Arguments.tablename>
 	<cfset sArgs["Who"] = getWho()>
 	<cfif StructKeyExists(Arguments,"ChangeUUID")>
@@ -78,10 +87,8 @@
 	<cfif StructKeyExists(Arguments,"sql")>
 		<cfset sArgs["sql"] = Variables.DataMgr.readableSQL(Arguments.sql)>
 	</cfif>
-
-	<!--- We won't know the primary key value yet for an insert --->
-	<cfif sArgs["action"] NEQ "insert">
-		<cfset sArgs["pkvalue"] = getPKValue(Arguments.tablename,Arguments.data)>
+	<cfif StructKeyExists(Arguments,"pkvalue")>
+		<cfset sArgs["pkvalue"] = Arguments.pkvalue>
 	</cfif>
 
 	<!--- ** Log the Change ** --->
@@ -95,7 +102,14 @@
 			//Make sure to track the change set
 			aChanges[ii]["ChangeSetID"] = ChangeSetID;
 			//Save the change
-			Variables.DataMgr.insertRecord(tablename="audChanges",data=aChanges[ii]);
+			Variables.DataMgr.runSQLArray(
+				Variables.DataMgr.insertRecordSQL(
+					tablename="cf_timer",
+					OnExists="insert",
+					data=Arguments
+				)
+			);
+			//Variables.DataMgr.insertRecord(tablename="audChanges",data=aChanges[ii],log=false);
 		}
 	}
 	</cfscript>
@@ -191,7 +205,7 @@
 		Listener = This,
 		ListenerName = "DataLogger",
 		ListenerMethod = "logAction",
-		EventNames = "DataMgr:beforeInsert,DataMgr:afterInsert,DataMgr:beforeDelete,DataMgr:afterDelete,DataMgr:beforeUpdate,DataMgr:afterUpdate"
+		EventNames = "DataMgr:afterInsert,DataMgr:afterDelete,DataMgr:beforeUpdate,DataMgr:afterUpdate"
 	)>
 
 </cffunction>
