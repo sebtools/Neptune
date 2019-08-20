@@ -149,17 +149,21 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 		}
 
 	}
+	setDefaultAtt("Attributes.Script_Name",CGI.Script_Name);
+	setDefaultAtt("Here","#ListLast(Attributes.Script_Name, '/')#?#attributes.Query_String#");
+	setDefaultAtt("DefaultForward",Attributes.Here);
 	if ( attributes.sendback ) {
-		if ( StructKeyExists(sForm,"sebForm_Forward") ) {
+		if ( StructKeyExists(sForm,"sebForm_Forward") AND Len(sForm["sebForm_Forward"]) ) {
 			setDefaultAtt("forward",sForm["sebForm_Forward"]);
 			StructDelete(sForm,"sebForm_Forward");
-		} else if ( Len(CGI.HTTP_REFERER) ) {
+		} else if ( Len(CGI.HTTP_REFERER) AND ( Right(CGI.HTTP_REFERER,Len(Attributes.Here)) NEQ Attributes.Here ) ) {
 			setDefaultAtt("forward",Referrer);
 		} else {
-			setDefaultAtt("forward","#ListLast(CGI.Script_Name, '/')#?#attributes.Query_String#");
+			setDefaultAtt("forward",Attributes.DefaultForward);
 		}
 	}
-	setDefaultAtt("forward","#ListLast(CGI.Script_Name, '/')#?#attributes.Query_String#");
+	setDefaultAtt("forward",Attributes.DefaultForward);
+
 	if ( isDefined("url.id") ) {
 		setDefaultAtt("recordid",url.id);
 	} else {
