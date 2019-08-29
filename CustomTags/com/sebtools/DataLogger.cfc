@@ -101,14 +101,16 @@
 		for  ( ii=1; ii LTE ArrayLen(aChanges); ii++ ) {
 			//Make sure to track the change set
 			aChanges[ii]["ChangeSetID"] = ChangeSetID;
-			//Save the change
-			Variables.DataMgr.runSQLArray(
-				Variables.DataMgr.insertRecordSQL(
-					tablename="cf_timer",
-					OnExists="insert",
-					data=Arguments
-				)
-			);
+			if ( StructCount(aChanges[ii]) GT 1 ) {
+				//Save the change
+				Variables.DataMgr.runSQLArray(
+					Variables.DataMgr.insertRecordSQL(
+						tablename="audChanges",
+						OnExists="insert",
+						data=aChanges[ii]
+					)
+				);
+			}
 			//Variables.DataMgr.insertRecord(tablename="audChanges",data=aChanges[ii],log=false);
 		}
 	}
