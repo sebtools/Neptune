@@ -149,7 +149,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 		}
 
 	}
-	setDefaultAtt("Attributes.Script_Name",CGI.Script_Name);
+	setDefaultAtt("Script_Name",CGI.Script_Name);
 	setDefaultAtt("Here","#ListLast(Attributes.Script_Name, '/')#?#attributes.Query_String#");
 	setDefaultAtt("DefaultForward",Attributes.Here);
 	if ( attributes.sendback ) {
