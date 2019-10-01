@@ -1,8 +1,8 @@
 <cfsilent>
 <!---
 I supply UDFs for DMQuery/DMSQL/DMParam
-Version 1.0 Beta 1 (build 4)
-Updated: 2010-10-01
+Version 1.0
+Updated: 2017-08-08
 Updated: 2010-05-30
 --->
 <cfscript>
@@ -12,7 +12,7 @@ function convertSQLArray(aRawSQL) {
 	var jj = 0;
 	var marker = "";
 	var MarkerLoc = 0;
-	
+
 	//Convert SQL statements
 	if ( StructKeyExists(ThisTag,"aSQLs") ) {
 		for ( ii=1; ii LTE ArrayLen(aRawSQL); ii=ii+1 ) {
@@ -52,7 +52,7 @@ function convertSQLArray(aRawSQL) {
 function getDMSQLArray() {
 	var aResult = ArrayNew(1);
 	var ii = 0;
-	marker = "";
+	var marker = "";
 	//Loop over params and inject struct of attributes of each
 	if ( StructKeyExists(ThisTag,"aParams") ) {
 		for ( ii = 1; ii LTE ArrayLen(ThisTag.aParams); ii=ii+1 ) {
@@ -70,5 +70,42 @@ function getDMSQLArray() {
 	ThisTag.GeneratedContent = "";
 	return aResult;
 }
+function getActionArgs(sqlarray) {
+	var sResult = {};
+	var aActionWords = ["INSERT INTO","UPDATE","DELETE"];
+	var ActionWords = "Insert,Update,Delete";
+	var str = Trim(sqlarray[1]);
+
+	str = ReReplaceNoCase(str,"\s"," ","ALL");
+
+	for ( ii=1; ii LTE ArrayLen(aActionWords); ii++ ) {
+		if (
+			REFindNoCase(
+				"^#aActionWords[ii]#\b",
+				str
+			)
+		) {
+			sResult["action"] = ListGetAt(ActionWords,ii);
+			sResult["tablename"] = ListFirst(ReReplaceNoCase(str, "^#aActionWords[ii]#\b", ""), " ");
+			sResult["tablename"] = Trim(ReReplaceNoCase(sResult["tablename"],"[\[\]]"," ","ALL"));
+		}
+	}
+
+	return sResult;
+}
+function doLog(atts) {
+	if (
+		StructKeyExists(atts,"DataLogger")
+		AND
+		StructKeyExists(atts,"action")
+		AND
+		StructKeyExists(atts,"tablename")
+	) {
+		return true;
+	} else {
+		return false;
+	}
+}
 </cfscript>
+
 </cfsilent>

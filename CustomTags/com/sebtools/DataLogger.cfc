@@ -33,7 +33,7 @@
 <cffunction name="logAction" access="public" returntype="any" output="no">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="action" type="string" required="yes">
-	<cfargument name="data" type="struct" required="yes">
+	<cfargument name="data" type="struct" required="no">
 	<cfargument name="ChangeUUID" type="string" required="no">
 	<cfargument name="sql" type="any" required="no">
 
@@ -72,11 +72,17 @@
 		<cfelse>
 			<cfset sArgs["DateCompleted"] = now()>
 		</cfif>
+	<cfelseif StructKeyExists(Arguments,"complete") AND Arguments.complete IS true>
+		<cfset sArgs["DateCompleted"] = now()>
 	</cfif>
 
 	<!--- We won't know the primary key value yet for an insert --->
-	<cfif sArgs["action"] NEQ "insert" AND NOT StructKeyExists(Arguments,"pkvalue")>
-		<cfset Arguments["pkvalue"] = getPKValue(Arguments.tablename,Arguments.data)>
+	<cfif NOT ( StructKeyExists(Arguments,"pkvalue") AND Len(Arguments["pkvalue"]) )>
+		<cfif StructKeyExists(Arguments,"data") AND StructCount(Arguments.data)>
+			<cfif sArgs["action"] NEQ "insert" AND NOT StructKeyExists(Arguments,"pkvalue")>
+				<cfset Arguments["pkvalue"] = getPKValue(Arguments.tablename,Arguments.data)>
+			</cfif>
+		</cfif>
 	</cfif>
 
 	<cfset sArgs["tablename"] = Arguments.tablename>
@@ -95,23 +101,24 @@
 	<cfset ChangeSetID = Variables.DataMgr.insertRecord(tablename="audChangeSets",data=sArgs)>
 
 	<cfscript>
-	// Track individual changes on updates
-	if ( sArgs["action"] EQ "update" ) {
-		aChanges = getDataChanges(Arguments.tablename,Arguments.data);
-		for  ( ii=1; ii LTE ArrayLen(aChanges); ii++ ) {
-			//Make sure to track the change set
-			aChanges[ii]["ChangeSetID"] = ChangeSetID;
-			if ( StructCount(aChanges[ii]) GT 1 ) {
-				//Save the change
-				Variables.DataMgr.runSQLArray(
-					Variables.DataMgr.insertRecordSQL(
-						tablename="audChanges",
-						OnExists="insert",
-						data=aChanges[ii]
-					)
-				);
+	if ( StructKeyExists(Arguments,"data") AND StructCount(Arguments.data) ) {
+		// Track individual changes on updates
+		if ( sArgs["action"] EQ "update" ) {
+			aChanges = getDataChanges(Arguments.tablename,Arguments.data);
+			for  ( ii=1; ii LTE ArrayLen(aChanges); ii++ ) {
+				//Make sure to track the change set
+				aChanges[ii]["ChangeSetID"] = ChangeSetID;
+				if ( StructCount(aChanges[ii]) GT 1 ) {
+					//Save the change
+					Variables.DataMgr.runSQLArray(
+						Variables.DataMgr.insertRecordSQL(
+							tablename="audChanges",
+							OnExists="insert",
+							data=aChanges[ii]
+						)
+					);
+				}
 			}
-			//Variables.DataMgr.insertRecord(tablename="audChanges",data=aChanges[ii],log=false);
 		}
 	}
 	</cfscript>
@@ -143,7 +150,10 @@
 		</cfif>
 	</cfif>
 
+</cffunction>
 
+<cffunction name="getLoggedTables" access="public" returntype="any" output="no">
+	<cfreturn Variables.logged_tables>
 </cffunction>
 
 <cffunction name="logTable" access="public" returntype="any" output="no">
