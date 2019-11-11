@@ -218,8 +218,8 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 			attributes.Length = 9;
 		}
 
-		if ( ( attributes.type EQ "decimal" OR attributes.type EQ "money" ) AND NOT ( StructKeyExists(attributes,"Length") AND isNumeric(attributes.Length) AND attributes.Length GT 0 AND attributes.Length LT 10 ) ) {
-			attributes.Length = 9;
+		if ( ( attributes.type EQ "decimal" OR attributes.type EQ "money" ) AND NOT ( StructKeyExists(attributes,"Length") AND isNumeric(attributes.Length) AND attributes.Length GT 0 AND attributes.Length LT 19 ) ) {
+			attributes.Length = 18;
 		}
 
 		if ( attributes.type EQ "image" ) {
