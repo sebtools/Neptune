@@ -100,6 +100,16 @@
 	</cfif>
 </cffunction>
 
+<cffunction name="getDataHash" access="public" returntype="any" output="false" hint="I return a hash of the given data.">
+	<cfargument name="data" type="any" required="true">
+
+	<cfif isSimpleValue(Arguments.data)>
+		<cfreturn Arguments.data>
+	<cfelse>
+		<cfreturn Hash(SerializeJSON(Arguments.data))>
+	</cfif>
+</cffunction>
+
 <cffunction name="id" access="public" returntype="any" output="false" hint="I make an id from a key and data.">
 	<cfargument name="key" type="string" required="true">
 	<cfargument name="data" type="any" required="false">
@@ -107,11 +117,7 @@
 	<cfset var result = Arguments.key>
 
 	<cfif StructKeyExists(Arguments,"data")>
-		<cfif isSimpleValue(Arguments.data)>
-			<cfset result = "#result#_" & Arguments.data>
-		<cfelse>
-			<cfset result = "#result#_" & Hash(SerializeJSON(Arguments.data))>
-		</cfif>
+		<cfset result = "#result#_" & getDataHash(Arguments.data)>
 	</cfif>
 
 	<cfreturn result>
