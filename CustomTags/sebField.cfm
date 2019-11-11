@@ -912,7 +912,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 		</cfif>
 
 		<cfif attributes.locked OR attributes.isEditable IS false>
-			<cfif Len(attributes.value) AND FileExists("#attributes.destination##attributes.value#")>
+			<cfif Len(attributes.value)>
 				<cfif ListFindNoCase("gif,jpg,png", ListLast(attributes.value, ".")) AND attributes.showImage>
 					<cfsavecontent variable="input"><input type="hidden" name="#attributes.fieldname#" value=""/><cfif attributes.showFile><img src="#imgPath#" alt="#attributes.label#" class="sebField-image"></cfif></cfsavecontent>
 				<cfelse>
@@ -924,7 +924,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 		<cfelse>
 			<cfif NOT Len(attributes.style)><cfset attributes.style = "padding:0px;margin:0px;"></cfif>
 			<cfsavecontent variable="input">
-			<cfif Len(attributes.value) AND FileExists("#attributes.destination##attributes.value#")><cfif attributes.showFile><div><cfif ListFindNoCase("gif,jpg,png", ListLast(attributes.value, ".")) AND attributes.showImage><img src="#imgPath#" alt="#attributes.label#" class="sebField-image"> </cfif><strong><a href="#attributes.URLPath##URLEncodedFormat(GetFileFromPath(attributes.value))#">#HTMLEditFormat(GetFileFromPath(attributes.value))#</a></strong></div></cfif><cfif NOT attributes.required><div title="Remove #HTMLEditFormat(GetFileFromPath(attributes.value))#"><input type="checkbox" name="delete#attributes.fieldname#" id="delete#attributes.fieldname#" value="1" title="clear #attributes.label#"><label id="lbl-delete#attributes.fieldname#" for="delete#attributes.fieldname#">remove #HTMLEditFormat(GetFileFromPath(attributes.value))#</label></div><cfelse><div>replace with:</div></cfif></cfif>
+			<cfif Len(attributes.value)><cfif attributes.showFile><div><cfif ListFindNoCase("gif,jpg,png", ListLast(attributes.value, ".")) AND attributes.showImage><img src="#imgPath#" alt="#attributes.label#" class="sebField-image"> </cfif><strong><a<cfif FileExists("#attributes.destination##attributes.value#")> href="#attributes.URLPath##URLEncodedFormat(GetFileFromPath(attributes.value))#"</cfif>>#HTMLEditFormat(GetFileFromPath(attributes.value))#</a></strong></div></cfif><cfif NOT attributes.required><div title="Remove #HTMLEditFormat(GetFileFromPath(attributes.value))#"><input type="checkbox" name="delete#attributes.fieldname#" id="delete#attributes.fieldname#" value="1" title="clear #attributes.label#"><label id="lbl-delete#attributes.fieldname#" for="delete#attributes.fieldname#">remove #HTMLEditFormat(GetFileFromPath(attributes.value))#</label></div><cfelse><div>replace with:</div></cfif></cfif>
 			<input type="file" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>/></cfsavecontent>
 		</cfif>
 	</cfcase>
