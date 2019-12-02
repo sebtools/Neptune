@@ -19,6 +19,12 @@
 	<cfset var titlewords = TitleCaseList(string,"., ('")>
 	<cfset var result = "">
 
+	<!--- No work to do unless string is at least two characters. --->
+	<cfset Arguments.string = Trim(Arguments.string)>
+	<cfif Len(Arguments.string) LTE 1>
+		<cfreturn UCase(Arguments.string)>
+	</cfif>
+
 	<!--- Only change if string is all one case, unless "forcefix" is true --->
 	<cfif arguments.forcefix OR Compare(arguments.string,LCase(arguments.string)) EQ 0 OR Compare(arguments.string,UCase(arguments.string)) EQ 0>
 		<cfloop index="word" list="#titlewords#" delimiters=" ">
@@ -38,7 +44,9 @@
 			</cfif>
 		</cfloop>
 		<!--- Always capitalize the first letter --->
-		<cfset result = UCase(Mid(result,1,1)) & Mid(result,2,Len(result)-1)>
+		<cfif Len(result) GTE 2>
+			<cfset result = UCase(Mid(result,1,1)) & Mid(result,2,Len(result)-1)>
+		</cfif>
 		<cfset result = ReReplace(result,"'S\b","'s","ALL")>
 	<cfelse>
 		<cfset result = arguments.string>
