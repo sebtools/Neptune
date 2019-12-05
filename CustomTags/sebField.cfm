@@ -1118,8 +1118,8 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 		<cfelse>
 			<cfif NOT Len(attributes.style)><cfset attributes.style = "border: 0px solid white;"></cfif>
 			<cfsavecontent variable="input"><fieldset class="yesno" id="#attributes.id#_set"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt]) AND thisHtmlAtt neq "size"> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>>
-		<cfset thisID = "#attributes.id#_1"><input type="radio" id="#thisID#" name="#attributes.fieldname#" value="1"<cfif isBoolean(attributes.value) AND attributes.value> checked="checked"<cfset attributes.display = "Yes"></cfif>/>&nbsp;<label id="lbl-#thisID#" for="#thisID#">#Phrase('Yes')#</label> &nbsp;
-		<cfset thisID = "#attributes.id#_0"><input type="radio" id="#thisID#" name="#attributes.fieldname#" value="0"<cfif isBoolean(attributes.value) AND NOT attributes.value> checked="checked"<cfset attributes.display = "No"></cfif>/>&nbsp;<label id="lbl-#thisID#" for="#thisID#">#Phrase('No')#</label><br/>
+		<cfset thisID = "#attributes.id#_1"><input type="radio" id="#thisID#" name="#attributes.fieldname#" value="1"<cfif isBoolean(attributes.value) AND attributes.value> checked="checked"<cfset attributes.display = "Yes"></cfif> class="#attributes.class#"/>&nbsp;<label id="lbl-#thisID#" for="#thisID#">#Phrase('Yes')#</label> &nbsp;
+		<cfset thisID = "#attributes.id#_0"><input type="radio" id="#thisID#" name="#attributes.fieldname#" value="0"<cfif isBoolean(attributes.value) AND NOT attributes.value> checked="checked"<cfset attributes.display = "No"></cfif> class="#attributes.class#"/>&nbsp;<label id="lbl-#thisID#" for="#thisID#">#Phrase('No')#</label><br/>
 		</fieldset></cfsavecontent><!--- <fieldset></fieldset> --->
 		</cfif>
 	</cfcase>
