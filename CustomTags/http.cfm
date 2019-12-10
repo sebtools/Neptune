@@ -7,6 +7,7 @@
 	<cfparam name="Attributes.log_result" type="boolean" default="true">
 	<cfparam name="Attributes.stripBodyWhitespace" type="boolean" default="false">
 	<cfparam name="Attributes.setContentLength" type="boolean" default="false">
+	<cfparam name="Attributes.MetaQueryString" type="string" default="">
 </cfif>
 <cfif ThisTag.ExecutionMode EQ "End" OR NOT ThisTag.HasEndTag>
 
@@ -148,6 +149,9 @@
 			</cfif>
 			<cfif Attributes.log_result>
 				<cfset sLogArgs["Result"] = Variables[Variables.result]>
+			</cfif>
+			<cfif Len(Attributes.MetaQueryString)>
+				<cfset sLogArgs["MetaQueryString"] = Attributes.MetaQueryString>
 			</cfif>
 
 			<cfset Variables.HTTPRequestLogger.logRequest(ArgumentCollection=sLogArgs)>

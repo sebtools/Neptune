@@ -16,6 +16,7 @@
 	<cfargument name="Params" type="array" required="true">
 	<cfargument name="Result" type="struct" required="false">
 	<cfargument name="ProcessTimeMS" type="numeric" required="false">
+	<cfargument name="MetaQueryString" type="string" required="false">
 
 	<cfreturn variables.DataMgr.insertRecord(
 		variables.tableName, getLoggingStruct(ArgumentCollection=Arguments)
@@ -67,6 +68,7 @@
 	<cfargument name="Params" type="array" required="false">
 	<cfargument name="Result" type="struct" required="false">
 	<cfargument name="ProcessTimeMS" type="numeric" required="false">
+	<cfargument name="MetaQueryString" type="string" required="false">
 
 	<cfset var sLog = {}>
 	<cfset var sRequest = {}>
@@ -121,6 +123,10 @@
 		<cfset sLog["ProcessTimeMS"] = Int(Arguments.ProcessTimeMS)>
 	</cfif>
 
+	<cfif StructKeyExists(Arguments,"MetaQueryString") AND Len(Arguments.MetaQueryString)>
+		<cfset sLog["MetaQueryString"] = Trim(Arguments.MetaQueryString)>
+	</cfif>
+
 	<cfreturn sLog>
 </cffunction>
 
@@ -141,6 +147,7 @@
 			<field ColumnName="Response_Body" CF_DataType="CF_SQL_LONGVARCHAR" />
 			<field ColumnName="ProcessTimeMS" CF_DataType="CF_SQL_INTEGER" />
 			<field ColumnName="inout" CF_DataType="CF_SQL_VARCHAR" Length="10" Default="in" />
+			<field ColumnName="MetaQueryString" CF_DataType="CF_SQL_VARCHAR" Length="250" />
 		</table>
 	</tables>
 	</cfoutput></cfsavecontent>
