@@ -74,7 +74,12 @@ function getActionArgs(sqlarray) {
 	var sResult = {};
 	var aActionWords = ["INSERT INTO","UPDATE","DELETE"];
 	var ActionWords = "Insert,Update,Delete";
-	var str = Trim(sqlarray[1]);
+	var str = sqlarray;
+
+	while ( isArray(str) ) {
+		str = str[1];
+	}
+	var str = Trim(str);
 
 	str = ReReplaceNoCase(str,"\s"," ","ALL");
 

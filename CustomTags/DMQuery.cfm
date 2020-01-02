@@ -35,9 +35,21 @@ Created: 2010-01-12
 <!--- Get UDFs --->
 <cfif NOT isDefined("getDMSQLArray")><cfinclude template="DMUdfs.cfm"></cfif>
 
-<cfif ThisTag.HasEndTag AND ThisTag.ExecutionMode EQ "End" AND Len(Trim(ThisTag.GeneratedContent))>
+<cfif
+		StructKeyExists(Attributes,"sql")
+	OR	(
+				ThisTag.HasEndTag
+			AND	ThisTag.ExecutionMode EQ "End"
+			AND	Len(Trim(ThisTag.GeneratedContent))
+		)
+>
 	<!--- Execute the given SQL if given any --->
-	<cfset sqlarray = getDMSQLArray()>
+	<cfif StructKeyExists(Attributes,"sql")>
+		<cfset sqlarray = Attributes.sql>
+		<cfset StructDelete(Attributes,"sql")>
+	<cfelse>
+		<cfset sqlarray = getDMSQLArray()>
+	</cfif>
 	<cfset sActions = getActionArgs(sqlarray)>
 	<cfset Variables.result = attributes.DataMgr.runSQLArray(sqlarray,attributes)>
 	<!---- Try to log action ---->
