@@ -84,6 +84,9 @@ Created: 2010-01-12
 			<!--- If all else failed, just make an empty array --->
 			<cfset attributes.sql = ArrayNew(1)>
 		</cfif>
+	<!--- If sql is passed in as an attribute and is requested to be added to a clause, add it here. --->
+	<cfelseif StructKeyExists(attributes,"addtoclause") AND StructKeyExists(Caller,"Arguments")>
+		<cfset Variables.DataMgr.addAdvSQL(Caller.Arguments,attributes.addtoclause,attributes.sql)>
 	</cfif>
 	<!--- If a name attribute is passed in, set the given variable in the calling page --->
 	<cfif StructKeyExists(attributes,"name")>
