@@ -114,6 +114,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 	ThisTag.atts.DefaultValueOther = "";
 	ThisTag.atts.isEditable = ParentAtts.isEditable;
 	ThisTag.atts.minimize = ParentAtts.minimize;
+	ThisTag.atts.useFieldData = true;
 
 	//Use "name" for fieldname
 	if ( StructKeyExists(attributes,"name") AND Len(attributes.name) AND NOT StructKeyExists(attributes,"fieldname") ) {
@@ -198,6 +199,9 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 		liReqAtts = "fieldname";
 	}
 
+	if ( attributes.type EQ "plaintext" ) {
+		ThisTag.atts.useFieldData = false;
+	}
 	if ( StructKeyExists(attributes,"type") AND StructKeyExists(ParentData.Caller, "sebFieldTypes") AND StructKeyExists(ParentData.Caller.sebFieldTypes,attributes.type) ) {
 		StructAppend(attributes, ParentData.Caller.sebFieldTypes[attributes.type], "no");
 	}
@@ -896,7 +900,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 
 	<cfcase value="plaintext">
 		<cfset attributes.help = "">
-		<cfsavecontent variable="input"><div id="#attributes.id#-div" class="sebPlainText"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>><span id="#attributes.id#-val">#HTMLEditFormat(attributes.value)#</span><input type="hidden" id="#attributes.id#" name="#attributes.fieldname#" value="#HTMLEditFormat(attributes.value)#"/></div></cfsavecontent>
+		<cfsavecontent variable="input"><div id="#attributes.id#-div" class="sebPlainText"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>><span id="#attributes.id#-val">#HTMLEditFormat(attributes.value)#</span></div></cfsavecontent>
 	</cfcase>
 
 	<cfcase value="file">

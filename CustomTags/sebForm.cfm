@@ -638,6 +638,7 @@ if ( isDefined("ThisTag.subforms") ) {
 				StructKeyExists(ThisTag.qFields[ii],"name")
 			AND	StructKeyExists(ThisTag.qFields[ii],"defaultValue")
 			AND	Len(ThisTag.qFields[ii].defaultValue)
+			AND	ThisTag.qFields[ii].useFieldData IS true
 		>
 			<cfset sForm[ThisTag.qFields[ii].name] = ThisTag.qFields[ii].defaultValue>
 		</cfif>
@@ -749,7 +750,11 @@ if ( isDefined("ThisTag.subforms") ) {
 	for (thisField=1; thisField lte ArrayLen(ThisTag.qfields); thisField=thisField+1 ) {
 		if ( Len(Trim(ThisTag.qfields[thisField].fieldname)) ) {
 			//make sure form field exists (mostly for checkboxes and radio buton)
-			if ( NOT StructKeyExists(sForm, ThisTag.qfields[thisField].fieldname) ) {
+			if (
+					ThisTag.qfields[thisField].useFieldData
+				AND
+					NOT StructKeyExists(sForm, ThisTag.qfields[thisField].fieldname)
+			) {
 				sForm[ThisTag.qfields[thisField].fieldname] = "";
 			}
 
