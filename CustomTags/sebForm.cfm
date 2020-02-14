@@ -759,7 +759,11 @@ if ( isDefined("ThisTag.subforms") ) {
 			}
 
 			if ( isNumeric(ThisTag.qfields[thisField].length) AND ThisTag.qfields[thisField].length gt 0 ) {
-				if ( Len(sForm[ThisTag.qfields[thisField].fieldname]) gt ThisTag.qfields[thisField].length ) {
+				if (
+						StructKeyExists(sForm,ThisTag.qfields[thisField].fieldname)
+					AND
+						Len(sForm[ThisTag.qfields[thisField].fieldname]) gt ThisTag.qfields[thisField].length
+				) {
 					sForm[ThisTag.qfields[thisField].fieldname] = Left(sForm[ThisTag.qfields[thisField].fieldname],ThisTag.qfields[thisField].length);
 				}
 			}
@@ -933,6 +937,7 @@ if ( isDefined("ThisTag.subforms") ) {
 									AND	Len(Trim(sForm[ThisTag.aGroups[ii].aFields[jj]["fieldname"]]))
 								)
 							AND	StructKeyExists(ThisTag.aGroups[ii],"fieldname")
+							AND	ThisTag.aGroups[ii].aFields[jj].useFieldData IS true
 							AND	NOT StructKeyExists(sEffectiveHasData,ThisTag.aGroups[ii].fieldname)
 						>
 							<cfscript>
@@ -1008,7 +1013,13 @@ if ( isDefined("ThisTag.subforms") ) {
 				}
 			}
 		} else {
-			if ( arrFields[thisField].isRequiredOnServer AND NOT StructKeyExists(sEffectiveHasData,thisName) ) {
+			if (
+					arrFields[thisField].isRequiredOnServer
+				AND
+					arrFields[thisField].useFieldData
+				AND
+					NOT StructKeyExists(sEffectiveHasData,thisName)
+				) {
 				TagInfo.isValid = false;
 				TagInfo.liErrFields = ListAppend(TagInfo.liErrFields, thisName);
 				ArrayAppend(TagInfo.arrErrors, '"#arrFields[thisField].label#" is required.');
