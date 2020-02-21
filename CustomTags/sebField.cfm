@@ -217,7 +217,9 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 		attributes.fieldname = attributes.name;
 	}
 
+	attributes.type_orig = "";
 	if ( StructKeyExists(attributes,"type") ) {
+		attributes.type_orig = attributes.type;
 		if ( attributes.type EQ "integer" AND NOT ( StructKeyExists(attributes,"Length") AND isNumeric(attributes.Length) AND attributes.Length GT 0 AND attributes.Length LT 10 ) ) {
 			attributes.Length = 9;
 		}
@@ -1258,7 +1260,7 @@ ha#attributes.id#.generate();
 		thisInput = REReplaceNoCase(thisInput,"{[^}]*}","","ALL");
 	}
 	if ( Len(attributes.input_prefix) ) {
-		input = "#attributes.input_prefix##input#";
+		input = '<span class="input_prefix prefix_#attributes.type_orig#">#attributes.input_prefix#</span>#input#';
 	}
 	if ( Len(attributes.input_suffix) ) {
 		input = "#input##attributes.input_suffix#";
