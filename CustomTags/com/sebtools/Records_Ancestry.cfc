@@ -7,9 +7,14 @@
 	<cfset var ParentKeyName = "Parent#PrimaryKeyName#">
 	<cfset var ii = 0>
 	<cfset var NumRecs = numRecords()>
-	<cfset var sGet = {"#PrimaryKeyName#"=Arguments[PrimaryKeyName]}>
-	<cfset var qRecord = getRecord(ArgumentCollection=sGet,fieldlist=ParentKeyName)>
+	<cfset var sGet = 0>
+	<cfset var qRecord = 0>
 	<cfset var result = "">
+
+	<cfset Arguments = convertArgs(ArgumentCollection=Arguments)>
+
+	<cfset sGet = {"#PrimaryKeyName#"=Arguments[PrimaryKeyName]}>
+	<cfset qRecord = getRecord(ArgumentCollection=sGet,fieldlist=ParentKeyName)>
 
 	<cfscript>
 	if ( Val(qRecord[ParentKeyName][1]) ) {
@@ -113,12 +118,10 @@
 
 	<cfset var sMeta = getMetaStruct()>
 	<cfset var result = 0>
-	<cfset var sAncestors = 0>
 
 	<cfset result = Super.saveRecord(ArgumentCollection=Arguments)>
 
-	<cfset sAncestors = {"#sMeta.arg_pk#"=result}>
-	<cfset setAncestors(ArgumentCollection=sAncestors)>
+	<cfset setAncestors(result)>
 
 	<cfreturn result>
 </cffunction>
@@ -126,23 +129,26 @@
 <cffunction name="setAncestors" access="public" returntype="void" output="no">
 
 	<cfset var sMeta = getMetaStruct()>
-	<cfset var sDescend = {"Parent#sMeta.arg_pk#"=Arguments[sMeta.arg_pk],fieldlist=sMeta.arg_pk}>
-	<cfset var qDescendants = getRecords(ArgumentCollection=sDescend)>
+	<cfset var sDescend = 0>
+	<cfset var qDescendants = 0>
 	<cfset var ancestor = "">
-	<cfset var sAncestors = {"#sMeta.arg_pk#"=Arguments[sMeta.arg_pk]}>
 
-	<cfset Arguments.Ancestors = getAncestors(ArgumentCollection=sAncestors)>
+	<cfset Arguments = convertArgs(ArgumentCollection=Arguments)>
+
+	<cfset sDescend = {"Parent#sMeta.arg_pk#"=Arguments[sMeta.arg_pk],fieldlist=sMeta.arg_pk}>
+	<cfset qDescendants = getRecords(ArgumentCollection=sDescend)>
+
+	<cfset Arguments.Ancestors = getAncestors(Arguments[sMeta.arg_pk])>
 	<cfif Len(Arguments.Ancestors)>
 		<cfset Arguments.AncestorNames = getAncestorNames(Arguments.Ancestors)>
 	<cfelse>
 		<cfset Arguments.AncestorNames = "">
 	</cfif>
 
-	<cfset variables.Manager.saveRecord(tablename=variables.table,data=Arguments,fieldlist="#sMeta.arg_pk#,Ancestors,AncestorNames")>
+	<cfset variables.DataMgr.saveRecord(tablename=variables.table,data=Arguments,fieldlist="#sMeta.arg_pk#,Ancestors,AncestorNames")>
 
 	<cfloop query="qDescendants">
-		<cfset sAncestors = {"#sMeta.arg_pk#"=qDescendants[sMeta.arg_pk][CurrentRow]}>
-		<cfset setAncestors(ArgumentCollection=sAncestors)>
+		<cfset setAncestors(qDescendants[sMeta.arg_pk][CurrentRow])>
 	</cfloop>
 
 </cffunction>
@@ -154,6 +160,19 @@
 	<cfset sArgs = validateAncestry(ArgumentCollection=sArgs)>
 
 	<cfreturn sArgs>
+</cffunction>
+
+<cffunction name="convertArgs" access="private" returntype="struct" output="no">
+
+	<cfset var sMeta = getMetaStruct()>
+
+	<!--- If primary key argument isn't passed in by name, then get it from the first argument. --->
+	<cfif NOT StructKeyExists(Arguments,sMeta.arg_pk)>
+		<cfset Arguments[sMeta.arg_pk] = Arguments[1]>
+		<cfset StructDelete(Arguments,"1")>
+	</cfif>
+
+	<cfreturn Arguments>
 </cffunction>
 
 <cffunction name="validateAncestry" access="private" returntype="struct" output="no" hint="I make sure that the ancestry can work.">
