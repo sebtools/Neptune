@@ -43,7 +43,7 @@
 	<cfset var sMeta = getMetaStruct()>
 	<!--- The last item on the AncestorNames list will be the label of the direct parent. --->
 	<cfset var sRecord = {
-		"#sMeta.field_label#"=ListLast(Arguments.AncestorNames,"|"),
+		"#sMeta.field_label#"=Trim(ListLast(Arguments.AncestorNames,"|")),
 		fieldlist="#sMeta.arg_pk#"
 	}>
 	<cfset var qRecord = 0>
@@ -116,7 +116,6 @@
 
 <cffunction name="saveRecord" access="public" returntype="string" output="no">
 
-	<cfset var sMeta = getMetaStruct()>
 	<cfset var result = 0>
 
 	<cfset result = Super.saveRecord(ArgumentCollection=Arguments)>
@@ -147,9 +146,11 @@
 
 	<cfset variables.DataMgr.saveRecord(tablename=variables.table,data=Arguments,fieldlist="#sMeta.arg_pk#,Ancestors,AncestorNames")>
 
-	<cfloop query="qDescendants">
-		<cfset setAncestors(qDescendants[sMeta.arg_pk][CurrentRow])>
-	</cfloop>
+	<cfif NOT ( StructKeyExists(Arguments,"recurse") AND Arguments.recurse EQ false )>
+		<cfloop query="qDescendants">
+			<cfset setAncestors(qDescendants[sMeta.arg_pk][CurrentRow])>
+		</cfloop>
+	</cfif>
 
 </cffunction>
 
@@ -193,10 +194,15 @@
 
 	<!--- Allow parent value to be set using ancestor arguments --->
 	<cfif NOT StructKeyExists(Arguments,"Parent#sMeta.arg_pk#")>
-		<cfif StructKeyExists(Arguments,"Ancestors")>
+		<cfif StructKeyHasLen(Arguments,"Ancestors")>
 			<cfset Arguments["Parent#sMeta.arg_pk#"] = ListLast(Arguments.Ancestors)>
-		<cfelseif StructKeyExists(Arguments,"AncestorNames")>
+		<cfelseif StructKeyHasLen(Arguments,"AncestorNames")>
 			<cfset Arguments["Parent#sMeta.arg_pk#"] = getAncestorNamesParentID(Arguments.AncestorNames)>
+			<cfif NOT Val(Arguments["Parent#sMeta.arg_pk#"])>
+				<cfthrow type="#smeta.method_Plural#" message="AncestorNames (#Arguments.AncestorNames#) passed in for which no value was found.">
+			</cfif>
+		<cfelse>
+			<cfset Arguments["Parent#sMeta.arg_pk#"] = "">
 		</cfif>
 	</cfif>
 
@@ -215,6 +221,7 @@
 
 	<!--- Make sure than a record is not its own ancestor --->
 	<cfset StructDelete(Arguments,"Ancestors")>
+	<cfset StructDelete(Arguments,"AncestorNames")>
 	<cfif
 			StructKeyExists(Arguments,"#sMeta.arg_pk#")
 		AND StructKeyExists(Arguments,"Parent#sMeta.arg_pk#")
