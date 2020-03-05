@@ -867,4 +867,20 @@ function makeCompName(str) { return variables.Manager.makeCompName(str); }
 	</cfscript>
 </cfif>
 
+<cfif NOT StructKeyExists(variables,"StructKeyHasLen")>
+	<cfscript>
+	function StructKeyHasLen(struct,key){
+	    return ( StructKeyExists(struct,key) AND Len(struct[key]) );
+	}
+	</cfscript>
+</cfif>
+
+<cfif NOT StructKeyExists(variables,"StructKeyHasVal")>
+	<cfscript>
+	function StructKeyHasVal(struct,key){
+	    return ( StructKeyExists(struct,key) AND Val(struct[key]) );
+	}
+	</cfscript>
+</cfif>
+
 </cfcomponent>
