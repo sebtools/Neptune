@@ -1172,8 +1172,9 @@
 				</cfloop>
 			</cfif>
 		</cfif>
-
 	</cfif>
+
+	<cfset Arguments.data = in>
 
 	<cfset arguments.alterargs_for = "save">
 	<cfset result = variables.DataMgr.insertRecord(argumentCollection=alterArgs(argumentCollection=arguments))>
