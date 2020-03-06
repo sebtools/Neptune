@@ -3,6 +3,7 @@
 <cffunction name="init" access="public" returntype="any" output="false" hint="I initialize and return the component.">
 	<cfargument name="AWS" type="any" required="true">
 
+	<cfset Arguments.service = "ses">
 	<cfset Arguments.subdomain = "email">
 
 	<cfset initInternal(ArgumentCollection=Arguments)>
@@ -22,6 +23,19 @@
 		timeSpan=CreateTimeSpan(0,3,0,0),
 		waitlimit=300
 	)>
+
+	<!--- Handle failure to retrieve identies with as much grace as possible. --->
+	<cfif isArray(aIdentities)>
+		<!--- Save latest identies in case they fail later --->
+		<cfset Variables.aSafetyIdentities = aIdentities>
+	<cfelseif StructKeyExists(Variables,"aSafetyIdentities")>
+		<!--- If identities isn't retrieved, but the safety value is availablem then use that and alert devs. --->
+		<cf_scaledAlert message="Unable to retrieve AWS Email Identities.">
+		<cfset aIdentities = Variables.aSafetyIdentities>
+	<cfelse>
+		<!--- If identities isn't retrieved and safety value is unavailable, then throw an error. --->
+		<cfset throwError("Unable to retrieve AWS Email Identities.")>
+	</cfif>
 
 	<cfreturn ArrayToList(aIdentities)>
 </cffunction>
@@ -187,13 +201,20 @@
 <cffunction name="isVerified" access="public" returntype="boolean" output="false" hint="I determine if the sender is verified on SES.">
 	<cfargument name="Sender" type="string" required="true">
 
-	<cfreturn Variables.MrECache.method(
+	<cfset var result = Variables.MrECache.method(
 		id=Variables.MrECache.id("isverified",Arguments),
 		Component=This,
 		MethodName="_isVerified",
 		Args=Arguments,
 		timeSpan=CreateTimeSpan(0,3,0,0)
 	)>
+
+	<!--- Sometimes unable to get a response, so try just one more time directlyish. --->
+	<cfif NOT isBoolean(result)>
+		<cfset result = _isVerified(Arguments.Sender)>
+	</cfif>
+
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="_isVerified" access="public" returntype="boolean" output="false" hint="I determine if the sender is verified on SES.">
@@ -418,6 +439,16 @@
 
 	<cfset callAPI(Action="VerifyEmailIdentity",parameters={"EmailAddress"=Arguments.EmailAddress})>
 
+</cffunction>
+
+<cffunction name="callAPI" access="private" returntype="any" output="false" hint="I invoke an Amazon REST Call.">
+	<cfargument name="Action" type="string" required="false" hint="The AWS API action being called.">
+	<cfargument name="method" type="string" default="GET" hint="The HTTP method to invoke.">
+	<cfargument name="parameters" type="struct" default="#structNew()#" hint="An struct of HTTP URL parameters to send in the request.">
+
+	<cfset Arguments.parameters["Version"] = "2010-12-01">
+
+	<cfreturn Super.callAPI(ArgumentCollection=Arguments)>
 </cffunction>
 
 <cffunction name="_GetSendQuota" access="private" returntype="struct" output="no">
