@@ -282,7 +282,7 @@
 
 	<cfset StructAppend(Arguments,getSpecifyingValues(),"no")>
 
-	<cfreturn variables.Manager.getRecord(tablename=variables.table,data=arguments)>
+	<cfreturn alterRecords(variables.Manager.getRecord(tablename=variables.table,data=arguments),arguments)>
 </cffunction>
 
 <cffunction name="getRecords" access="public" returntype="query" output="no">
@@ -292,7 +292,7 @@
 
 	<cfset StructAppend(Arguments,getSpecifyingValues(),"no")>
 
-	<cfreturn variables.Manager.getRecords(tablename=variables.table,data=arguments)>
+	<cfreturn alterRecords(variables.Manager.getRecords(tablename=variables.table,data=arguments),arguments)>
 </cffunction>
 
 <cffunction name="getTableMetaStruct" access="public" returntype="struct" output="false" hint="">
@@ -444,6 +444,13 @@
 
 <cffunction name="alterArgs" access="private" returntype="struct" output="no">
 	<cfreturn arguments>
+</cffunction>
+
+<cffunction name="alterRecords" access="private" returntype="query" output="false" hint="">
+	<cfargument name="query" type="query" required="yes">
+	<cfargument name="Args" type="struct" required="yes">
+
+	<cfreturn Arguments.query>
 </cffunction>
 
 <!---<cffunction name="adjustImages" access="private" returntype="struct" output="no">

@@ -150,7 +150,8 @@
 				ListLen(comp,"_") EQ 1
 			AND	comp NEQ variables.me.name
 			AND	comp NEQ variables.me.fullname
-			AND NOT ListFindNoCase(result,comp)
+			AND	NOT ListFindNoCase(result,comp)
+			AND	comp NEQ "Records"
 		>
 			<cfset result = ListAppend(result,comp)>
 		</cfif>
