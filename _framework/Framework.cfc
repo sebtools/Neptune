@@ -417,8 +417,8 @@ function getPageControllerCompPath(Path) {
     var ii = 0;
 	var RootPath = variables.instance["RootPath"];
 
-	//Change file extension to .cfc
-	if ( ListLen(ControllerFilePath,".") GT 1 ) {
+	//Change file extension to .cfc (limit extnsion to 5 just to make sure this isn't a path without an extension that happens to have a dot in the path)
+	if ( ListLen(ControllerFilePath,".") GT 1 AND Len(ListLast(ControllerFilePath,".")) LTE 5 ) {
 		ControllerFilePath = reverse(ListRest(reverse(ControllerFilePath),"."));
 	}
 	ControllerFilePath = "#ControllerFilePath#.cfc";
