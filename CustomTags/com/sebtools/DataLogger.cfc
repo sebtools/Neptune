@@ -26,6 +26,18 @@
 	<cfreturn This>
 </cffunction>
 
+<cffunction name="catchError" access="public" returntype="void" output="no" hint="I catch logging errors. This can be extended on a per-site basis.">
+	<cfargument name="MethodName" type="string" required="yes">
+	<cfargument name="Error" type="any" required="yes">
+	<cfargument name="Arguments" type="struct" required="yes">
+
+	<cfset Variables.Observer.announceEvent(
+		EventName = "DataLogger:onError",
+		Args = Arguments
+	)>
+
+</cffunction>
+
 <cffunction name="getWho" access="public" returntype="string" output="no" hint="I get the 'Who' value for the data logging. This should be overridden on a per-site basis.">
 	<cfreturn CGI.REMOTE_ADDR>
 </cffunction>
@@ -97,31 +109,36 @@
 		<cfset sArgs["pkvalue"] = Arguments.pkvalue>
 	</cfif>
 
-	<!--- ** Log the Change ** --->
-	<cfset ChangeSetID = Variables.DataMgr.insertRecord(tablename="audChangeSets",data=sArgs)>
+	<cftry>
+		<!--- ** Log the Change ** --->
+		<cfset ChangeSetID = Variables.DataMgr.insertRecord(tablename="audChangeSets",data=sArgs)>
 
-	<cfscript>
-	if ( StructKeyExists(Arguments,"data") AND StructCount(Arguments.data) ) {
-		// Track individual changes on updates
-		if ( sArgs["action"] EQ "update" ) {
-			aChanges = getDataChanges(Arguments.tablename,Arguments.data);
-			for  ( ii=1; ii LTE ArrayLen(aChanges); ii++ ) {
-				//Make sure to track the change set
-				aChanges[ii]["ChangeSetID"] = ChangeSetID;
-				if ( StructCount(aChanges[ii]) GT 1 ) {
-					//Save the change
-					Variables.DataMgr.runSQLArray(
-						Variables.DataMgr.insertRecordSQL(
-							tablename="audChanges",
-							OnExists="insert",
-							data=aChanges[ii]
-						)
-					);
+		<cfscript>
+		if ( StructKeyExists(Arguments,"data") AND StructCount(Arguments.data) ) {
+			// Track individual changes on updates
+			if ( sArgs["action"] EQ "update" ) {
+				aChanges = getDataChanges(Arguments.tablename,Arguments.data);
+				for  ( ii=1; ii LTE ArrayLen(aChanges); ii++ ) {
+					//Make sure to track the change set
+					aChanges[ii]["ChangeSetID"] = ChangeSetID;
+					if ( StructCount(aChanges[ii]) GT 1 ) {
+						//Save the change
+						Variables.DataMgr.runSQLArray(
+							Variables.DataMgr.insertRecordSQL(
+								tablename="audChanges",
+								OnExists="insert",
+								data=aChanges[ii]
+							)
+						);
+					}
 				}
 			}
 		}
-	}
-	</cfscript>
+		</cfscript>
+	<cfcatch>
+		<cfset catchError("logAction",CFCATCH,Arguments)>
+	</cfcatch>
+	</cftry>
 
 </cffunction>
 
@@ -132,22 +149,27 @@
 	<cfset var sSet = {DateCompleted=now()}>
 
 	<cfif StructKeyExists(Arguments,"ChangeUUID") AND Len(Arguments.ChangeUUID)>
-		<!--- Set change set to completed --->
-		<cfset Variables.DataMgr.updateRecords(
-			tablename="audChangeSets",
-			data_set=sSet,
-			data_where=sWhere
-		)>
-		<!--- Record the primary key value for the change set if we got it and didn't have it before. --->
-		<cfif StructKeyExists(Arguments,"pkvalue") AND Len(Arguments.pkvalue)>
-			<cfset sWhere = {ChangeUUID=Arguments.ChangeUUID,pkvalue=""}>
-			<cfset sSet = {pkvalue=Arguments.pkvalue}>
+		<cftry>
+			<!--- Set change set to completed --->
 			<cfset Variables.DataMgr.updateRecords(
 				tablename="audChangeSets",
 				data_set=sSet,
 				data_where=sWhere
 			)>
-		</cfif>
+			<!--- Record the primary key value for the change set if we got it and didn't have it before. --->
+			<cfif StructKeyExists(Arguments,"pkvalue") AND Len(Arguments.pkvalue)>
+				<cfset sWhere = {ChangeUUID=Arguments.ChangeUUID,pkvalue=""}>
+				<cfset sSet = {pkvalue=Arguments.pkvalue}>
+				<cfset Variables.DataMgr.updateRecords(
+					tablename="audChangeSets",
+					data_set=sSet,
+					data_where=sWhere
+				)>
+			</cfif>
+		<cfcatch>
+			<cfset catchError("logActionComplete",CFCATCH,Arguments)>
+		</cfcatch>
+		</cftry>
 	</cfif>
 
 </cffunction>
@@ -192,7 +214,7 @@
 			//Make sure the field exists in the record (or nothing to compare to)
 			if ( ListFindNoCase(qRecord.ColumnList,key) AND isSimpleValue(Arguments.data[key]) ) {
 				//Only track if the data isn't the same
-				if ( qRecord[key][1] NEQ Arguments.data[key] ) {
+				if ( ListSort(qRecord[key][1],"text") NEQ ListSort(Arguments.data[key],"text") ) {
 					sChange = {
 						FieldName=key,
 						OldValue=qRecord[key][1],
