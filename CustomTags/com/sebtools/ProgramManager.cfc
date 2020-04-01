@@ -226,6 +226,30 @@
 	<cfreturn result>
 </cffunction>
 
+<cffunction name="getTablesList" access="public" returntype="any" output="false" hint="">
+
+	<cfset var result = "">
+	<cfset var qMyTables = 0>
+
+	<cfif StructKeyExists(Variables,"qTables")>
+		<cfquery name="qMyTables" dbtype="query">
+		SELECT	name
+		FROM	variables.qTables
+		WHERE	entity IS NOT NULL
+		</cfquery>
+		<cfset result = ValueList(qMyTables.name)>
+	</cfif>
+
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="getTablesQuery" access="public" returntype="any" output="false" hint="">
+
+	<cfif StructKeyExists(Variables,"qTables")>
+		<cfreturn variables.qTables>
+	</cfif>
+</cffunction>
+
 <cffunction name="getVariable" access="package" returntype="any" output="false" hint="">
 	<cfargument name="name" type="string" required="true">
 
