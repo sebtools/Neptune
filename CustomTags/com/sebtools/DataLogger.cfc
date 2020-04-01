@@ -181,9 +181,26 @@
 <cffunction name="logTable" access="public" returntype="any" output="no">
 	<cfargument name="tablename" type="string" required="yes">
 
-	<cfif NOT ListFindNoCase(Variables.logged_tables,Arguments.tablename)>
+	<cfset Arguments.tablename = Trim(Arguments.tablename)>
+
+	<cfif Len(Arguments.tablename) AND NOT ListFindNoCase(Variables.logged_tables,Arguments.tablename)>
 		<cfset Variables.logged_tables = ListAppend(Variables.logged_tables,Arguments.tablename)>
 	</cfif>
+
+</cffunction>
+
+<cffunction name="logTables" access="public" returntype="any" output="no">
+	<cfargument name="tables" type="string" required="yes">
+
+	<cfset var table = "">
+
+	<cfif ArrayLen(Arguments) GT 1>
+		<cfset Arguments.tables = ArrayToList(Arguments)>
+	</cfif>
+
+	<cfloop list="#Arguments.tables#" index="table">
+		<cfset logTable(table)>
+	</cfloop>
 
 </cffunction>
 
