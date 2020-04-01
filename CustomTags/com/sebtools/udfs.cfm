@@ -1,4 +1,12 @@
 <cfset Variables.udfs = true>
+
+<cfif NOT StructKeyExists(variables,"da")>
+	<cffunction name="da" access="private" returntype="void" output="no">
+		<cfdump var="#Arguments#">
+		<cfabort>
+	</cffunction>
+</cfif>
+
 <cfif NOT StructKeyExists(variables,"ListIntegers")>
 	<cfscript>
 	function ListIntegers(list) { return ReReplaceNoCase(ReReplaceNoCase(list,'[^0-9]',',','ALL'),',{2,}',',','ALL'); }
