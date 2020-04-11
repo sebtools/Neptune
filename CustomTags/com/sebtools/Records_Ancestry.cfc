@@ -53,16 +53,10 @@
 		<cfreturn "">
 	</cfif>
 
-	<!--- If AncestorNames has more than one value then the values before the first will be the AncestorNames for the parent. --->
 	<cfif ListLen(Arguments.AncestorNames,"|") GT 1>
-		<cfset sRecord["AncestorNames"] = ListDeleteAt(
-			Arguments.AncestorNames,
-			ListLen(
-				Arguments.AncestorNames,
-				"|"
-			),
-			"|"
-		)>
+		<cfset sRecord["AncestorNames"] = getAncestorNamesParentNames(Arguments.AncestorNames)>
+	<cfelse>
+		<cfset sRecord["AncestorNames"] = "">
 	</cfif>
 
 	<!--- Find the ancestor record indicated --->
@@ -75,6 +69,26 @@
 
 	<!--- If no record found, then no ancestor (return NULL) --->
 	<cfreturn "">
+</cffunction>
+
+<cffunction name="getAncestorNamesParentNames" access="public" returntype="string" output="no">
+	<cfargument name="AncestorNames" type="string" required="yes">
+
+	<cfset var result = "">
+
+	<!--- If AncestorNames has more than one value then the values before the first will be the AncestorNames for the parent. --->
+	<cfif ListLen(Arguments.AncestorNames,"|") GT 1>
+		<cfset result = ListDeleteAt(
+			Arguments.AncestorNames,
+			ListLen(
+				Arguments.AncestorNames,
+				"|"
+			),
+			"|"
+		)>
+	</cfif>
+
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="getAncestorNames" access="public" returntype="string" output="no">
@@ -199,7 +213,20 @@
 		<cfelseif StructKeyHasLen(Arguments,"AncestorNames")>
 			<cfset Arguments["Parent#sMeta.arg_pk#"] = getAncestorNamesParentID(Arguments.AncestorNames)>
 			<cfif NOT Val(Arguments["Parent#sMeta.arg_pk#"])>
-				<cfthrow type="#smeta.method_Plural#" message="AncestorNames (#Arguments.AncestorNames#) passed in for which no value was found.">
+				<cfset StructDelete(Arguments,"Parent#sMeta.arg_pk#")>
+				<cfif StructKeyExists(Arguments,"createMissingAncestors") AND Arguments.createMissingAncestors IS true>
+					<cfinvoke
+						component="#This#"
+						method="save#variables.methodSingular#"
+						returnvariable="Arguments.Parent#sMeta.arg_pk#"
+					>
+						<cfinvokeargument name="#smeta.field_label#" value="#ListLast(Arguments.AncestorNames,'|')#">
+						<cfinvokeargument name="AncestorNames" value="#getAncestorNamesParentNames(Arguments.AncestorNames)#">
+						<cfinvokeargument name="createMissingAncestors" value="true">
+					</cfinvoke>
+				<cfelse>
+					<cfthrow type="#smeta.method_Plural#" message="AncestorNames (#Arguments.AncestorNames#) passed in for which no value was found.">
+				</cfif>
 			</cfif>
 		<cfelse>
 			<cfset Arguments["Parent#sMeta.arg_pk#"] = "">
