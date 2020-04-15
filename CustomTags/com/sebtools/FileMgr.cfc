@@ -260,6 +260,15 @@
 	</cfif>
 
 </cffunction>
+
+<cffunction name="getFolderList" output="false" returnType="query">
+	<cfargument name="Folder" type="string" required="true">
+
+	<cfset Arguments.directory = getDirectory(Arguments.Folder)>
+
+	<cfreturn getMyDirectoryList(ArgumentCollection=Arguments)>
+</cffunction>
+
 <!---
  Mimics the cfdirectory, action=&quot;list&quot; command.
  Updated with final CFMX var code.
@@ -612,12 +621,20 @@
 
 	<cfset var destination = getDirectory(argumentCollection=arguments)>
 	<cfset var CFFILE = StructNew()>
-	<cfset var sOrigFile = 0>
-	<cfset var tempPath = "">
 	<cfset var serverPath = "">
-	<cfset var skip = false>
 	<cfset var dirdelim = getDirDelim()>
 	<cfset var result = "">
+	<cfset var UploadFileName = "">
+	<cfset var sFileArgs = {
+		action="UPLOAD",
+		filefield="#Arguments.FieldName#",
+		NameConflict=Arguments.NameConflict,
+		result="CFFILE",
+		destination=destination
+	}>
+	<cfif StructKeyExists(Arguments,"accept")>
+		<cfset sFileArgs["accept"] = Arguments.accept>
+	</cfif>
 
 	<!--- Make sure the destination exists. --->
 	<cfif StructKeyExists(arguments,"Folder")>
@@ -629,72 +646,26 @@
 		<cfset arguments.extensions = variables.DefaultExtensions>
 	</cfif>
 
-	<!--- Upload to temp directory. --->
 	<cfif StructKeyExists(Form,Arguments.FieldName)>
-		<cfif StructKeyExists(arguments,"accept")>
-			<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#Arguments.TempDirectory#" nameconflict="MakeUnique" result="CFFILE" accept="#arguments.accept#">
-		<cfelse>
-			<cffile action="UPLOAD" filefield="#Arguments.FieldName#" destination="#Arguments.TempDirectory#" nameconflict="MakeUnique" result="CFFILE">
+
+		<cfset UploadFileName = getClientFileName(Arguments.FieldName)>
+		<cfset UploadFileName = FileNameFromString(UploadFileName,ListLast(UploadFileName,"."))>
+
+		<!--- Check file extension --->
+		<cfif
+				Len(arguments.extensions)
+			AND	NOT ListFindNoCase(arguments.extensions,ListLast(UploadFileName,"."))
+		>
+			<cfreturn StructNew()>
 		</cfif>
+
+		<cfset sFileArgs["destination"] = ListAppend(sFileArgs["destination"],UploadFileName,dirDelim)>
 	<cfelse>
-		<cffile destination="#Arguments.TempDirectory#" source="#Arguments.FieldName#" action="copy">
+		<cfset sFileArgs["action"] = "COPY">
 	</cfif>
 
-	<cfset tempPath = ListAppend(CFFILE.ServerDirectory, CFFILE.ServerFile, dirdelim)>
-
-	<!--- Check file extension --->
-	<cfif
-			Len(arguments.extensions)
-		AND	NOT ListFindNoCase(arguments.extensions,CFFILE.ClientFileExt)
-	>
-		<!--- Bad file extension.  Delete file. --->
-		<cffile action="DELETE" file="#tempPath#">
-		<cfreturn StructNew()>
-	</cfif>
-
-	<cfset sOrigFile = Duplicate(CFFILE)>
-
-	<cfset serverPath = ListAppend(destination, "#CFFILE.clientFileName#.#CFFILE.clientFileExt#", dirdelim)>
-	<cfif FileExists(serverPath)>
-		<!--- Handle name conflict --->
-		<cfswitch expression="#Arguments.NameConflict#">
-			<cfcase value="MakeUnique">
-				<cfset serverPath = createUniqueFileName(serverPath)>
-
-				<cfset CFFILE.FileWasRenamed = true>
-				<cfset CFFILE.ServerDirectory = getDirectoryFromPath(serverPath)>
-				<cfset CFFILE.ServerFile = getFileFromPath(serverPath)>
-				<cfset CFFILE.ServerFileExt = ListLast(CFFILE.ServerFile,".")>
-				<cfset CFFILE.ServerFileName = ListDeleteAt(CFFILE.ServerFile,ListLen(CFFILE.ServerFile,"."),".")>
-
-				<cfset sOrigFile.ServerFileName = cffile.ServerFileName>
-				<cfset sOrigFile.ServerFile = cffile.ServerFile>
-				<cfset destination = cffile.ServerDirectory>
-			</cfcase>
-			<cfcase value="Error">
-				<cffile action="Delete" file="#tempPath#">
-				<cfthrow type="FileExists" message="The file #serverPath# already exists.">
-			</cfcase>
-			<cfcase value="Skip">
-				<cfset skip = true>
-				<cffile action="Delete" file="#tempPath#">
-				<cfset CFFILE.FileWasSaved = false>
-			</cfcase>
-			<cfcase value="Overwrite">
-				<cffile action="Delete" file="#serverPath#">
-				<cfset CFFILE.FileWasOverwritten = true>
-			</cfcase>
-		</cfswitch>
-	</cfif>
-
-	<cfif NOT skip>
-		<!---<cfset serverPath = fixFileName(getFileFromPath(serverPath),getDirectoryFromPath(serverPath))>--->
-		<!--- Rename and move file to destination directory --->
-		<cffile action="rename" source="#tempPath#" destination="#serverPath#" result="CFFILE">
-		<cfset cffile.ServerFileName = sOrigFile.ServerFileName>
-		<cfset cffile.ServerFile = sOrigFile.ServerFile>
-		<cfset cffile.ServerDirectory = destination>
-	</cfif>
+	<!--- Handle the upload --->
+	<cffile attributeCollection="#sFileArgs#">
 
 	<cfif StructKeyExists(arguments,"return") AND isSimpleValue(arguments.return)>
 		<cfif arguments.return EQ "name">
@@ -910,5 +881,35 @@ Copies a directory.
 
 	<cfreturn sResult>
 </cffunction>
+<cfscript>
+//http://www.stillnetstudios.com/get-filename-before-calling-cffile/
+function getClientFileName(fieldName) {
+	var loc = {};
 
+	loc.aParts = Form.getPartsArray();
+	loc.part = "";
+
+	if ( StructKeyExists(loc,"aParts") ) {
+		for (loc.part in loc.aParts) {
+			if ( loc.part.isFile() AND loc.part.getName() EQ Arguments.fieldName ) {
+				return loc.part.getFileName();
+			}
+		}
+	}
+	//Railo code.
+	loc.sHere = GetPageContext();
+	if ( StructKeyExists(loc.sHere,"formScope") ) {
+		loc.sHere = loc.sHere.formScope();
+		if ( StructKeyExists(loc.sHere,"getUploadResource") ) {
+			loc.sHere = loc.sHere.getUploadResource(Arguments.fieldName);
+			if ( StructKeyExists(loc.sHere,"getName") ) {
+				return loc.sHere.getName();
+			}
+		}
+	}
+	//GetPageContext().formScope().getUploadResource("myFormField").getName()
+
+	return "";
+}
+</cfscript>
 </cfcomponent>
