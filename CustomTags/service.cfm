@@ -22,14 +22,7 @@
 		</cfscript>
 	</cfif>
 
-	<!--- 3: Check in Application scope --->
-	<cfif NOT StructKeyExists(Variables,"result")>
-		<cfif StructKeyExists(Caller,"Application") AND StructKeyExists(Application,Attributes.service) AND isObject(Application[Attributes.service])>
-			<cfset Variables.result = Application[Attributes.service]>
-		</cfif>
-	</cfif>
-
-	<!--- 4: Ask Service Factory --->
+	<!--- 3: Ask Service Factory --->
 	<cfif NOT StructKeyExists(Variables,"result")>
 		<cfif
 				StructKeyExists(Caller,"Application")
@@ -40,6 +33,13 @@
 			AND	Application.ServiceFactory.hasService(Attributes.service)
 		>
 			<cfset Variables.result = Application.ServiceFactory.getService(Attributes.service)>
+		</cfif>
+	</cfif>
+
+	<!--- 4: Check in Application scope --->
+	<cfif NOT StructKeyExists(Variables,"result")>
+		<cfif StructKeyExists(Caller,"Application") AND StructKeyExists(Application,Attributes.service) AND isObject(Application[Attributes.service])>
+			<cfset Variables.result = Application[Attributes.service]>
 		</cfif>
 	</cfif>
 
