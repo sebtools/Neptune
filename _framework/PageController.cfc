@@ -1,9 +1,9 @@
-<!--- 1.0 Beta 2 (Build 26) --->
-<!--- Last Updated: 2012-08-05 --->
 <!--- Information: sebtools.com --->
 <cfcomponent displayname="Page Controller" output="false">
 
 <cfset me = This>
+
+<cfmodule name="com.sebtools.udfs">
 
 <cffunction name="init" access="public" returntype="any" output="no">
 	<cfargument name="Caller" type="struct" required="false">
