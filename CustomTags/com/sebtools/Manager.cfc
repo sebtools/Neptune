@@ -859,6 +859,13 @@
 	<cfreturn alterRecords(arguments.tablename,variables.DataMgr.getRecords(argumentCollection=alterArgs(argumentCollection=arguments)))>
 </cffunction>
 
+<cffunction name="getRecordsSQL" access="public" returntype="array" output="no">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="data" type="struct" default="#StructNew()#">
+
+	<cfreturn variables.DataMgr.getRecordsSQL(argumentCollection=alterArgs(argumentCollection=arguments))>
+</cffunction>
+
 <cffunction name="isRecordDeletable" access="public" returntype="boolean" output="no">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="data" type="struct" default="#StructNew()#">

@@ -297,6 +297,18 @@
 	<cfreturn alterRecords(variables.Manager.getRecords(tablename=variables.table,data=arguments),arguments)>
 </cffunction>
 
+<cffunction name="getRecordsSQL" access="public" returntype="array" output="no">
+
+	<cfif NOT ( StructKeyExists(Arguments,"alter") AND Arguments.alter EQ false )>
+		<cfset arguments.alterargs_for = "gets">
+		<cfset Arguments = alterArgs(argumentCollection=arguments)>
+	</cfif>
+
+	<cfset StructAppend(Arguments,getSpecifyingValues(),"no")>
+
+	<cfreturn variables.Manager.getRecordsSQL(tablename=variables.table,data=arguments)>
+</cffunction>
+
 <cffunction name="getTableMetaStruct" access="public" returntype="struct" output="false" hint="">
 	<cfreturn variables.Manager.getMetaStruct(variables.table)>
 </cffunction>
