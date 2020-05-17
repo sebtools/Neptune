@@ -1,3 +1,4 @@
+<cfsilent>
 <cfset Variables.udfs = true>
 
 <cfif NOT StructKeyExists(variables,"da")>
@@ -93,3 +94,24 @@
 	}
 	</cfscript>
 </cfif>
+
+<!--- If this is called as a custom tag, then make the functions available to the caller. --->
+<cfif StructKeyExists(Variables,"ThisTag")>
+	<!--- Optional "returnvar" argument to put functions into the specified variable. --->
+	<cfif StructKeyHasLen(Attributes,"returnvar")>
+		<cfif NOT StructKeyExists(Caller,Attributes.returnvar)>
+			<cfset Caller[Attributes.returnvar] = {}>
+		</cfif>
+		<cfset scope = Caller[Attributes.returnvar]>
+	<cfelse>
+		<!--- If no returnvar specified, then just put them in Variables scope on the calling page. --->
+		<cfset scope = Caller>
+	</cfif>
+	<cfloop collection="#Variables#" item="varname">
+		<cfif isCustomFunction(Variables[varname]) AND NOT StructKeyExists(scope,varname)>
+			<cfset scope[varname] = Variables[varname]>
+		</cfif>
+	</cfloop>
+</cfif>
+
+</cfsilent>
