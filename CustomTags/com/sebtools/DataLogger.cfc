@@ -1,4 +1,4 @@
-<cfcomponent displayname="Data Logger" hint="I log data changes for auditing." output="no">
+<cfcomponent extends="com.sebtools.component" displayname="Data Logger" hint="I log data changes for auditing." output="no">
 
 <cffunction name="init" access="public" returntype="any" output="no">
 	<cfargument name="DataMgr" type="any" required="yes">
@@ -13,13 +13,11 @@
 	<cfargument name="DataMgr" type="any" required="yes">
 	<cfargument name="Observer" type="any" required="yes">
 
-	<cfset StructAppend(Variables,Arguments)>
+	<cfset Super.initInternal(ArgumentCollection=Arguments)>
 
 	<cfset Variables.logged_tables = "">
 
 	<cfset Variables.DataMgr.loadXML(getDbXml(),true,true)>
-
-	<cfset Variables.Datasource = Variables.DataMgr.getDatasource()>
 
 	<cfset registerListener()>
 
@@ -38,8 +36,136 @@
 
 </cffunction>
 
+<cffunction name="getDataMgr" access="public" returntype="any" output="no">
+	<cfreturn Variables.DataMgr>
+</cffunction>
+
+<cffunction name="getObserver" access="public" returntype="any" output="no">
+	<cfreturn Variables.Observer>
+</cffunction>
+
+<cffunction name="getRestoreChanges" access="public" returntype="struct" output="no" hint="I get the changes needed to restore a record to its state at a given time.">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="pkvalue" type="string" required="yes">
+	<cfargument name="when" type="date" required="yes">
+	<cfargument name="fieldlist" type="string" required="no">
+
+	<cfset var qChanges = 0>
+	<cfset var sResult = {}>
+
+	<cf_DMQuery name="qChanges">
+	SELECT		FieldName,
+				OldValue
+	FROM		audChangeSets s
+	LEFT JOIN	audChanges c
+		ON		s.ChangeSetID = c.ChangeSetID
+	WHERE		1 = 1
+		AND		tablename = <cf_DMParam name="tablename" value="#Arguments.tablename#" cfsqltype="CF_SQL_VARCHAR">
+		AND		pkvalue = <cf_DMParam name="pkvalue" value="#Arguments.pkvalue#" cfsqltype="CF_SQL_INTEGER">
+		AND		FieldName IS NOT NULL
+		<!--- Only the oldest change since the date  --->
+		AND		ChangeID IN (
+					SELECT		Min(ChangeID) ChangeID
+					FROM		audChangeSets s
+					LEFT JOIN	audChanges c
+						ON		s.ChangeSetID = c.ChangeSetID
+					WHERE		1 = 1
+						AND		tablename = <cf_DMParam name="tablename" value="#Arguments.tablename#" cfsqltype="CF_SQL_VARCHAR">
+						AND		pkvalue = <cf_DMParam name="pkvalue" value="#Arguments.pkvalue#" cfsqltype="CF_SQL_INTEGER">
+						AND		FieldName IS NOT NULL
+						AND		DateCompleted >= <cfoutput>'#DateFormat(Arguments.when,"yyyy-mm-dd")# #TimeFormat(Arguments.when,"hh:mm:ss")#'</cfoutput>
+					GROUP BY	FieldName
+				)
+	</cf_DMQuery>
+
+	<cfoutput query="qChanges">
+		<cfset sResult[FieldName] = OldValue>
+	</cfoutput>
+
+	<cfreturn sResult>
+</cffunction>
+
+<cffunction name="getRecord" access="public" returntype="query" output="no" hint="I get the record as it would have existed at the given point in time.">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="pkvalue" type="string" required="yes">
+	<cfargument name="when" type="date" required="yes">
+	<cfargument name="fieldlist" type="string" required="no">
+
+	<cfset var qRecord = 0>
+	<cfset var sGet = {tablename=Arguments.tablename}>
+	<cfset var pkfield = Variables.DataMgr.getPrimaryKeyFieldName(Arguments.tablename)>
+	<cfset var sChanges = 0>
+	<cfset var field = "">
+	<cfset var cols = "">
+
+	<cfset sGet["data"] = {"#pkfield#"=Arguments.pkvalue}>
+
+	<cfif StructKeyExists(Arguments,"fieldlist")>
+		<cfset sGet["fieldlist"] = Arguments.fieldlist>
+	</cfif>
+
+	<cfset qRecord = Variables.DataMgr.getRecord(ArgumentCollection=sGet)>
+
+	<cfif NOT qRecord.RecordCount>
+		<cfif StructKeyExists(Variables,"DataTrashcan")>
+			<cfset qRecord = Variables.DataTrashcan.getDeletedRecord(ArgumentCollection=sGet)>
+		</cfif>
+
+		<cfif NOT qRecord.RecordCount>
+			<!--- If record isn't found at all, then throw error. If it is found, but deleted still then return empty query. --->
+			<cfthrow type="DataLogger" message="Unable to retrieve record for table #Arguments.tablename# with primary key value of #Arguments.pkvalue#.">
+		</cfif>
+
+		<!--- If a deleted record is found, make sure it was deleted after the When date --->
+		<cfif qRecord.RecordCount AND ListFindNoCase(qRecord.ColumnList,"DataTrashcan_DateDeleted")>
+			<!--- If the record was deleted before the given date, treat it as still deleted and return nothing. --->
+			<cfif qRecord.DataTrashcan_DateDeleted LT Arguments.when>
+				<cfset QueryDeleteRow(qRecord, 1)>
+			</cfif>
+		</cfif>
+	</cfif>
+
+	<cfset sChanges = getRestoreChanges(ArgumentCollection=Arguments)>
+
+	<cfset cols = qRecord.ColumnList>
+	<cfloop collection="#sChanges#" item="field">
+		<cfif ListFindNoCase(cols,field)>
+			<cfset QuerySetCell(qRecord,field,sChanges[field])>
+		</cfif>
+	</cfloop>
+
+	<cfreturn qRecord>
+</cffunction>
+
 <cffunction name="getWho" access="public" returntype="string" output="no" hint="I get the 'Who' value for the data logging. This should be overridden on a per-site basis.">
 	<cfreturn CGI.REMOTE_ADDR>
+</cffunction>
+
+<cffunction name="addChangeSet" access="public" returntype="string" output="no">
+	<cfargument name="action" type="string" required="yes">
+	<cfargument name="pkvalue" type="string" required="no">
+	<cfargument name="ChangeUUID" type="string" required="no">
+	<cfargument name="sql" type="any" required="no">
+
+	<cfset var sArgs = StructCopy(Arguments)>
+
+	<cfif NOT StructKeyExists(sArgs,"ChangeUUID")>
+		<cfset sArgs.ChangeUUID = CreateUUID()>
+	</cfif>
+	<cfset sArgs["Who"] = getWho()>
+	<cfif StructKeyExists(sArgs,"sql")>
+		<cfset sArgs["sql"] = Variables.DataMgr.readableSQL(sArgs.sql)>
+	</cfif>
+
+	<cfreturn Variables.DataMgr.insertRecord(tablename="audChangeSets",data=sArgs)>
+</cffunction>
+
+<cffunction name="hasReset" access="public" returntype="string" output="no">
+	<cfargument name="ChangeSetID" type="string" required="no">
+
+	<cfset var sArgs = {ChangeSetID=Arguments.ChangeSetID,action="restore"}>
+
+	<cfreturn Variables.DataMgr.hasRecords(tablename="audChangeSets",data=sArgs)>
 </cffunction>
 
 <cffunction name="logAction" access="public" returntype="any" output="no">
@@ -98,12 +224,11 @@
 	</cfif>
 
 	<cfset sArgs["tablename"] = Arguments.tablename>
-	<cfset sArgs["Who"] = getWho()>
 	<cfif StructKeyExists(Arguments,"ChangeUUID")>
 		<cfset sArgs["ChangeUUID"] = Arguments.ChangeUUID>
 	</cfif>
 	<cfif StructKeyExists(Arguments,"sql")>
-		<cfset sArgs["sql"] = Variables.DataMgr.readableSQL(Arguments.sql)>
+		<cfset sArgs["sql"] = Arguments.sql>
 	</cfif>
 	<cfif StructKeyExists(Arguments,"pkvalue")>
 		<cfset sArgs["pkvalue"] = Arguments.pkvalue>
@@ -111,7 +236,15 @@
 
 	<cftry>
 		<!--- ** Log the Change ** --->
-		<cfset ChangeSetID = Variables.DataMgr.insertRecord(tablename="audChangeSets",data=sArgs)>
+		<cfif
+			StructKeyHasVal(Arguments.data,"DataLogger_ChangeSetID")
+			AND
+			hasReset(Arguments.data["DataLogger_ChangeSetID"])
+		>
+			<cfset ChangeSetID = Arguments.data["DataLogger_ChangeSetID"]>
+		<cfelse>
+			<cfset ChangeSetID = addChangeSet(ArgumentCollection=sArgs)>
+		</cfif>
 
 		<cfscript>
 		if ( StructKeyExists(Arguments,"data") AND StructCount(Arguments.data) ) {
@@ -202,6 +335,77 @@
 		<cfset logTable(table)>
 	</cfloop>
 
+</cffunction>
+
+<cffunction name="restoreRecord" access="public" returntype="any" output="no" hint="I restore the record to the given point in time.">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="pkvalue" type="string" required="yes">
+	<cfargument name="when" type="date" required="yes">
+	<cfargument name="fieldlist" type="string" required="no">
+
+	<cfset var qRecord = getRecord(ArgumentCollection=Arguments)>
+	<cfset var sRecord = {}>
+	<cfset var pkfield = Variables.DataMgr.getPrimaryKeyFieldName(Arguments.tablename)>
+	<cfset var sql_insert = 0>
+	<cfset var ChangeSetID = 0>
+
+	<cfif qRecord.RecordCount>
+		<cfset sRecord = Variables.DataMgr.QueryRowToStruct(qRecord,qRecord.RecordCount)>
+
+		<cfif Variables.DataMgr.hasRecords(Arguments.tablename,{"#pkfield#"=Arguments.pkvalue})>
+			<cfset Variables.DataMgr.saveRecord(tablename=Arguments.tablename,data=sRecord)>
+		<cfelse>
+			<!--- Need ability to do identity insert on recovering deleted record. --->
+			<cftransaction isolation="serializable">
+				<cf_DMQuery sqlresult="sql_insert">
+					SET IDENTITY_INSERT <cf_DMObject name="#Arguments.tablename#"> ON
+					INSERT INTO <cf_DMObject name="#Arguments.tablename#"> (
+						<cf_DMObject name="#pkfield#">
+					) VALUES (
+						<cf_DMParam value="#Arguments.pkvalue#" cfsqltype="CF_SQL_INTEGER">
+					)
+					SET IDENTITY_INSERT <cf_DMObject name="#Arguments.tablename#"> OFF
+				</cf_DMQuery>
+				<cfset ChangeSetID = addChangeSet(
+					tablename=Arguments.tablename,
+					action="restore",
+					pkvalue=Arguments.pkvalue,
+					sql=sql_insert
+				)>
+				<cfset sRecord["DataLogger_ChangeSetID"] = ChangeSetID>
+				<cfset Variables.DataMgr.saveRecord(tablename=Arguments.tablename,data=sRecord)>
+			</cftransaction>
+		</cfif>
+		<cfset addRestore(ArgumentCollection=Arguments)>
+	<cfelse>
+		<cfthrow type="DataLogger" message="Nothing to restore.">
+	</cfif>
+
+</cffunction>
+
+<cffunction name="setDataTrashcan" access="public" returntype="any" output="no">
+	<cfargument name="DataTrashcan" type="any" required="yes">
+
+	<cfset Variables.DataTrashcan = Arguments.DataTrashcan>
+
+</cffunction>
+
+<cffunction name="addRestore" access="public" returntype="string" output="no">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="pkvalue" type="string" required="yes">
+	<cfargument name="when" type="date" required="yes">
+	<cfargument name="fieldlist" type="string" required="no">
+
+	<cfset var sArgs = {
+		"tablename"=Arguments.tablename,
+		"pkvalue"=Arguments.pkvalue,
+		"DateRestoredFrom"=Arguments.when
+	}>
+	<cfif StructKeyHasLen(Arguments,"fieldlist")>
+		<cfset sArgs["fieldlist"] = Arguments.fieldlist>
+	</cfif>
+
+	<cfreturn Variables.DataMgr.insertRecord(tablename="audRestores",data=sArgs)>
 </cffunction>
 
 <cffunction name="getCurrentData" access="private" returntype="query" output="no" hint="I get the current data for the given record.">
@@ -314,6 +518,13 @@
 			<field ColumnName="FieldName" CF_DataType="CF_SQL_VARCHAR" Length="250" />
 			<field ColumnName="OldValue" CF_DataType="CF_SQL_LONGVARCHAR" />
 			<field ColumnName="NewValue" CF_DataType="CF_SQL_LONGVARCHAR" />
+		</table>
+		<table name="audRestores">
+			<field ColumnName="RestoreID" CF_DataType="CF_SQL_INTEGER" PrimaryKey="true" Increment="true" />
+			<field ColumnName="tablename" CF_DataType="CF_SQL_VARCHAR" Length="250" />
+			<field ColumnName="pkvalue" CF_DataType="CF_SQL_VARCHAR" Length="250" />
+			<field ColumnName="DateRestorePerformed" CF_DataType="CF_SQL_DATE" Special="CreationDate" />
+			<field ColumnName="DateRestoredFrom" CF_DataType="CF_SQL_DATE" />
 		</table>
 	</tables>
 	</cfoutput></cfsavecontent>
