@@ -27,7 +27,7 @@
 <cffunction name="catchError" access="public" returntype="void" output="no" hint="I catch logging errors. This can be extended on a per-site basis.">
 	<cfargument name="MethodName" type="string" required="yes">
 	<cfargument name="Error" type="any" required="yes">
-	<cfargument name="Arguments" type="struct" required="yes">
+	<cfargument name="Args" type="struct" required="yes">
 
 	<cfset Variables.Observer.announceEvent(
 		EventName = "DataLogger:onError",
@@ -237,12 +237,16 @@
 	<cftry>
 		<!--- ** Log the Change ** --->
 		<cfif
+			StructKeyExists(Arguments,"data")
+			AND
 			StructKeyHasVal(Arguments.data,"DataLogger_ChangeSetID")
 			AND
-			hasReset(Arguments.data["DataLogger_ChangeSetID"])
+			hasRestore(Arguments.data["DataLogger_ChangeSetID"])
 		>
+			<!--- In rare event where data specified a ChangeSetID, use it. Only current case: a restore --->
 			<cfset ChangeSetID = Arguments.data["DataLogger_ChangeSetID"]>
 		<cfelse>
+			<!--- The rest of the time, we'll create one. --->
 			<cfset ChangeSetID = addChangeSet(ArgumentCollection=sArgs)>
 		</cfif>
 
