@@ -659,6 +659,22 @@
 	</cfif>
 </cffunction>
 
+<cffunction name="getConstraintConflicts" access="public" returntype="any" output="no">
+	<cfargument name="tablename" type="string" required="true">
+	<cfargument name="ftable" type="string" required="false">
+	<cfargument name="field" type="string" required="false">
+
+	<cfset var result = 0>
+
+	<cfif StructKeyExists(Arguments,"ftable")>
+		<cfset result = getConstraintConflicts_Field(ArgumentCollection=Arguments)>
+	<cfelse>
+		<cfset result = getConstraintConflicts_Table(ArgumentCollection=Arguments)>
+	</cfif>
+
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="getDataBase" access="public" returntype="string" output="no" hint="I return the database platform being used.">
 
 	<cfset var connection = 0>
@@ -3536,6 +3552,73 @@
 		<cfreturn qQuery>
 	</cfif>
 
+</cffunction>
+
+<cffunction name="getConstraintConflicts_Field" access="private" returntype="query" output="no">
+	<cfargument name="tablename" type="string" required="true">
+	<cfargument name="ftable" type="string" required="true">
+	<cfargument name="field" type="string" required="false">
+
+	<cfset var qConflicts = QueryNew("pkvalue")>
+	<cfset var pkfield = getPrimaryKeyFieldName(Arguments.tablename)>
+	<cfset var fpkfield = getPrimaryKeyFieldName(Arguments.ftable)>
+
+	<cfif NOT StructKeyExists(Arguments, "field")>
+		<cfset Arguments.field = fpkfield>
+	</cfif>
+
+	<cfif ListLen(fpkfield) EQ 1>
+		<cf_DMQuery name="qConflicts">
+		SELECT	<cf_DMObject name="#pkfield#"> AS pkvalue,
+				<cf_DMObject name="#Arguments.field#"> AS fkvalue
+		FROM	<cf_DMObject name="#Arguments.tablename#">
+		WHERE	NOT <cf_DMObject name="#Arguments.field#"> IN (
+					SELECT	<cf_DMObject name="#fpkfield#">
+					FROM	<cf_DMObject name="#Arguments.ftable#">
+				)
+		</cf_DMQuery>
+	</cfif>
+
+	<cfreturn qConflicts>
+</cffunction>
+
+<cffunction name="getConstraintConflicts_Table" access="private" returntype="any" output="no">
+	<cfargument name="tablename" type="string" required="true">
+
+	<cfscript>
+	var varXML = getXml(Arguments.tablename);
+	var xTable = Xmlparse(varXML);
+	var aForeignFields = XmlSearch(xTable, "//field[@ftable][@ColumnName]");//Get all real fields that reference other tables
+	var ii = 0;
+	var xField = 0;
+	var sField = 0;
+	var xParent = 0;
+	var useConstraint = "";
+	var sResult = {};
+
+	for ( ii = 1; ii LTE ArrayLen(aForeignFields); ii=ii+1 ) {
+		xField = aForeignFields[ii];
+		sField = xField.XmlAttributes;
+		useConstraint = true;
+		xParent = xField.XmlParent;//Because we might have traversed up while determining if we should use a constraint.
+
+		//For now, don't handle join-tables. Will need to though, at some point.
+		if ( StructKeyHasLen(sField,"jointable") ) {
+			useConstraint = false;
+		}
+
+		if ( sField["ftable"] EQ Arguments.tablename ) {
+			useConstraint = false;
+		}
+
+		//If we are using a constraint, make sure it exists.
+		if ( useConstraint IS true ) {
+			sResult[sField["ColumnName"]] = getConstraintConflicts_Field(Arguments.tablename,sField["ftable"],sField["ColumnName"]);
+		}
+	}
+	</cfscript>
+
+	<cfreturn sResult>
 </cffunction>
 
 <cffunction name="logSQL" access="private" returntype="void" output="no">
@@ -6541,7 +6624,7 @@ function queryRowToStruct(query){
 <cfsavecontent variable="result"><cfoutput>
 <cfif arguments.showroot><tables></cfif><cfloop collection="#sTables#" item="table">
 	<table name="#table#"><cfloop index="i" from="1" to="#ArrayLen(sTables[table])#" step="1"><cfif StructKeyExists(sTables[table][i],"CF_DataType")>
-		<field ColumnName="#sTables[table][i].ColumnName#"<cfif StructKeyHasLen(sTables[table][i],"alias")> alias="#sTables[table][i].alias#"</cfif> CF_DataType="#sTables[table][i].CF_DataType#"<cfif StructKeyExists(sTables[table][i],"PrimaryKey") AND isBoolean(sTables[table][i].PrimaryKey) AND sTables[table][i].PrimaryKey> PrimaryKey="true"</cfif><cfif StructKeyExists(sTables[table][i],"Increment") AND isBoolean(sTables[table][i].Increment) AND sTables[table][i].Increment> Increment="true"</cfif><cfif StructKeyExists(sTables[table][i],"Length") AND isNumeric(sTables[table][i].Length) AND sTables[table][i].Length GT 0> Length="#Int(sTables[table][i].Length)#"</cfif><cfif StructKeyExists(sTables[table][i],"Default") AND Len(sTables[table][i].Default)> Default="#sTables[table][i].Default#"</cfif><cfif StructKeyExists(sTables[table][i],"Precision") AND isNumeric(sTables[table][i]["Precision"])> Precision="#sTables[table][i]["Precision"]#"</cfif><cfif StructKeyExists(sTables[table][i],"Scale") AND isNumeric(sTables[table][i]["Scale"])> Scale="#sTables[table][i]["Scale"]#"</cfif> AllowNulls="#sTables[table][i]["AllowNulls"]#"<cfif StructKeyExists(sTables[table][i],"Special") AND Len(sTables[table][i]["Special"])> Special="#sTables[table][i]["Special"]#"</cfif> /><cfelseif StructKeyExists(sTables[table][i],"Relation")>
+		<field ColumnName="#sTables[table][i].ColumnName#"<cfif StructKeyHasLen(sTables[table][i],"alias")> alias="#sTables[table][i].alias#"</cfif> CF_DataType="#sTables[table][i].CF_DataType#"<cfif StructKeyExists(sTables[table][i],"PrimaryKey") AND isBoolean(sTables[table][i].PrimaryKey) AND sTables[table][i].PrimaryKey> PrimaryKey="true"</cfif><cfif StructKeyExists(sTables[table][i],"Increment") AND isBoolean(sTables[table][i].Increment) AND sTables[table][i].Increment> Increment="true"</cfif><cfif StructKeyExists(sTables[table][i],"Length") AND isNumeric(sTables[table][i].Length) AND sTables[table][i].Length GT 0> Length="#Int(sTables[table][i].Length)#"</cfif><cfif StructKeyHasLen(sTables[table][i],"Default")> Default="#sTables[table][i].Default#"</cfif><cfif StructKeyExists(sTables[table][i],"Precision") AND isNumeric(sTables[table][i]["Precision"])> Precision="#sTables[table][i]["Precision"]#"</cfif><cfif StructKeyExists(sTables[table][i],"Scale") AND isNumeric(sTables[table][i]["Scale"])> Scale="#sTables[table][i]["Scale"]#"</cfif> AllowNulls="#sTables[table][i]["AllowNulls"]#"<cfif StructKeyHasLen(sTables[table][i],"Special")> Special="#sTables[table][i]["Special"]#"</cfif><cfif StructKeyHasLen(sTables[table][i],"ftable")> ftable="#sTables[table][i]["ftable"]#"</cfif> /><cfelseif StructKeyExists(sTables[table][i],"Relation")>
 		<field ColumnName="#sTables[table][i].ColumnName#">
 			<relation<cfloop index="rKey" list="#rAtts#"><cfif StructKeyExists(sTables[table][i].Relation,rKey)> #rKey#="#XmlFormat(sTables[table][i].Relation[rKey])#"</cfif></cfloop><cfloop collection="#sTables[table][i].Relation#" item="rKey"><cfif NOT ListFindNoCase(rAtts,rKey)> #LCase(rKey)#="#XmlFormat(sTables[table][i].Relation[rKey])#"</cfif></cfloop> />
 		</field></cfif></cfloop><cfif arguments.indexes AND isDefined("getDBTableIndexes")><cfset qIndexes = getDBTableIndexes(tablename=table)><cfloop query="qIndexes">
