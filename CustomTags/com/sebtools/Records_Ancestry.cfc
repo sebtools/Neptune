@@ -128,6 +128,30 @@
 	<cfreturn result>
 </cffunction>
 
+<cffunction name="getFullTree" access="public" returntype="struct" output="no">
+	<cfset var sMeta = getMetaStruct()>
+	<cfset var qRecords = getRecords(orderby="AncestorNames",fieldlist="#sMeta.pkfields#,#sMeta.field_label#,AncestorNames")>
+	<cfset var sResults = {}>
+	<cfset var node = "">
+	<cfset var ancestor = "">
+
+	<cfoutput query="qRecords">
+		<cfset sThis = sResults>
+		<cfloop list="#AncestorNames#" index="ancestor" delimiters="|">
+			<cfif NOT StructKeyExists(sThis,ancestor)>
+				<cfset sThis[ancestor] = {}>
+			</cfif>
+			<cfset sThis = sThis[ancestor]>
+		</cfloop>
+		<cfset sThis[LossDetailName][0] = {
+			"#sMeta.pkfields#":qRecords[sMeta.pkfields][CurrentRow],
+			"#sMeta.field_label#":qRecords[sMeta.field_label][CurrentRow]
+		}>
+	</cfoutput>
+
+	<cfreturn sResults>
+</cffunction>
+
 <cffunction name="saveRecord" access="public" returntype="string" output="no">
 
 	<cfset var result = 0>
