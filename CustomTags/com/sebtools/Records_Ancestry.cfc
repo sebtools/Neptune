@@ -233,16 +233,19 @@
 		</cfif>
 	</cfif>
 
-	<!--- Make sure that a record cannot change its parent --->
+	<!--- Make sure that a record cannot change its parent (unless specified). --->
 	<cfif StructKeyExists(Arguments,"#sMeta.arg_pk#") AND StructKeyExists(Arguments,"Parent#sMeta.arg_pk#")>
 		<cfset sRec = {"#sMeta.arg_pk#"=Arguments[sMeta.arg_pk],fieldlist="Parent#sMeta.arg_pk#"}>
 		<cfset qBefore = getRecord(ArgumentCollection=sRec)>
+
 		<cfif
 			qBefore.RecordCount
 			AND
 			qBefore["Parent#sMeta.arg_pk#"][1] NEQ Arguments["Parent#sMeta.arg_pk#"]
 		>
-			<cfthrow type="#smeta.method_Plural#" message="Parent #LCase(smeta.label_Plural)# may not be altered.">
+			<cfif NOT ( StructKeyExists(Arguments,"doChangeParent") AND Arguments.doChangeParent IS true )>
+				<cfthrow type="#smeta.method_Plural#" message="Parent #LCase(smeta.label_Plural)# may not be altered. If you want to change the parent, then pass in true for the argument 'doChangeParent'.">
+			</cfif>
 		</cfif>
 	</cfif>
 
