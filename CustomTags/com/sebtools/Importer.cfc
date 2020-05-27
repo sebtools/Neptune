@@ -2,44 +2,21 @@
 
 <cffunction name="init" access="public" returntype="any" output="no">
 	<cfargument name="Manager" type="any" required="yes">
-	<cfargument name="POIUtility" type="any" required="no">
+	<cfargument name="Scheduler" type="any" required="no">
 
 	<cfset initInternal(argumentCollection=arguments)>
 
-	<cfreturn This>
-</cffunction>
-
-<cffunction name="initInternal" access="public" returntype="any" output="no">
-	<cfargument name="Manager" type="any" required="yes">
-	<cfargument name="POIUtility" type="any" required="no">
-
-	<cfset Super.initInternal(argumentCollection=arguments)>
-
-	<cfif
-			NOT StructKeyExists(variables,"POIUtility")
-		AND	StructKeyExists(variables,"Parent")
-		AND	isObject(variables.Parent)
-		AND	StructKeyExists(variables.Parent,"getVariable")
-	>
-		<cftry>
-			<cfset variables.POIUtility = variables.Parent.getVariable("POIUtility")>
-		<cfcatch>
-		</cfcatch>
-		</cftry>
-	</cfif>
-
-	<cfif
-			NOT StructKeyExists(variables,"POIUtility")
-		AND	StructKeyExists(variables.Manager,"POIUtility")
-	>
-		<cfset variables.POIUtility = variables.Manager.POIUtility>
-	</cfif>
-
-	<cfif NOT StructKeyExists(variables,"POIUtility")>
-		<cfthrow message="Importer required POIUtility to work.">
-	</cfif>
-
 	<cfset getImportee()>
+
+	<cfif StructKeyExists(Variables,"Scheduler")>
+		<cfset Variables.Scheduler.setTask(
+			Name="Remove Uploaded Spreadsheets",
+			ComponentPath="com.sebtools.Importer",
+			Component=This,
+			MethodName="removeOldFiles",
+			interval="hourly"
+		)>
+	</cfif>
 
 	<cfreturn This>
 </cffunction>
@@ -172,13 +149,16 @@
 	<cfargument name="RequiredColumns" type="string" required="no">
 	<cfargument name="CatchErrTypes" type="string" default="">
 	<cfargument name="CompactionDelim" type="string" default="">
+	<cfargument name="HasHeaderRow" type="boolean" default="true">
+	<cfargument name="headerRow" type="numeric" default="1">
+	<cfargument name="sheets" type="string" default="1">
 
 	<cfset var ValidSheet = 0>
 	<cfset var qRecords = 0>
 	<cfset var CurrentColumn = "">
 	<cfset var FilePath = variables.FileMgr.getFilePath(arguments.ExcelFile,getFolder('FileImport'))>
-	<cfset var aSheets = readExcel(FilePath=FilePath,HasHeaderRow=true)>
-	<cfset var aReturnSheets = Duplicate(aSheets)>
+	<cfset var aSheets = readExcel(FilePath=FilePath,HasHeaderRow=arguments.HasHeaderRow,sheets=arguments.sheets,headerRow=arguments.headerRow)>
+	<cfset var qReturn = 0>
 	<cfset var isSuccessful = true>
 	<cfset var sImport = StructNew()>
 	<cfset var sArgs = StructCopy(arguments)>
@@ -191,21 +171,18 @@
 		<cfset arguments.RequiredColumns = getRequiredColumns(arguments.component,arguments.method)>
 	</cfif>
 
-	<cfset addNamedQueries(aSheets,arguments.CompactionDelim)>
-
 	<!--- Find sheet to import --->
 	<cfset ValidSheet = getValidSheet(aSheets,arguments.RequiredColumns,sArgs,arguments.CompactionDelim)>
 
-	<cfset qRecords = aSheets[ValidSheet].NamedQuery>
+	<cfset qRecords = aSheets[ValidSheet]>
 
-	<cfset aReturnSheets[ValidSheet].Query = QueryNew("#qRecords.ColumnList#,SpreadSheetImportError")>
-	<cfset ArrayAppend(aReturnSheets[ValidSheet].ColumnNames,"SpreadSheetImportError")>
+	<cfset qReturn = QueryNew("#qRecords.ColumnList#,SpreadSheetImportError")>
 
 	<cfif structKeyExists(arguments.component,"getFieldsStruct")>
 		<cfset sFields = arguments.component.getFieldsStruct()>
 	</cfif>
 
-	<!--- Remove records that do not have any data (POIUtility used by readExcel does not ignore empty rows in sheet) --->
+	<!--- Remove records that do not have any data (cfspreadsheet only ignores if the cell is truly empty or NULL) --->
 	<cfquery name="qRecords" dbtype="query">
 	SELECT	*
 	FROM	qRecords
@@ -220,14 +197,13 @@
 		<cfset StructCompactKeys(sData,arguments.CompactionDelim)>
 		<cfset appendArgDefaults(sData,sArgs)>
 		<cfset StructFormatData(sData,sFields)>
-
 		<cftry>
 			<cfinvoke component="#arguments.component#" method="#arguments.method#" argumentCollection="#sData#"></cfinvoke>
 		<cfcatch>
 			<cfif Len(arguments.CatchErrTypes) EQ 0 OR ListFindNoCase(arguments.CatchErrTypes,cfcatch.type)>
 				<cfset sData["SpreadSheetImportError"] = CFCATCH.Message>
 				<cfset isSuccessful = false>
-				<cfset QueryAddRecord(aReturnSheets[ValidSheet].Query,sData)>
+				<cfset QueryAddRecord(qReturn,sData)>
 			<cfelse>
 				<cfrethrow>
 			</cfif>
@@ -237,7 +213,7 @@
 
 	<cfif NOT isSuccessful>
 		<!---<cfthrow message="Upload Failed for unknown reason." type="Importer">--->
-		<cfset saveSpreadsheet(arguments.ExcelFile,aReturnSheets,arguments.CompactionDelim)>
+		<cfset saveSpreadsheet(FileName=arguments.ExcelFile,exportQuery=qReturn)>
 		<cfset sImport["FileErrors"] = arguments.ExcelFile>
 	</cfif>
 
@@ -248,8 +224,23 @@
 	</cfcatch>
 	</cftry>
 
-
 	<cfreturn isSuccessful>
+</cffunction>
+
+<cffunction name="removeOldFiles" access="public" returntype="any" output="no">
+
+	<cfset var dirpath = Variables.FileMgr.getDirectory(getFolder("FileImport"))>
+	<cfset var qFiles = 0>
+
+	<cfdirectory directory="#dirpath#" action="list" name="qFiles">
+
+	<cfoutput query="qFiles">
+		<!--- Remove any file that is over an hour old --->
+		<cfif DateDiff('n',DateLastModified,now()) GT 60>
+			<cfset FileDelete(dirpath & Name)>
+		</cfif>
+	</cfoutput>
+
 </cffunction>
 
 <cffunction name="addMethods" access="private" returntype="void" output="no">
@@ -293,11 +284,28 @@
 </cffunction>--->
 
 <cffunction name="readExcel" access="private" returntype="any" output="no" hint="I save one Import.">
+	<cfargument name="FilePath" type="string" required="yes">
+	<cfargument name="HasHeaderRow" type="boolean" default="true">
+	<cfargument name="headerRow" type="numeric" default="1">
+	<cfargument name="sheets" type="string" default="1">
 
 	<cfset var result = 0>
+	<cfset var sheetNum = 0>
+	<cfset var aSheets = []>
 
 	<cftry>
-		<cfset result = variables.POIUtility.ReadExcel(argumentCollection=arguments)>
+		<!--- Caller expects an array of sheets --->
+		<cfloop index="sheetNum" list="#Arguments.sheets#">
+			<cfif Arguments.headerRow GT 0>
+				<cfspreadsheet action="read" sheet="#sheetNum#" query="result" src="#Arguments.FilePath#" excludeHeaderRow="#Arguments.HasHeaderRow#" headerRow="#Arguments.headerRow#">
+			<cfelse>
+				<cfspreadsheet action="read" sheet="#sheetNum#" query="result" src="#Arguments.FilePath#" excludeHeaderRow="#Arguments.HasHeaderRow#">
+			</cfif>
+			<cfif result.RecordCount>
+				<cfset result = QueryCompact(result)>
+				<cfset ArrayAppend(aSheets,result)>
+			</cfif>
+		</cfloop>
 	<cfcatch>
 		<cfif
 				StructKeyExists(CFCATCH,"Cause")
@@ -312,8 +320,8 @@
 	</cfcatch>
 	</cftry>
 
-	<cfif isDefined("result")>
-		<cfreturn result>
+	<cfif ArrayLen(aSheets)>
+		<cfreturn aSheets>
 	</cfif>
 </cffunction>
 
@@ -411,11 +419,11 @@
 
 	<!--- Find sheet to import --->
 	<cfloop index="ii" from="1" to="#ArrayLen(aSheets)#" step="1">
-		<cfset cols = ListCompact(ArrayToList(aSheets[ii].ColumnNames),arguments.CompactionDelim)>
+		<cfset cols = ListCompact(aSheets[ii].ColumnList,arguments.CompactionDelim)>
 		<cfif Len(defaultcols)>
 			<cfset cols = ListAppend(cols,defaultcols)>
 		</cfif>
-		<cfif StructKeyExists(aSheets[ii],"NamedQuery") AND aSheets[ii].NamedQuery.RecordCount AND NOT Len(ListCompare(arguments.RequiredColumns,cols))>
+		<cfif NOT Len(ListCompare(arguments.RequiredColumns,cols))>
 			<cfset result = ii>
 		</cfif>
 	</cfloop>
@@ -429,23 +437,12 @@
 
 <cffunction name="saveSpreadsheet" access="private" returntype="void" output="no">
 	<cfargument name="FileName" type="string" required="true">
-	<cfargument name="sheets" type="array" required="true">
-	<cfargument name="CompactionDelim" type="string" default="">
+	<cfargument name="exportQuery" type="query" required="true">
 
-	<cfset var ii = 0>
-	<cfset var aSheets = ArrayNew(1)>
 	<cfset var FilePath = variables.FileMgr.getFilePath(arguments.FileName,getFolder('FileErrors'))>
+	<cfset var xlsQuery = Arguments.exportQuery>
 
-	<cfloop index="ii" from="1" to="#ArrayLen(arguments.sheets)#" step="1">
-		<cfset ArrayAppend(aSheets,StructNew())>
-		<cfset aSheets[ii].ColumnList = ListCompact(ArrayToList(arguments.sheets[ii].ColumnNames),arguments.CompactionDelim)>
-		<cfset aSheets[ii].ColumnNames = aSheets[ii].ColumnList>
-		<cfset aSheets[ii].Query = arguments.sheets[ii].Query>
-		<cfset aSheets[ii].SheetName = arguments.sheets[ii].Name>
-	</cfloop>
-
-	<cfset variables.POIUtility.WriteExcel(FilePath=FilePath,Sheets=aSheets)>
-
+	<cfspreadsheet action="write" filename="#FilePath#" query="xlsQuery">
 </cffunction>
 
 <cffunction name="getRequiredColumns" access="public" returntype="string" output="no">
@@ -474,9 +471,9 @@
 			Label="Excel File"
 			type="file"
 			Folder="excel-imports"
-			Accept="application/msexcel,application/vnd.ms-excel,application/x-msdownload"
+			Accept="application/msexcel,application/vnd.ms-excel,application/x-msdownload,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 			nameconflict="MakeUnique"
-			Extensions="xls"
+			Extensions="xls,xlsx"
 			required="true"
 		/>
 		<field
@@ -484,8 +481,8 @@
 			Label="Errors File"
 			type="file"
 			Folder="excel-imports-errors"
-			Accept="application/msexcel,application/vnd.ms-excel,application/x-msdownload"
-			Extensions="xls"
+			Accept="application/msexcel,application/vnd.ms-excel,application/x-msdownload,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+			Extensions="xls,xlsx"
 		/>
 	</table>
 </tables>
@@ -527,6 +524,33 @@
 	</cfloop>
 
 	<cfreturn arguments.array>
+</cffunction>
+
+<cffunction name="QueryCompact" access="private" returntype="query" output="false">
+	<cfargument name="qForCompact" type="query" required="true">
+	<cfargument name="CompactionDelim" type="string" default="">
+
+	<cfset var qResult = 0>
+	<cfset var colNames = "">
+	<cfset var colName = "">
+
+	<!--- Make sure column names are valid --->
+	<cfloop list="#Arguments.qForCompact.ColumnList#" index="colName">
+		<cfset colNames = ListAppend(colNames,Compact(colName))>
+	</cfloop>
+	<cfset qResult = QueryNew(colNames)>
+
+	<!--- Populate new query with compacted column names --->
+	<cfoutput query="Arguments.qForCompact">
+		<cfset QueryAddRow(qResult)>
+		<cfloop list="#Arguments.qForCompact.ColumnList#" index="colName">
+			<cfif isSimpleValue(Arguments.qForCompact[colName][Arguments.qForCompact.CurrentRow])>
+				<cfset QuerySetCell(qResult,Compact(colName),Arguments.qForCompact[colName][Arguments.qForCompact.CurrentRow])>
+			</cfif>
+		</cfloop>
+	</cfoutput>
+
+	<cfreturn qResult>
 </cffunction>
 
 <cffunction name="StructCompactKeys" access="private" returntype="struct" output="false">
