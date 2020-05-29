@@ -37,7 +37,9 @@
 	DELETE
 	FROM	<cf_DMOBject name="#Arguments.tablename#">
 	WHERE	<cf_DMOBject name="#Arguments.keyfield#"> = <cf_DMParam value="#Arguments.keyvalue#" cfsqltype="#sFieldKey.CF_Datatype#">
+		<cfif Len(Arguments.multilist)>
 		AND	<cf_DMOBject name="#Arguments.multifield#"> NOT IN (<cf_DMParam value="#Arguments.multilist#" cfsqltype="#sFieldMulti.CF_Datatype#" list="yes">)
+		</cfif>
 	</cf_DMQuery>
 
 	<cfif variables.doLogging AND NOT arguments.tablename EQ variables.logtable>
