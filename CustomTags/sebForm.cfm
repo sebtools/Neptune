@@ -1114,7 +1114,7 @@ if ( isDefined("ThisTag.subforms") ) {
 									)
 								OR	(
 											isDefined("sForm.delete#thisName#")
-										AND	sForm["delete#thisName#"]
+										AND	Val(sForm["delete#thisName#"])
 									)
 							)
 					>
