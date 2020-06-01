@@ -1891,6 +1891,25 @@
 	<!--- Add names to fields with only types --->
 	<cfset adjustXmlAddNamesToTypes(xDef)>
 
+	<!--- Add "IN" filter for fkfields --->
+	<cfloop index="tt" from="1" to="#ArrayLen(aTables)#">
+		<cfset table = aTables[tt].XmlAttributes["name"]>
+		<cfset aFields = XmlSearch(xDef,"//table[@name='#table#']//field[string-length(@name)>0]")>
+		<!--- Add filters for fentities --->
+		<cfloop index="ff" from="1" to="#ArrayLen(aFields)#">
+			<cfif
+					StructKeyExists(aFields[ff].XmlAttributes,"fentity")
+				AND	Len(aFields[ff].XmlAttributes["fentity"])
+			>
+				<cfset xField = XmlElemNew(xDef,"filter")>
+				<cfset xField.XmlAttributes["name"] = Pluralize(makeCompName(aFields[ff].XmlAttributes["fentity"]))>
+				<cfset xField.XmlAttributes["field"] = aFields[ff].XmlAttributes["name"]>
+				<cfset xField.XmlAttributes["operator"] = "IN">
+				<cfset ArrayAppend(aTables[tt].XmlChildren,Duplicate(xField))>
+			</cfif>
+		</cfloop>
+	</cfloop>
+
 	<cfreturn xDef>
 </cffunction>
 
