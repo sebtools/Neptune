@@ -20,7 +20,7 @@
 	<cfargument name="property" type="string" required="yes">
 	<cfargument name="value" type="any" required="yes">
 
-	<cfset checkMutable()>
+	<cfset checkMutable(Arguments.property)>
 
 	<cfset __AddToArray(ArgumentCollection=Arguments)>
 
@@ -32,7 +32,7 @@
 	<cfargument name="value" type="string" required="yes">
 	<cfargument name="delimiter" type="string" default=",">
 
-	<cfset checkMutable()>
+	<cfset checkMutable(Arguments.property)>
 
 	<cfset __AddToList(ArgumentCollection=Arguments)>
 
@@ -43,7 +43,7 @@
 	<cfargument name="property" type="string" required="yes">
 	<cfargument name="value" type="string" required="yes">
 
-	<cfset checkMutable()>
+	<cfset checkMutable(Arguments.property)>
 
 	<cfset __AddToString(ArgumentCollection=Arguments)>
 
@@ -56,7 +56,7 @@
 	<cfargument name="value" type="any" required="yes">
 	<cfargument name="overwrite" type="boolean" default="true">
 
-	<cfset checkMutable()>
+	<cfset checkMutable(Arguments.property)>
 
 	<cfset __AddToStruct(ArgumentCollection=Arguments)>
 
@@ -87,7 +87,7 @@
 <cffunction name="remove" access="public" returntype="void" output="no" hint="I remove the property from the bean.">
 	<cfargument name="property" type="string" required="yes">
 
-	<cfset checkMutable()>
+	<cfset checkMutable(Arguments.property)>
 
 	<cfset __remove(ArgumentCollection=Arguments)>
 
@@ -97,7 +97,7 @@
 	<cfargument name="property" type="string" required="yes">
 	<cfargument name="value" type="any" required="yes">
 
-	<cfset checkMutable()>
+	<cfset checkMutable(Arguments.property)>
 
 	<cfset __set(ArgumentCollection=Arguments)>
 
@@ -156,6 +156,7 @@ function onMissingMethod() {
 </cfscript>
 
 <cffunction name="checkMutable" access="private" returntype="void" output="no" hint="I throw an exception when calls are made to change values if the bean is not mutable.">
+	<cfargument name="property" type="string" required="yes">
 
 	<cfif NOT Variables.mutable>
 		<cfthrow type="Beany" message="Unable to alter property. Object is not mutable." detail="Unable to alter #Arguments.property# property. Object is not mutable.">
@@ -255,7 +256,7 @@ function onMissingMethod() {
 	<cfargument name="property" type="string" required="yes">
 	<cfargument name="value" type="any" required="yes">
 
-	<cfset checkMutable()>
+	<cfset checkMutable(Arguments.property)>
 
 	<cfset Variables.Props[Arguments.property] = Arguments.value>
 
