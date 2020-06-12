@@ -53,6 +53,9 @@ function getDMSQLArray() {
 	var aResult = ArrayNew(1);
 	var ii = 0;
 	var marker = "";
+
+	ThisTag.GeneratedContent = " #ThisTag.GeneratedContent# ";
+
 	//Loop over params and inject struct of attributes of each
 	if ( StructKeyExists(ThisTag,"aParams") ) {
 		for ( ii = 1; ii LTE ArrayLen(ThisTag.aParams); ii=ii+1 ) {
@@ -64,6 +67,9 @@ function getDMSQLArray() {
 			ThisTag.GeneratedContent = ReplaceNoCase(ThisTag.GeneratedContent,marker,"","ONE");
 		}
 	}
+
+	ThisTag.GeneratedContent = Trim(ThisTag.GeneratedContent);
+
 	ArrayAppend(aResult,ThisTag.GeneratedContent);
 	aResult = convertSQLArray(aResult);
 	//Make sure to clear out generated content
