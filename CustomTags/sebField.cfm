@@ -339,7 +339,8 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 	}
 	</cfscript>
 	<cfif
-			isDefined("attributes.CFC_Component")
+			structKeyExists(attributes, "CFC_Component")
+		AND	isObject(attributes.CFC_Component)
 		AND (
 					StructKeyExists(attributes.CFC_Component,"getMetaStruct")
 				OR	getMetaData(attributes.CFC_Component).extends.name CONTAINS "_framework.PageController"
@@ -1084,7 +1085,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 		<cfif attributes.isEditable NEQ false>
 		<cfsavecontent variable="input"><div class="sebSubmitBar"><cfset attributes.Title = "">
 		<input type="submit" value="#ListFirst(attributes.label)#"<cfif Len(attributes.fieldname)> name="#attributes.fieldname#"</cfif><cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>/>
-		&nbsp;
+		&nbsp;<cfset attributes.class = "cancel">
 		<input type="button"<cfif Len(attributes.fieldname)> name="#attributes.fieldname#"</cfif><cfif Len(attributes.id)> id="#attributes.id#2"</cfif><cfif ListLen(attributes.label) gt 1> value="#ListGetAt(attributes.label,2)#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif StructKeyExists(attributes,"CancelURL") AND Len(attributes.CancelURL)> onclick="location.replace('#attributes.CancelURL#');"<cfelse> onclick="history.back();"</cfif>/>
 		</div></cfsavecontent>
 		</cfif>
