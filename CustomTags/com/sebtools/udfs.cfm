@@ -20,6 +20,23 @@
 	</cfscript>
 </cfif>
 
+<cfif NOT StructKeyExists(variables,"QueryAddRowStruct")>
+	<cfscript>
+	function QueryAddRowStruct(query,struct) {
+		var cols = Arguments.query.ColumnList;
+		var col = "";
+
+		QueryAddRow(query);
+
+		for ( col in Arguments.struct ) {
+			if ( ListFindNoCase(cols,col) ) {
+				querySetCell(Arguments.query, col, Arguments.struct[col]);
+			}
+		}
+	}
+	</cfscript>
+</cfif>
+
 <cfif false AND NOT StructKeyExists(variables,"QueryRowToStruct")>
 	<cfscript>
 	/**
