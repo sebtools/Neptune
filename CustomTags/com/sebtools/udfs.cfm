@@ -48,7 +48,7 @@
 	* @author Nathan Dintenfass (nathan@changemedia.com)
 	* @version 1, December 11, 2001
 	*/
-	function QueryRow2ToStruct(query){
+	function QueryRowToStruct(query){
 	    //by default, do this to the first row of the query
 	    var row = 1;
 	    //a var for looping
