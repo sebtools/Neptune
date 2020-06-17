@@ -1217,7 +1217,7 @@ if ( isDefined("ThisTag.subforms") ) {
 						</cfcatch>
 						</cftry>
 					<cfelse>
-						<cfif isDefined("sForm.delete#thisName#") AND sForm["delete#thisName#"]>
+						<cfif isDefined("sForm.delete#thisName#") AND sForm["delete#thisName#"] IS true>
 							<cfset sForm[thisName] = "">
 						<cfelse>
 							<cfset sForm[thisName] = arrFields[thisField].value>
