@@ -1,7 +1,7 @@
 <!--- 1.0 Beta 3 (Build 35) --->
 <!--- Last Updated: 2011-11-23 --->
 <!--- Information: sebtools.com --->
-<cfcomponent>
+<cfcomponent extends="component">
 
 <cffunction name="init" access="public" returntype="any" output="no">
 	<cfargument name="Manager" type="any" required="yes">
@@ -594,9 +594,6 @@
 <cfscript>
 function makeLinkVar(str) {
 	return LCase(makeCompName(str));
-}
-function makeCompName(str) {
-	return variables.Manager.makeCompName(str);
 }
 function makeFileName(str) {
 	/* Change special character to underscores */

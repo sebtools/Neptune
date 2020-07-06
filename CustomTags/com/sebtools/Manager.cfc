@@ -1,6 +1,7 @@
 <!--- 1.0 Beta 3 (Build 36) --->
 <!--- Last Updated: 2014-07-21 --->
-<!--- Information: http://www.bryantwebconsulting.com/docs/com-sebtools/manager.cfm?version=Build%2012 ---><cfcomponent output="false">
+<!--- Information: http://www.bryantwebconsulting.com/docs/com-sebtools/manager.cfm?version=Build%2012 --->
+<cfcomponent output="false" extends="component">
 
 <cffunction name="init" access="public" returntype="any" output="no">
 	<cfargument name="DataMgr" type="any" required="no">
@@ -1884,14 +1885,12 @@
 
 	</cfloop>
 
-
 	<!--- Handle Fields with ftable attributes --->
 	<cfset adjustXmlFTableFields(xDef)>
 
 	<!--- Add names to fields with only types --->
 	<cfset adjustXmlAddNamesToTypes(xDef)>
 
-	<!--- Add "IN" filter for fkfields --->
 	<cfloop index="tt" from="1" to="#ArrayLen(aTables)#">
 		<cfset table = aTables[tt].XmlAttributes["name"]>
 		<cfset aFields = XmlSearch(xDef,"//table[@name='#table#']//field[string-length(@name)>0]")>

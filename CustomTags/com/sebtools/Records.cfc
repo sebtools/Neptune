@@ -2,12 +2,10 @@
 <!--- Last Updated: 2011-11-23 --->
 <!--- Created by Steve Bryant 2007-09-13 --->
 <!--- Information: http://www.bryantwebconsulting.com/docs/com-sebtools/records.cfm?version=Build%2012 --->
-<cfcomponent output="false">
+<cfcomponent output="false" extends="component">
 
 <cfset variables.sSpecifyingValues = StructNew()>
 <cfset variables.OnExists = "save">
-
-<cfinclude template="udfs.cfm">
 
 <cffunction name="init" access="public" returntype="any" output="no">
 	<cfargument name="Manager" type="any" required="yes">
