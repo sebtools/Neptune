@@ -1897,8 +1897,11 @@
 		<!--- Add filters for fentities --->
 		<cfloop index="ff" from="1" to="#ArrayLen(aFields)#">
 			<cfif
-					StructKeyExists(aFields[ff].XmlAttributes,"fentity")
-				AND	Len(aFields[ff].XmlAttributes["fentity"])
+					StructKeyHasLen(aFields[ff].XmlAttributes,"fentity")
+				AND	NOT (
+							StructKeyHasLen(aTables[tt].XmlAttributes,"entity")
+						AND	aFields[ff].XmlAttributes["fentity"] EQ aTables[tt].XmlAttributes["entity"]
+					)
 			>
 				<cfset xField = XmlElemNew(xDef,"filter")>
 				<cfset xField.XmlAttributes["name"] = Pluralize(makeCompName(aFields[ff].XmlAttributes["fentity"]))>
