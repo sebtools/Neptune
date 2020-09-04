@@ -168,12 +168,64 @@
 	<cfreturn Variables.DataMgr.hasRecords(tablename="audChangeSets",data=sArgs)>
 </cffunction>
 
+<cffunction name="convertArgs" access="public" returntype="any" output="no">
+
+	<cfset var sArgs = {}>
+
+	<cfset sArgs["tablename"] = Arguments.tablename>
+	<cfset sArgs["action"] = Arguments.action>
+	<cfif StructKeyExists(Arguments,"ChangeUUID")>
+		<cfset sArgs["ChangeUUID"] = Arguments.ChangeUUID>
+	</cfif>
+	<cfif StructKeyExists(Arguments,"sql")>
+		<cfset sArgs["sql"] = Arguments.sql>
+	</cfif>
+	<cfif StructKeyExists(Arguments,"pkvalue")>
+		<cfset sArgs["pkvalue"] = Arguments.pkvalue>
+	</cfif>
+
+	<!--- Convert action arguments. --->
+	<cfif Arguments.action CONTAINS "insert">
+		<cfset sArgs["action"] = "insert">
+	<cfelseif Arguments.action CONTAINS "update">
+		<cfset sArgs["action"] = "update">
+	<cfelseif Arguments.action CONTAINS "delete">
+		<cfset sArgs["action"] = "delete">
+	<cfelse>
+		<!--- For now, only logging the above actions --->
+		<cfreturn false>
+	</cfif>
+
+	<cfif
+			Arguments.action CONTAINS "after"
+		OR
+			StructKeyExists(Arguments, "after")
+		OR
+			( StructKeyExists(Arguments,"complete") AND Arguments.complete IS true )
+	>
+		<cfset sArgs["DateCompleted"] = now()>
+	</cfif>
+
+	<!--- We won't know the primary key value yet for an insert --->
+	<cfif NOT ( StructKeyExists(Arguments,"pkvalue") AND Len(Arguments["pkvalue"]) )>
+		<cfif StructKeyExists(Arguments,"data") AND StructCount(Arguments.data)>
+			<cfif sArgs["action"] NEQ "insert" AND NOT StructKeyExists(Arguments,"pkvalue")>
+				<cfset Arguments["pkvalue"] = getPKValue(Arguments.tablename,Arguments.data)>
+			</cfif>
+		</cfif>
+	</cfif>
+
+	<cfreturn sArgs>
+</cffunction>
+
 <cffunction name="logAction" access="public" returntype="any" output="no">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="action" type="string" required="yes">
 	<cfargument name="data" type="struct" required="no">
 	<cfargument name="ChangeUUID" type="string" required="no">
 	<cfargument name="sql" type="any" required="no">
+	<cfargument name="before" type="any" required="no">
+	<cfargument name="after" type="any" required="no">
 
 	<cfset var sArgs = {}>
 	<cfset var sDataChanges = {}>
@@ -192,49 +244,9 @@
 		<cfreturn false>
 	</cfif>
 
-	<!--- Convert action arguments. --->
-	<cfif Arguments.action CONTAINS "insert">
-		<cfset sArgs["action"] = "insert">
-	<cfelseif Arguments.action CONTAINS "update">
-		<cfset sArgs["action"] = "update">
-	<cfelseif Arguments.action CONTAINS "delete">
-		<cfset sArgs["action"] = "delete">
-	<cfelse>
-		<!--- For now, only logging the above actions --->
-		<cfreturn false>
-	</cfif>
+	<cfset sArgs = convertArgs(ArgumentCollection=Arguments)>
 
-	<cfif Arguments.action CONTAINS "after">
-		<cfif sArgs["action"] EQ "update">
-			<cfreturn logActionComplete(ArgumentCollection=Arguments)>
-		<cfelse>
-			<cfset sArgs["DateCompleted"] = now()>
-		</cfif>
-	<cfelseif StructKeyExists(Arguments,"complete") AND Arguments.complete IS true>
-		<cfset sArgs["DateCompleted"] = now()>
-	</cfif>
-
-	<!--- We won't know the primary key value yet for an insert --->
-	<cfif NOT ( StructKeyExists(Arguments,"pkvalue") AND Len(Arguments["pkvalue"]) )>
-		<cfif StructKeyExists(Arguments,"data") AND StructCount(Arguments.data)>
-			<cfif sArgs["action"] NEQ "insert" AND NOT StructKeyExists(Arguments,"pkvalue")>
-				<cfset Arguments["pkvalue"] = getPKValue(Arguments.tablename,Arguments.data)>
-			</cfif>
-		</cfif>
-	</cfif>
-
-	<cfset sArgs["tablename"] = Arguments.tablename>
-	<cfif StructKeyExists(Arguments,"ChangeUUID")>
-		<cfset sArgs["ChangeUUID"] = Arguments.ChangeUUID>
-	</cfif>
-	<cfif StructKeyExists(Arguments,"sql")>
-		<cfset sArgs["sql"] = Arguments.sql>
-	</cfif>
-	<cfif StructKeyExists(Arguments,"pkvalue")>
-		<cfset sArgs["pkvalue"] = Arguments.pkvalue>
-	</cfif>
-
-	<cftry>
+	<!---<cftry>--->
 		<!--- ** Log the Change ** --->
 		<cfif
 			StructKeyExists(Arguments,"data")
@@ -251,41 +263,39 @@
 		</cfif>
 
 		<cfscript>
-		if ( StructKeyExists(Arguments,"data") AND StructCount(Arguments.data) ) {
-			// Track individual changes on updates
-			if ( sArgs["action"] EQ "update" ) {
-				aChanges = getDataChanges(Arguments.tablename,Arguments.data);
-				for  ( ii=1; ii LTE ArrayLen(aChanges); ii++ ) {
-					//Make sure to track the change set
-					aChanges[ii]["ChangeSetID"] = ChangeSetID;
-					if ( StructCount(aChanges[ii]) GT 1 ) {
-						//Save the change
-						Variables.DataMgr.runSQLArray(
-							Variables.DataMgr.insertRecordSQL(
-								tablename="audChanges",
-								OnExists="insert",
-								data=aChanges[ii]
-							)
-						);
-					}
+		if ( sArgs["action"] EQ "update" ) {
+			aChanges = getDataChanges(ArgumentCollection=Arguments);
+			for  ( ii=1; ii LTE ArrayLen(aChanges); ii++ ) {
+				//Make sure to track the change set
+				aChanges[ii]["ChangeSetID"] = ChangeSetID;
+				if ( StructCount(aChanges[ii]) GT 1 ) {
+					//Save the change
+					Variables.DataMgr.runSQLArray(
+						Variables.DataMgr.insertRecordSQL(
+							tablename="audChanges",
+							OnExists="insert",
+							data=aChanges[ii]
+						)
+					);
 				}
 			}
 		}
 		</cfscript>
-	<cfcatch>
+	<!---<cfcatch>
 		<cfset catchError("logAction",CFCATCH,Arguments)>
 	</cfcatch>
-	</cftry>
+	</cftry>--->
 
 </cffunction>
 
 <cffunction name="logActionComplete" access="public" returntype="any" output="no">
 	<cfargument name="ChangeUUID" type="string" required="no">
 
-	<cfset var sWhere = {ChangeUUID=Arguments.ChangeUUID,DateCompleted=""}>
+	<cfset var sWhere = {DateCompleted=""}>
 	<cfset var sSet = {DateCompleted=now()}>
 
 	<cfif StructKeyExists(Arguments,"ChangeUUID") AND Len(Arguments.ChangeUUID)>
+		<cfset sWhere["ChangeUUID"] = Arguments.ChangeUUID>
 		<cftry>
 			<!--- Set change set to completed --->
 			<cfset Variables.DataMgr.updateRecords(
@@ -422,28 +432,99 @@
 	<cfreturn qRecord>
 </cffunction>
 
+<cffunction name="getDataChangeArgs" access="private" returntype="any" output="no" hint="I get the data that has changed.">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="data" type="struct" required="no">
+	<cfargument name="before" type="any" required="no">
+	<cfargument name="after" type="any" required="no">
+
+	<cfset var sChangeArgs = {}>
+
+	<cfscript>
+	if ( StructKeyExists(Arguments,"data") AND StructCount(Arguments.data) ) {
+		sChangeArgs["data"] = Arguments.data;
+	}
+
+	//If data is supplied, but no before then assume this is done before the change and query the data.
+	if ( StructKeyExists(sChangeArgs,"data") AND NOT StructKeyExists(Arguments,"before") ) {
+		Arguments["before"] = getCurrentData(Arguments.tablename,Arguments.data);
+	}
+
+	if ( StructKeyExists(Arguments, "before") ) {
+
+		sChangeArgs["before"] = Arguments.before;
+
+		if ( isQuery(sChangeArgs["before"]) AND sChangeArgs["before"].RecordCount ) {
+			sChangeArgs["before"] = QueryRowToStruct(sChangeArgs["before"]);
+		}
+
+		if ( NOT ( isStruct(sChangeArgs["before"]) AND StructCount(sChangeArgs["before"]) ) ) {
+			StructDelete(sChangeArgs,"before");
+		}
+
+	}
+
+	//If data is supplied, but no after then assume this is done and that the data change will take as supplied.
+	if ( StructKeyExists(sChangeArgs,"data") AND NOT StructKeyExists(sChangeArgs,"after") ) {
+		Arguments["after"] = sChangeArgs["data"];
+	}
+
+	if ( StructKeyExists(Arguments, "before") AND StructKeyExists(Arguments, "after") ) {
+
+		sChangeArgs["after"] = Arguments.after;
+
+		if ( isQuery(sChangeArgs["after"]) AND sChangeArgs["after"].RecordCount ) {
+			sChangeArgs["after"] = QueryRowToStruct(sChangeArgs["after"]);
+		}
+
+		if ( NOT ( isStruct(sChangeArgs["after"]) AND StructCount(sChangeArgs["after"]) ) ) {
+			StructDelete(sChangeArgs,"after");
+		}
+
+	}
+
+	//If after is supplied, but no data then use the after as the data.
+	if ( StructKeyExists(sChangeArgs,"after") AND NOT StructKeyExists(sChangeArgs,"data") ) {
+		sChangeArgs["data"] = sChangeArgs["after"];
+	}
+
+	if ( StructCount(sChangeArgs) ) {
+		sChangeArgs["tablename"] = Arguments.tablename;
+	}
+	</cfscript>
+
+	<cfreturn sChangeArgs>
+</cffunction>
+
 <cffunction name="getDataChanges" access="private" returntype="any" output="no" hint="I get the data that has changed.">
 	<cfargument name="tablename" type="string" required="yes">
-	<cfargument name="data" type="struct" required="yes">
+	<cfargument name="data" type="struct" required="no">
+	<cfargument name="before" type="any" required="no">
+	<cfargument name="after" type="any" required="no">
 
-	<cfset var qRecord = getCurrentData(Arguments.tablename,Arguments.data)>
+	<cfset var sArgs = getDataChangeArgs(ArgumentCollection=Arguments)>
+	<cfset var qRecord = 0>
 	<cfset var aResults = []>
 	<cfset var sChange = []>
 	<cfset var key = "">
 
 	<cfscript>
-	//Only track data changes if a record exists in the database
-	if ( qRecord.RecordCount ) {
+	if ( StructCount(sArgs) ) {
 		//Loop through the data fields provided (data changed in any other manner will have to be captured in the SQL passed in)
-		for ( key in Arguments.data ) {
+		for ( key in sArgs["data"] ) {
 			//Make sure the field exists in the record (or nothing to compare to)
-			if ( ListFindNoCase(qRecord.ColumnList,key) AND isSimpleValue(Arguments.data[key]) ) {
+			if (
+					StructKeyExists(sArgs,"before")
+				AND	isSimpleValue(sArgs["before"][key])
+				AND	StructKeyExists(sArgs,"after")
+				AND	isSimpleValue(sArgs["after"][key])
+			) {
 				//Only track if the data isn't the same
-				if ( ListSort(qRecord[key][1],"text") NEQ ListSort(Arguments.data[key],"text") ) {
+				if ( ListSort(sArgs["before"][key],"text") NEQ ListSort(sArgs["after"][key],"text") ) {
 					sChange = {
 						FieldName=key,
-						OldValue=qRecord[key][1],
-						NewValue=Arguments.data[key]
+						OldValue=sArgs["before"][key],
+						NewValue=sArgs["after"][key]
 					};
 					ArrayAppend(
 						aResults,
@@ -464,7 +545,7 @@
 		Listener = This,
 		ListenerName = "DataLogger",
 		ListenerMethod = "logAction",
-		EventNames = "DataMgr:afterInsert,DataMgr:afterDelete,DataMgr:beforeUpdate,DataMgr:afterUpdate"
+		EventNames = "DataMgr:afterInsert,DataMgr:afterDelete,DataMgr:afterUpdate"
 	)>
 
 </cffunction>
