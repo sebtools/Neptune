@@ -188,7 +188,7 @@
 	FROM	qRecords
 	WHERE	1 = 0
 	<cfloop list="#qRecords.ColumnList#" index="CurrentColumn">
-		OR	(#CurrentColumn# IS NOT NULL)
+		OR	(#CurrentColumn# <> '' AND #CurrentColumn# IS NOT NULL)
 	</cfloop>
 	</cfquery>
 
