@@ -78,7 +78,7 @@
 
 	<cfoutput query="qRecords">
 		<cfset sData = Variables.DataMgr.QueryRowToStruct(qRecords,CurrentRow)>
-		<cfset Variables.DataMgrTrashcan.insertRecord(tablename=getTrackingTableName(Arguments.tablename),data=sData)>
+		<cfset Variables.DataMgrTrashcan.runSQLArray(Variables.DataMgrTrashcan.insertRecordSQL(tablename=getTrackingTableName(Arguments.tablename),data=sData))>
 	</cfoutput>
 
 	<cfreturn true>
