@@ -163,6 +163,10 @@
 				AND	ListFindNoCase("pk,fk",ListFirst(aFields[ii].type,":"))
 			>
 				<!--- No value --->
+				<cfelseif
+						StructKeyExists(aFields[ii],"relation")
+				>
+					<!--- No value --->
 			<cfelseif
 					StructKeyExists(aFields[ii],"datatype")
 				AND	ListFirst(aFields[ii].type,":") NEQ "pk"
@@ -300,10 +304,10 @@
 		<cfset result = RandRange(0,100)>
 	</cfcase>
 	<cfcase value="text">
-		<cfset result = "Test#RandRange(1,10000)#">
+		<cfset result = "Test#RandRange(1,1000000)#">
 	</cfcase>
 	<cfcase value="email">
-		<cfset result = "Test#RandRange(1,10000)#@example.com">
+		<cfset result = "Test#RandRange(1,1000000)#@example.com">
 	</cfcase>
 	</cfswitch>
 
