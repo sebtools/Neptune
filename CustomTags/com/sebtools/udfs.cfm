@@ -73,7 +73,7 @@
 <cfif NOT StructKeyExists(variables,"StructKeyHasLen")>
 	<cfscript>
 	function StructKeyHasLen(struct,key){
-	    return ( StructKeyExists(struct,key) AND Len(Trim(struct[key])) );
+	    return ( StructKeyExists(Arguments.struct,key) AND Len(Trim(Arguments.struct[key])) );
 	}
 	</cfscript>
 </cfif>
@@ -81,7 +81,7 @@
 <cfif NOT StructKeyExists(variables,"StructKeyHasVal")>
 	<cfscript>
 	function StructKeyHasVal(struct,key){
-	    return ( StructKeyExists(struct,key) AND Val(struct[key]) );
+	    return ( StructKeyExists(Arguments.struct,key) AND Val(Arguments.struct[key]) );
 	}
 	</cfscript>
 </cfif>
