@@ -111,6 +111,14 @@ function doLog(atts) {
 		StructKeyExists(atts,"action")
 		AND
 		StructKeyExists(atts,"tablename")
+		AND
+		NOT ( StructKeyExists(atts,"log") AND atts.log EQ false )
+		AND
+		(
+			StructKeyExists(atts.DataLogger,"getLoggedTables")
+			AND
+			ListFindNoCase(atts.DataLogger.getLoggedTables(),atts.tablename)
+		)
 	) {
 		return true;
 	} else {
