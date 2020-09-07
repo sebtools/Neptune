@@ -53,6 +53,14 @@ Created: 2010-01-12
 <cfelse>
 	<cfparam name="Attributes.method" default="getRecordsSQL">
 </cfif>
+<cfparam name="Attributes.addtoscope" default="Arguments">
+<cfif isSimpleValue(Attributes.addtoscope) AND StructKeyExists(Caller,Attributes.addtoscope)>
+	<cfset ArgsStruct = Caller[Attributes.addtoscope]>
+<cfelseif isStruct(Attributes.addtoscope)>
+	<cfset ArgsStruct = Attributes.addtoscope>
+<cfelse>
+	<cfthrow message="addtoscope must either be the name of a scope or a structure.">
+</cfif>
 
 <cfif ThisTag.ExecutionMode EQ "End" OR NOT ThisTag.HasEndTag>
 	<!--- Return the SQL array --->
@@ -70,7 +78,7 @@ Created: 2010-01-12
 			<!--- Get SQL from generated content --->
 			<cfset attributes.sql = getDMSQLArray()>
 			<cfif StructKeyExists(attributes,"addtoclause") AND StructKeyExists(Caller,"Arguments")>
-				<cfset Variables.DataMgr.addAdvSQL(Caller.Arguments,attributes.addtoclause,attributes.sql)>
+				<cfset Variables.DataMgr.addAdvSQL(ArgsStruct,attributes.addtoclause,attributes.sql)>
 			</cfif>
 		<cfelseif StructKeyExists(attributes,"method") AND isSimpleValue(Attributes.method) AND Len(Trim(Attributes.method))>
 			<!--- Or use a method to get it --->
@@ -86,7 +94,7 @@ Created: 2010-01-12
 		</cfif>
 	<!--- If sql is passed in as an attribute and is requested to be added to a clause, add it here. --->
 	<cfelseif StructKeyExists(attributes,"addtoclause") AND StructKeyExists(Caller,"Arguments")>
-		<cfset Variables.DataMgr.addAdvSQL(Caller.Arguments,attributes.addtoclause,attributes.sql)>
+		<cfset Variables.DataMgr.addAdvSQL(ArgsStruct,attributes.addtoclause,attributes.sql)>
 	</cfif>
 	<!--- If a name attribute is passed in, set the given variable in the calling page --->
 	<cfif StructKeyExists(attributes,"name")>
