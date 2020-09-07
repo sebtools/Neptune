@@ -51,10 +51,32 @@ Created: 2010-01-12
 		<cfset sqlarray = getDMSQLArray()>
 	</cfif>
 	<cfset sActions = getActionArgs(sqlarray)>
-	<cfset Variables.result = attributes.DataMgr.runSQLArray(sqlarray,attributes)>
+	<cfset StructAppend(sActions,Attributes,"no")>
+	<!--- If we're logging something and we know the pkvalue, then get the before state for logging. --->
+	<cfif doLog(sActions) AND StructKeyExists(sActions,"pkvalue") AND Len(sActions["pkvalue"])>
+		<cfset Variables.pkfield = Attributes.DataMgr.getPrimaryKeyFieldNames(sActions.tablename)>
+		<cfif ListLen(Variables.pkfield) EQ 1>
+			<cfset Variables.qBefore = Attributes.DataMgr.getRecord(
+				tablename=sActions.tablename,
+				data={
+					"#Variables.pkfield#":"#sActions.pkvalue#"
+				}
+			)>
+		</cfif>
+	</cfif>
+	<cfset Variables.result = Attributes.DataMgr.runSQLArray(sqlarray,attributes)>
 	<!---- Try to log action ---->
 	<cfset StructAppend(Attributes,sActions,"no")>
 	<cfif doLog(Attributes)>
+		<!--- If we're logging something and we know the before state, then get the after state for logging. --->
+		<cfif StructKeyExists(Variables,"qBefore")>
+			<cfset Variables.qAfter = Attributes.DataMgr.getRecord(
+				tablename=Attributes.tablename,
+				data={
+					"#Variables.pkfield#":"#Attributes.pkvalue#"
+				}
+			)>
+		</cfif>
 		<cfinvoke
 			component="#Attributes.DataLogger#"
 			method="logAction"
@@ -67,6 +89,10 @@ Created: 2010-01-12
 				<cfinvokeargument name="pkvalue" value="#Attributes.pkvalue#">
 			<cfelseif StructKeyExists(Variables,"result") AND isSimpleValue(Variables.result)>
 				<cfinvokeargument name="pkvalue" value="#Variables.result#">
+			</cfif>
+			<cfif StructKeyExists(Variables,"qAfter")>
+				<cfinvokeargument name="before" value="#Variables.qBefore#">
+				<cfinvokeargument name="after" value="#Variables.qAfter#">
 			</cfif>
 		</cfinvoke>
 	</cfif>
