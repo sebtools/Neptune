@@ -514,11 +514,13 @@
 		for ( key in sArgs["data"] ) {
 			//Make sure the field exists in the record (or nothing to compare to)
 			if (
-					StructKeyExists(sArgs,"before")
-				AND	isSimpleValue(sArgs["before"][key])
-				AND	StructKeyExists(sArgs,"after")
-				AND	isSimpleValue(sArgs["after"][key])
-			) {
+						StructKeyExists(sArgs,"before")
+					AND StructKeyExists(sArgs["before"],key)
+					AND isSimpleValue(sArgs["before"][key])
+					AND StructKeyExists(sArgs,"after")
+					AND StructKeyExists(sArgs["after"],key)
+					AND isSimpleValue(sArgs["after"][key])
+				) {
 				//Only track if the data isn't the same
 				if ( ListSort(sArgs["before"][key],"text") NEQ ListSort(sArgs["after"][key],"text") ) {
 					sChange = {
