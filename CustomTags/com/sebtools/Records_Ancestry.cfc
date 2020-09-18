@@ -252,8 +252,6 @@
 					<cfthrow type="#smeta.method_Plural#" message="AncestorNames (#Arguments.AncestorNames#) passed in for which no value was found.">
 				</cfif>
 			</cfif>
-		<cfelse>
-			<cfset Arguments["Parent#sMeta.arg_pk#"] = "">
 		</cfif>
 	</cfif>
 
