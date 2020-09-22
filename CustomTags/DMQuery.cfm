@@ -17,6 +17,7 @@ Created: 2010-01-12
 	</cfinvoke>
 </cfif>
 <cfparam name="attributes.DataMgr">
+<cfparam name="attributes.fieldlist" default=""><!--- Only used for logging. --->
 
 <cfif StructKeyExists(Caller,"DataLogger")>
 	<cfparam name="attributes.DataLogger" default="#Caller.DataLogger#">
@@ -60,7 +61,8 @@ Created: 2010-01-12
 				tablename=sActions.tablename,
 				data={
 					"#Variables.pkfield#":"#sActions.pkvalue#"
-				}
+				},
+				fieldlist=attributes.fieldlist
 			)>
 		</cfif>
 	</cfif>
@@ -74,7 +76,8 @@ Created: 2010-01-12
 				tablename=Attributes.tablename,
 				data={
 					"#Variables.pkfield#":"#Attributes.pkvalue#"
-				}
+				},
+				fieldlist=attributes.fieldlist
 			)>
 		</cfif>
 		<cfinvoke
