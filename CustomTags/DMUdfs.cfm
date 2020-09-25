@@ -81,11 +81,12 @@ function getActionArgs(sqlarray) {
 	var aActionWords = ["INSERT INTO","UPDATE","DELETE"];
 	var ActionWords = "Insert,Update,Delete";
 	var str = sqlarray;
+	var ii = 0;
 
 	while ( isArray(str) ) {
 		str = str[1];
 	}
-	var str = Trim(str);
+	str = Trim(str);
 
 	str = ReReplaceNoCase(str,"\s"," ","ALL");
 
@@ -103,6 +104,32 @@ function getActionArgs(sqlarray) {
 	}
 
 	return sResult;
+}
+function Listify(str) {
+	var result = str;
+
+	result = ReReplaceNoCase(str, "[^\w\d-_]", ",", "ALL");//convert everything that isn't a field name to a comma
+	result = ReReplaceNoCase(result, ",{2,}", ",", "ALL");//condence duplicate commas
+	result = ReReplaceNoCase(result, "^,", "");//Ditch comma from start of string
+	result = ReReplaceNoCase(result, ",$", "");//Ditch comma from end of string
+
+	return result;
+}
+function getWordList(sqlarray) {
+	var result = "";
+	var str = sqlarray;
+	var ii = 0;
+
+	while ( isArray(str) ) {
+		str = str[1];
+	}
+	str = Trim(str);
+
+	str = ReReplaceNoCase(str,"\s"," ","ALL");
+
+	result = Listify(str);
+
+	return result;
 }
 function doLog(atts) {
 	if (

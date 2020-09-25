@@ -56,6 +56,10 @@ Created: 2010-01-12
 	<!--- If we're logging something and we know the pkvalue, then get the before state for logging. --->
 	<cfif doLog(sActions) AND StructKeyExists(sActions,"pkvalue") AND Len(sActions["pkvalue"])>
 		<cfset Variables.pkfield = Attributes.DataMgr.getPrimaryKeyFieldNames(sActions.tablename)>
+		<!--- If no fieldlist is provided, then use the SQL provided (this will help with the performance of the query and fieldlist is naturally safe from SQL injection). --->
+		<cfif NOT Len(Trim(attributes.fieldlist))>
+			<cfset attributes.fieldlist = getWordList(sqlarray)>
+		</cfif>
 		<cfif ListLen(Variables.pkfield) EQ 1>
 			<cfset Variables.qBefore = Attributes.DataMgr.getRecord(
 				tablename=sActions.tablename,
