@@ -337,8 +337,14 @@
 	<cfset sArgs["Function"] = "count">
 	<cfset sArgs["FunctionAlias"] = "NumRecords">
 	<cfset arguments.alterargs_for = "num">
-	<cfset sArgs["data"] = alterArgs(argumentCollection=arguments)>
+	<cfset sArgs["data"] = alterArgs(argumentCollection=Arguments)>
 	<cfset sArgs["fieldlist"] = "">
+
+	<cfif StructKeyExists(sArgs["data"],"AdvSQL")>
+		<cfset sArgs["data"]["AdvSQL"] = StructCopy(sArgs["data"]["AdvSQL"])>
+		<cfset StructDelete(sArgs["data"]["AdvSQL"],"SELECT")>
+		<cfset StructDelete(sArgs["data"]["AdvSQL"],"ORDER BY")>
+	</cfif>
 
 	<cfset qRecords = variables.Manager.getRecords(argumentCollection=sArgs)>
 
