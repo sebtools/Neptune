@@ -60,7 +60,7 @@
 	)
 	</cfquery>
 	--->
-
+	<cfset Arguments = Variables.DataMgr.truncate("cf_timer",Arguments)>
 	<cfset Variables.DataMgr.runSQLArray(
 		Variables.DataMgr.insertRecordSQL(
 			tablename="cf_timer",
