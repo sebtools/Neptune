@@ -985,6 +985,7 @@ $(document).ready(function() {
 	}
 });</cfif>
 </script></cfif></cfsavecontent><cfif NOT attributes.isExcel><cfhtmlhead text="#htmlhead#"></cfif>
+<cfset ThisTag.GeneratedContent = "">
 <div<cfif Len(Trim(attributes.skin))> class="sebTable-skin-#LCase(attributes.skin)#"</cfif>>
 <div id="sebTable#sfx#" class="seb sebTable"<cfif Len(attributes.width)> style="width:#attributes.width#<cfif isNumeric(attributes.width)>px</cfif>;"</cfif>><cfif Len(ErrMessage)>
 <p class="sebMessage sebError">#ErrMessage#</p></cfif><cfif Len(Message)>

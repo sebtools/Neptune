@@ -1,3 +1,4 @@
+<cfsilent>
 <cffunction name="display_Custom">
 	<cfargument name="value" type="string" required="yes" hint="The value of this field for this row.">
 	<cfargument name="rownum" type="numeric" required="yes">
@@ -12,3 +13,5 @@
 
 	<cfreturn result>
 </cffunction>
+<cfset ThisTag.GeneratedContent = "">
+</cfsilent>
