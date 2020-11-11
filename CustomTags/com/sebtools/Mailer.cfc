@@ -305,7 +305,7 @@
 	</cfif>
 
 	<!--- If we have no "To" then don't sent --->
-	<cfif NOT Len(arguments.To)>
+	<cfif NOT Len(Tim(Arguments.To))>
 		<cfreturn false>
 	</cfif>
 
