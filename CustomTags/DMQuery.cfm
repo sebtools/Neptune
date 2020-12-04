@@ -21,8 +21,6 @@ Created: 2010-01-12
 
 <cfif StructKeyExists(Caller,"DataLogger")>
 	<cfparam name="attributes.DataLogger" default="#Caller.DataLogger#">
-<cfelseif StructKeyExists(Application,"DataLogger")>
-	<cfparam name="attributes.DataLogger" default="#Application.DataLogger#">
 <cfelse>
 	<cftry>
 		<cf_service name="DataLogger">
