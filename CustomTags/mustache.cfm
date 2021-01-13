@@ -1,0 +1,443 @@
+<cfsilent>
+<!---
+cf_mustache
+
+The cf_mustache tag allows you to create content that is dynamic to both ColdFusion and JavaScript.
+
+It must have a "name" attribute to indicate which mustache template you are using.
+
+<cf_mustache name="sample_name">
+<p>Hello {{FName}} {{LName}}</p>
+</cf_mustache>
+
+Attributes:
+-name (required): The name of the template
+-id: The id of the element (defaults to use name)
+-action
+---set: To define a template without showing it.
+---head: To output the template in the html head (can also define it if it hasn't been defined already)
+---show: To show the template (can define and create the template if not done already)
+-uri: The URI from which to retrieve new data for the template
+-data: A structure of data for the template
+
+Elements ("target") can be updated by use of the "data-mustacheaction" attribute on another element (the "trigger" element).
+Possible values for ""data-mustacheaction":
+-args: Uses the data of the trigger (defined below) to directly update the target
+-data: Uses the data of the trigger (defined blow) to pass to the uri to get data to update the target
+-form-args: Uses the form of which the trigger is a part to update the target from the uri
+-form-data: Uses the form of which the trigger is a part to update the target directly
+
+Data is retrieved from a target either by getting it from the "data-data" attribute (in a query string format) or by using the querystring of the href attribute.
+
+The target is determined from the "data-element" attribute of the trigger (which should match the "id" of the target).
+Or it will update the element it is in if that is a template element.
+
+JavaScript methods available to cf_mustache:
+-cf_mustache.renderArgs(id,arg): Updates the indicated element with the data retrieved from the URI using the args provided
+-cf_mustache.renderData(id,data): Updates the indicated element with the data provided
+-cf_mustache.renderFormArgs(id,form): Updates the indicated element with the data retrieved from the URI using the indicated form.
+-cf_mustache.renderFormData(id,form): Updates the indicated element with the data from the indicated form
+
+Use https://github.com/rip747/Mustache.cfc for ColdFusion implementation.
+Use https://github.com/janl/mustache.js for JavaScript implementation.
+
+--->
+<cffunction name="QueryStringToStruct" access="private" returntype="any" output="false" hint="I accept a URL query string and return it as a structure.">
+	<cfargument name="querystring" type="string" required="true" hint="I am the query string for which to parse.">
+
+	<cfscript>
+	var aList = ListToArray(Arguments.querystring,"&");
+	return aList.reduce(function(result,item,index){
+		result[ListFirst(item,"=")] = ListRest(item,"=");
+		return result;
+	},{});
+	</cfscript>
+</cffunction>
+
+<cffunction name="Struct2QueryString" access="private" returntype="string" output="false" hint="I accept a structure and return it as a URL query string.">
+	<cfargument name="struct" type="struct" required="true" hint="I am the struct to turn into a query string.">
+
+	<cfscript>
+	return Arguments.struct.reduce(function(result, key, value) {
+			result = result?:"";
+			return ListAppend(result,"#LCase(key)#=#value#","&");
+	});
+	</cfscript>
+</cffunction>
+
+<!--- https://www.bennadel.com/blog/124-ask-ben-converting-a-query-to-an-array.htm --->
+<cffunction name="QueryToArray" access="public" returntype="array" output="false" hint="I turn a query into an array of structures.">
+	<cfargument name="data" type="query" required="yes">
+
+	<cfscript>
+	// Define the local scope.
+	var LOCAL = StructNew();
+
+	// Get the column names as an array.
+	LOCAL.Columns = ListToArray( ARGUMENTS.Data.ColumnList );
+
+	// Create an array that will hold the query equivalent.
+	LOCAL.QueryArray = ArrayNew( 1 );
+
+	// Loop over the query.
+	for (LOCAL.RowIndex = 1 ; LOCAL.RowIndex LTE ARGUMENTS.Data.RecordCount ; LOCAL.RowIndex = (LOCAL.RowIndex + 1)){
+
+		// Create a row structure.
+		LOCAL.Row = StructNew();
+
+		// Loop over the columns in this row.
+		for (LOCAL.ColumnIndex = 1 ; LOCAL.ColumnIndex LTE ArrayLen( LOCAL.Columns ) ; LOCAL.ColumnIndex = (LOCAL.ColumnIndex + 1)){
+
+			// Get a reference to the query column.
+			LOCAL.ColumnName = LOCAL.Columns[ LOCAL.ColumnIndex ];
+
+			// Store the query cell value into the struct by key.
+			LOCAL.Row[ LOCAL.ColumnName ] = ARGUMENTS.Data[ LOCAL.ColumnName ][ LOCAL.RowIndex ];
+
+		}
+
+		// Add the structure to the query array.
+		ArrayAppend( LOCAL.QueryArray, LOCAL.Row );
+
+	}
+
+	// Return the array equivalent.
+	return( LOCAL.QueryArray );
+	</cfscript>
+</cffunction>
+
+<cfscript>
+function QueryRowToStruct(query) {
+	var row = 1; //by default, do this to the first row of the query
+	var ii = 1; //a var for looping
+	var cols = ListToArray(query.columnList);//the cols to loop over
+	var sReturn = StructNew();//the struct to return
+
+	//if there is a second argument, use that for the row number
+	if( ArrayLen(arguments) GT 1 ) {
+		row = arguments[2];
+	}
+	//loop over the cols and build the struct from the query row
+	for(ii = 1; ii LTE ArrayLen(cols); ii = ii + 1){
+		sReturn[cols[ii]] = query[cols[ii]][row];
+	}
+
+	return sReturn;
+}
+
+//Make sure request variable used by cf_mustache exists.
+if ( NOT StructKeyExists(request,"cf_mustache_templates") ) {
+	request["cf_mustache_templates"] = {};
+}
+
+//Create Attribute Defaults
+sAttributes = {
+	action="show",
+	name="template",
+	method="",
+	data={},
+	id="",
+	uri=Reverse("cfc." & ListRest(Reverse(CGI.SCRIPT_NAME),".")),
+	returnvariable="",
+	script=false
+};
+
+//Set Attribute Defaults
+for ( att in sAttributes ) {
+	if ( NOT StructKeyExists(Attributes,att) ) {
+		Attributes[att] = sAttributes[att];
+	}
+}
+//"id" attribute default to the value of the "name" attribute
+if ( NOT Len(Attributes.id) ) {
+	Attributes.id = Attributes.name;
+}
+//Parse data if provided as string.
+if ( isSimpleValue(Attributes.data) ) {
+	if ( isJSON(Attributes.data) ) {
+		Attributes.data = DeserializeJSON(Attributes.data);
+	} else {
+		Attributes.data = QueryStringToStruct(Attributes.data);
+	}
+}
+
+//Operations to run at end of tag, if available. Otherwise run at the start.
+function isGoTime() {
+	return ( ThisTag.ExecutionMode EQ "End" OR NOT ThisTag.HasEndTag  );
+}
+//Get data from the data attribute of the tag or from attributes other than those used by the tag itself.
+function getData() {
+	var sResult = {};
+
+	if ( isQuery(Attributes.data) ) {
+		sResult = QueryRowToStruct(Attributes.data);
+	} else {
+		sResult = Attributes.data;
+	}
+
+	for ( att in Attributes ) {
+		if ( NOT StructKeyExists(sAttributes,att) ) {
+			if ( ListLen(att,"_") GT 1 AND ListFirst(att,"_") EQ "data" ) {
+				sResult[ListRest(att,"_")] = Attributes[att];
+			} else {
+				sResult[att] = Attributes[att];
+			}
+
+		}
+	}
+
+	for ( att in sResult ) {
+		if ( isQuery(sResult[att]) ) {
+			sResult[att] = QueryToArray(sResult[att]);
+		}
+	}
+
+	return sResult;
+}
+//Uppercase Mustache tags to make them case insensitive in the same way that ColdFusion is.
+function ucase_tags(string) {
+	var aMatches = REMatch("\{\{.*?\}\}", string);
+	var ii = 0;
+	for (ii in aMatches) {
+		string = ReplaceNoCase(string, ii, UCase(ii));
+	}
+	return string;
+}
+</cfscript>
+
+<cfscript>
+if ( ThisTag.ExecutionMode EQ "End" AND Len(Trim(ThisTag.GeneratedContent)) ) {
+	//Define the data from the first use of the template (if more than one, suggested to use action of "set" or "head" to define a reference).
+	if ( NOT StructKeyExists(request["cf_mustache_templates"],Attributes.name) ) {
+		request["cf_mustache_templates"][Attributes.name] = {};
+		request["cf_mustache_templates"][Attributes.name]["Attributes"] = Attributes;
+		request["cf_mustache_templates"][Attributes.name]["Attributes"]["GeneratedContent"] = ucase_tags(ThisTag.GeneratedContent);
+		request["cf_mustache_templates"][Attributes.name]["Attributes"]["id_template"] = "#Attributes.id#-template";
+	}
+	ThisTag.GeneratedContent = "";
+}
+//The reference attributes for this cf_mustache name
+sBaseAttributes = {};
+if ( StructKeyExists(request["cf_mustache_templates"],Attributes.name) ) {
+	sBaseAttributes = request["cf_mustache_templates"][Attributes.name]["Attributes"];
+}
+aOutputs = [];
+ThisOutput = "";
+</cfscript>
+
+<cfif Attributes.action NEQ "set" AND isGoTime()>
+	<!--- Output the head the first chance we get unless this is in action="set". Preferably using action="head". --->
+	<cfif Attributes.script IS true AND NOT StructKeyExists(request,"cf_mustache_head")>
+		<cfsavecontent variable="ThisOutput">
+		<script src="https://unpkg.com/mustache@latest"></script>
+		<script>
+		var cf_mustache = {};
+		//Make sure we can respond to window.onload without external dependencies or harming other JavaScript code.
+		cf_mustache.addWindowLoadEvent = function(functionName) {
+			if ( window.attachEvent ) {
+				window.attachEvent('onload', functionName);
+			} else {
+				if ( window.onload ) {
+					var curronload = window.onload;
+					var newonload = function(evt) {
+						curronload(evt);
+						functionName(evt);
+					};
+					window.onload = newonload;
+				} else {
+					window.onload = functionName;
+				}
+			}
+		}
+		//Ability to convert q querystring to JSON
+		cf_mustache.queryStringToJSON = function(qs) {
+			qs = qs || location.search.slice(1);
+
+			var pairs = qs.split('&');
+			var result = {};
+			pairs.forEach(function(p) {
+				var pair = p.split('=');
+				var key = pair[0];
+				var value = decodeURIComponent(pair[1] || '');
+
+				if( result[key] ) {
+					if( Object.prototype.toString.call( result[key] ) === '[object Array]' ) {
+						result[key].push( value );
+					} else {
+						result[key] = [ result[key], value ];
+					}
+				} else {
+					result[key] = value;
+				}
+			});
+
+			return JSON.parse(JSON.stringify(result));
+		};
+		//Get data from a form. Should work if given the form element or an id to it or given any child of a form (or an id to that).
+		cf_mustache.getFormData = function(form) {
+			if ( typeof form != "object" ) {
+				form = document.getElementById(form);
+			}
+			while ( form.nodeName != 'FORM' ) {
+				form = form.parentNode;
+			}
+			aData = (Array.apply(0, form.elements).map(x =>((obj => ( x.type == "radio" || x.type == "checkbox" ) ? x.checked ? obj:null:obj)({[x.name]:x.value}))).filter(x => x));
+			data = {};
+			for( var i=0; i < aData.length; i++ ) {
+				data = Object.assign(data, aData[i]);
+			};
+			return data;
+		}
+		//Load Mustache trigger events to the document
+		cf_mustache.loadMustacheTriggersDocument = function() {
+			cf_mustache.loadMustacheTriggers(document);
+		}
+		//Load mustache trigger events to any given object
+		cf_mustache.loadMustacheTriggers = function(object) {
+			aTriggers = object.querySelectorAll('[data-mustacheaction]');
+			for (let i = 0; i < aTriggers.length; i++) {
+				aTriggers[i].addEventListener('click', (event) => {
+					var obj = event.target;
+					var action = obj.dataset["mustacheaction"];
+					var sArgs = {};
+					var aActionSplit = action.split("-");
+					var obj2 = obj;
+
+					event.preventDefault();//Make sure to stop default action of element
+
+					//Find the target element
+					if ( obj.dataset["element"] != undefined ) {
+						sArgs["element"] = obj.dataset["element"];
+					} else {
+						const limit = 32;
+						var iterations = 0;
+						while ( obj2.dataset["template"] == undefined && typeof obj2.parentElement == "object" && iterations < limit ) {
+							obj2 = obj2.parentElement;
+							iterations++;
+						}
+						sArgs["element"] = obj2["id"];
+					}
+
+					if ( aActionSplit[0] == 'form' ) {
+						//Form actions don't need to get data from the element
+						action = aActionSplit[1];
+						if ( action == 'args' ) {
+							cf_mustache.renderFormArgs(sArgs["element"],obj);
+						}
+						if ( action == 'data' ) {
+							cf_mustache.renderFormData(sArgs["element"],obj);
+						}
+					} else {
+						//Get the data for non-form actions
+						if ( obj.dataset["data"] == undefined && obj["href"] != undefined ) {
+							var qs = (obj["href"].split("?").length)? obj["href"].split("?")[1]: '';
+							obj.dataset["data"] = qs;
+						}
+						sArgs["data"] = obj.dataset["data"];
+
+						if ( action == 'args' ) {
+							cf_mustache.renderArgs(sArgs["element"],sArgs["data"]);
+						}
+						if ( action == 'data' ) {
+							cf_mustache.renderData(sArgs["element"],sArgs["data"]);
+						}
+					}
+
+				});
+			}
+		}
+		//Load up the triggers
+		cf_mustache.addWindowLoadEvent(cf_mustache.loadMustacheTriggersDocument);
+		//Fetch the data from the URI and render it
+		cf_mustache.renderArgs = function(id,args) {
+			var id_template = document.getElementById(id).getAttribute('data-template');
+			var uri = sURIs[id_template];
+			var request = new XMLHttpRequest();
+
+			request.open('POST', uri, true);
+			request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+
+			request.onreadystatechange = function() {
+				if (this.readyState === 4) {
+					if (this.status >= 200 && this.status < 400) {
+						// Success!
+						data = JSON.parse(this.responseText);
+
+						cf_mustache.renderData(id,data);
+					} else {
+						// Error :(
+					}
+				}
+			};
+
+			request.send(args);
+			request = null;
+		}
+		//Use the form to fetch the data from the uri and render it
+		cf_mustache.renderFormArgs = function(id,form) {
+			cf_mustache.renderArgs(id,cf_mustache.getFormData(form));
+		}
+		//Use the form to render the data
+		cf_mustache.renderFormData = function(id,form) {
+			cf_mustache.renderData(id,cf_mustache.getFormData(form));
+		}
+		//Just to make keys case-insensitive
+		cf_mustache.ucase_keys = function(data) {
+			for (var key in data) {
+				if ( key != key.toUpperCase() ) {
+					data[key.toUpperCase()] = data[key];
+					delete data[key];
+				}
+			}
+			return data;
+		}
+		//The base rendering method
+		cf_mustache.renderData = function(id,data) {
+			if ( typeof data == "string" ) {
+				try {
+					data = JSON.parse(data);
+				} catch (e) {
+					data = cf_mustache.queryStringToJSON(data);
+				}
+			}
+			var id_template = document.getElementById(id).getAttribute('data-template');
+			var template = document.getElementById(id_template).innerHTML;
+			var rendered = Mustache.render(template, cf_mustache.ucase_keys(data));
+			var obj = document.getElementById(id);
+			obj.innerHTML = rendered;
+			cf_mustache.loadMustacheTriggers(obj);//Make sure that triggers in the element still work.
+		}
+		sURIs = {};//A place to store URIs for each template
+		</script>
+		</cfsavecontent>
+		<cfset ArrayAppend(aOutputs,ThisOutput)>
+		<cfset request.cf_mustache_head = {}>
+	</cfif>
+	<!--- Store URIs for each template. --->
+	<cfif Attributes.script IS true AND NOT StructKeyExists(request.cf_mustache_head,Attributes.name)>
+		<cfsavecontent variable="ThisOutput"><cfoutput><script id="#sBaseAttributes.id_template#" type="text/html">#Trim(sBaseAttributes["GeneratedContent"])#</script><script>sURIs['#sBaseAttributes.id_template#'] = '#sBaseAttributes.uri#<cfif Len(sBaseAttributes.method)>?method=#sBaseAttributes.method#</cfif>';</script></cfoutput></cfsavecontent>
+		<cfset ArrayAppend(aOutputs,ThisOutput)>
+		<cfset request.cf_mustache_head[Attributes.name] = true>
+	</cfif>
+</cfif>
+
+<!--- Actually show the element, with data. --->
+<cfif Attributes.action EQ "show" AND isGoTime()>
+	<cfset oMustache = CreateObject("component","Mustache").init()>
+	<cfset TemplateHTML = sBaseAttributes["GeneratedContent"]>
+	<cfset TemplateID = sBaseAttributes["id_template"]>
+	<cfset sData = getData()>
+	<cfsavecontent variable="ThisOutput"><cfoutput><div id="#Attributes.id#" class="cc-mustache cc-mustache-#TemplateID#"<cfif Attributes.script IS true> data-template="#TemplateID#"</cfif>>#oMustache.render(template=TemplateHTML,context=sData)#</div></cfoutput></cfsavecontent>
+	<cfset ArrayAppend(aOutputs,ThisOutput)>
+</cfif>
+
+<cfscript>
+output = "";
+for ( ii in aOutputs ) {
+	output = "#output##ii#";
+}
+if ( Len(Attributes.returnvariable) ) {
+	Caller[Attributes.returnvariable] = output;
+}
+</cfscript>
+</cfsilent><cfif NOT Len(Attributes.returnvariable)><cfoutput>#output#</cfoutput></cfif>
