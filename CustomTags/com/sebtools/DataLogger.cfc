@@ -598,6 +598,8 @@
 	        <field ColumnName="pkvalue" CF_DataType="CF_SQL_VARCHAR" Length="250" />
 			<field ColumnName="SQL" CF_DataType="CF_SQL_LONGVARCHAR" />
 			<field ColumnName="DateCompleted" CF_DataType="CF_SQL_DATE" />
+			<field ColumnName="DateDeleted" CF_DataType="CF_SQL_DATE" />
+			<field ColumnName="DeletionReason" CF_DataType="CF_SQL_VARCHAR" Length="250" />
 		</table>
 		<table name="audChanges">
 			<field ColumnName="ChangeID" CF_DataType="CF_SQL_INTEGER" PrimaryKey="true" Increment="true" />
