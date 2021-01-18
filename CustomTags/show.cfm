@@ -51,12 +51,29 @@ if ( isGoTime() ) {
 	if ( StructKeyExists(Attributes,"data") ) {
 		Variables.sMustacheAtts = StructCopy(Attributes);
 	} else {
-		Variables.sDataAttributes["data"] = StructCopy(Attributes);
+		Variables.sDataAttributes["data"] = {};
+		for ( att in Attributes ) {
+			if ( ListLen(att,"_") GT 1 AND ListFirst(att,"_") EQ "data" ) {
+				Variables.sDataAttributes[ListRest(att,"_")] = Attributes[att];
+			}
+		}
+		if ( NOT StructCount(Variables.sDataAttributes["data"]) ) {
+			StructDelete(Variables.sDataAttributes,"data");
+
+			if ( StructKeyExists(Attributes.layout,"get_#attributes.name#") ) {
+
+			}
+		}
 	}
 
 	//Name is reserved for cf_show
 	Variables.sMustacheAtts["name"] = Attributes["name"] & "_" & request["cf_show_tags"][Attributes.name];
 }
 </cfscript>
+<cfif isGoTime() AND NOT StructKeyExists(Variables.sMustacheAtts,"data")>
+	<cfif StructKeyExists(Attributes.layout,"get_#attributes.name#")>
+		<cfinvoke returnvariable="Variables.sMustacheAtts.data" component="#Attributes.layout#" method="get_#attributes.name#">
+	</cfif>
+</cfif>
 
-<cfif isGoTime()><cf_mustache attributeCollection="#Variables.sMustacheAtts#"><cfinvoke component="#attributes.layout#" method="show#attributes.name#"></cf_mustache></cfif>
+<cfif isGoTime()><cf_mustache attributeCollection="#Variables.sMustacheAtts#"><cfinvoke component="#attributes.layout#" method="show_#attributes.name#"></cf_mustache></cfif>
