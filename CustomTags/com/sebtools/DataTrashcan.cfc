@@ -90,6 +90,7 @@
 	<!--- Only load the table once per instantiation (should make sure it is current to recent changes without continuing to update it). --->
 	<cfif NOT StructKeyExists(Variables.sLoadedTables,Arguments.tablename)>
 		<cfset makeTable(Arguments.tablename)>
+		<cfset growColumns(Arguments.tablename)>
 		<cfset Variables.sLoadedTables[Arguments.tablename] = now()>
 	</cfif>
 
@@ -118,6 +119,36 @@
 	<cfargument name="tablename" type="string" required="yes">
 
 	<cfreturn "aud_" & Arguments.tablename & "_Trashcan">
+</cffunction>
+
+<cffunction name="growColumns" access="private" returntype="any" output="no" hint="I make sure that the columns in the trashcan are as big as their counterparts in the original table.">
+	<cfargument name="tablename" type="string" required="yes">
+
+	<cfset var qColumns = 0>
+	<cfset var trashtable = getTrackingTableName(Arguments.tablename)>
+
+	<cf_DMQuery name="qColumns">
+		SELECT		main.COLUMN_NAME,
+					main.DATA_TYPE,
+					main.IS_NULLABLE,
+					trashcan.CHARACTER_MAXIMUM_LENGTH CurrentMax,
+					main.CHARACTER_MAXIMUM_LENGTH TargetMax
+		FROM		INFORMATION_SCHEMA.COLUMNS main
+		INNER JOIN	<cf_DMObject name="#DatabaseName#">.INFORMATION_SCHEMA.COLUMNS trashcan
+			ON		main.COLUMN_NAME = trashcan.COLUMN_NAME
+		WHERE		1 = 1
+			AND		main.TABLE_NAME = <cf_DMParam value="#Arguments.tablename#" cfsqltype="CF_SQL_VARCHAR">
+			AND		trashcan.TABLE_NAME = <cf_DMParam value="#trashtable#" cfsqltype="CF_SQL_VARCHAR">
+			AND		main.CHARACTER_MAXIMUM_LENGTH > trashcan.CHARACTER_MAXIMUM_LENGTH
+	</cf_DMQuery>
+
+	<cfoutput query="qColumns">
+		<cf_DMQuery>
+		ALTER TABLE		<cf_DMObject name="#Variables.DatabaseName#.dbo.#trashtable#">
+		ALTER COLUMN	<cf_DMObject name="#COLUMN_NAME#"> #DATA_TYPE#(#TargetMax#)<cfif IS_NULLABLE IS NOT true> NOT</cfif> NULL
+		</cf_DMQuery>
+	</cfoutput>
+
 </cffunction>
 
 <cffunction name="makeTable" access="private" returntype="any" output="no">
