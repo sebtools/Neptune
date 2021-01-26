@@ -130,10 +130,20 @@ if ( NOT StructKeyExists(request,"cf_mustache_templates") ) {
 	request["cf_mustache_templates"] = {};
 }
 
+//Make sure that the default name for the template is unique.
+default_name = "template";
+if ( StructKeyExists(request.cf_mustache_templates,default_name) ) {
+	ii = 1;
+	while ( StructKeyExists(request.cf_mustache_templates,default_name) ) {
+		ii++;
+		default_name = "template_#ii#";
+	}
+}
+
 //Create Attribute Defaults
 sAttributes = {
 	action="show",
-	name="template",
+	name=default_name,
 	method="",
 	data={},
 	id="",
@@ -199,7 +209,7 @@ function ucase_tags(string) {
 	var aMatches = REMatch("\{\{.*?\}\}", string);
 	var ii = 0;
 	for (ii in aMatches) {
-		string = ReplaceNoCase(string, ii, UCase(ii));
+		string = ReplaceNoCase(string, ii, UCase(ii),"ALL");
 	}
 	return string;
 }
@@ -225,9 +235,9 @@ aOutputs = [];
 ThisOutput = "";
 </cfscript>
 
-<cfif Attributes.action NEQ "set" AND isGoTime()>
+<cfif Attributes.action NEQ "set" AND isGoTime() AND  Attributes.script IS true>
 	<!--- Output the head the first chance we get unless this is in action="set". Preferably using action="head". --->
-	<cfif Attributes.script IS true AND NOT StructKeyExists(request,"cf_mustache_head")>
+	<cfif NOT StructKeyExists(request,"cf_mustache_head")>
 		<cfsavecontent variable="ThisOutput">
 		<script src="https://unpkg.com/mustache@latest"></script>
 		<script>
@@ -414,7 +424,7 @@ ThisOutput = "";
 		<cfset request.cf_mustache_head = {}>
 	</cfif>
 	<!--- Store URIs for each template. --->
-	<cfif Attributes.script IS true AND NOT StructKeyExists(request.cf_mustache_head,Attributes.name)>
+	<cfif NOT StructKeyExists(request.cf_mustache_head,Attributes.name)>
 		<cfsavecontent variable="ThisOutput"><cfoutput><script id="#sBaseAttributes.id_template#" type="text/html">#Trim(sBaseAttributes["GeneratedContent"])#</script><script>sURIs['#sBaseAttributes.id_template#'] = '#sBaseAttributes.uri#<cfif Len(sBaseAttributes.method)>?method=#sBaseAttributes.method#</cfif>';</script></cfoutput></cfsavecontent>
 		<cfset ArrayAppend(aOutputs,ThisOutput)>
 		<cfset request.cf_mustache_head[Attributes.name] = true>
@@ -427,7 +437,11 @@ ThisOutput = "";
 	<cfset TemplateHTML = sBaseAttributes["GeneratedContent"]>
 	<cfset TemplateID = sBaseAttributes["id_template"]>
 	<cfset sData = getData()>
-	<cfsavecontent variable="ThisOutput"><cfoutput><div id="#Attributes.id#" class="cc-mustache cc-mustache-#TemplateID#"<cfif Attributes.script IS true> data-template="#TemplateID#"</cfif>>#oMustache.render(template=TemplateHTML,context=sData)#</div></cfoutput></cfsavecontent>
+	<cfif Attributes.script>
+		<cfsavecontent variable="ThisOutput"><cfoutput><div id="#Attributes.id#" class="cc-mustache cc-mustache-#TemplateID#"<cfif Attributes.script IS true> data-template="#TemplateID#"</cfif>>#oMustache.render(template=TemplateHTML,context=sData)#</div></cfoutput></cfsavecontent>
+	<cfelse>
+		<cfsavecontent variable="ThisOutput"><cfoutput>#oMustache.render(template=TemplateHTML,context=sData)#</cfoutput></cfsavecontent>
+	</cfif>
 	<cfset ArrayAppend(aOutputs,ThisOutput)>
 </cfif>
 
