@@ -76,4 +76,4 @@ if ( isGoTime() ) {
 	</cfif>
 </cfif>
 
-<cfif isGoTime()><cf_mustache attributeCollection="#Variables.sMustacheAtts#"><cfinvoke component="#attributes.layout#" method="show_#attributes.name#"></cf_mustache></cfif>
+<cfif isGoTime()><cf_mustache attributeCollection="#Variables.sMustacheAtts#"><cfinvoke returnvariable="result" component="#attributes.layout#" method="show_#attributes.name#"><cfif StructKeyExists(Variables,"result")><cfoutput>#Variables.result#</cfoutput></cfif></cf_mustache></cfif>
