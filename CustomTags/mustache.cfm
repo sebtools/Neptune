@@ -218,18 +218,18 @@ function preprocess(str,data) {
 	var str_matched = "";
 	var str_replace = "";
 	//If we have any transform markers, loop through the data keys to do the transformation
-	if ( FindNoCase("{{:", str) ) {
+	if ( FindNoCase("{{~", str) ) {
 		for ( key in data ) {
 			//Can't replace non-string values
 			if ( isSimpleValue(data[key]) ) {
-				regex_match = "\{\{:#key#::=::#data[key]#::.*?\}\}";
+				regex_match = "\{\{\~#key#:=:#data[key]#==>.*?\}\}";
 				//Replace the matched value with the indicated string
 				if ( ReFindNoCase(regex_match, str) ) {
 					str_matched =  Trim(ReFetch(regex_match, str));
 					//Get the indicated string
 					str_replace = ReReplaceNoCase(
-						ReReplaceNoCase(str_matched, "\{\{:#key#::=::#data[key]#::'", ""),
-						"'\}\}$",
+						ReplaceNoCase(str_matched, "{{~#key#:=:#data[key]#==>", ""),
+						"\}\}$",
 						""
 					);
 					//Perform the replacement
@@ -237,16 +237,31 @@ function preprocess(str,data) {
 				}
 			}
 		}
-		str = ReReplaceNoCase(str, "\{\{:.*?\}\}", "", "ALL");
+		str = ReReplaceNoCase(str, "\{\{\~.*?\}\}", "", "ALL");
 	}
 	return ucase_tags(str);
 }
 //Uppercase Mustache tags to make them case insensitive in the same way that ColdFusion is.
 function ucase_tags(string) {
 	var aMatches = REMatch("\{\{.*?\}\}", string);
-	var ii = 0;
-	for (ii in aMatches) {
-		string = ReplaceNoCase(string, ii, UCase(ii),"ALL");
+	var tag = 0;
+	var markerloc = 0;
+
+	for ( tag in aMatches ) {
+		if ( Left(tag,3) EQ "{{~" ) {
+			//Capitalize everything but the replacement value for transformation tags
+			markerloc = findNoCase("==>", tag);
+			string = ReplaceNoCase(
+				string,
+				tag,
+				UCase( Left(tag,markerloc) ) & Right(tag,Len(tag)-markerloc),
+				"ALL"
+			);
+		} else {
+			//Capitalize everything in every other tag
+			string = ReplaceNoCase(string, tag, UCase(tag),"ALL");
+		}
+
 	}
 	return string;
 }
@@ -462,7 +477,7 @@ ThisOutput = "";
 	</cfif>
 	<!--- Store URIs for each template. --->
 	<cfif NOT StructKeyExists(request.cf_mustache_head,Attributes.name)>
-		<cfsavecontent variable="ThisOutput"><cfoutput><script id="#sBaseAttributes.id_template#" type="text/html">#Trim(sBaseAttributes["GeneratedContent"])#</script><script>sURIs['#sBaseAttributes.id_template#'] = '#sBaseAttributes.uri#<cfif Len(sBaseAttributes.method)>?method=#sBaseAttributes.method#</cfif>';</script></cfoutput></cfsavecontent>
+		<cfsavecontent variable="ThisOutput"><cfoutput><script id="#sBaseAttributes.id_template#" type="text/html">#Trim(ucase_tags(sBaseAttributes["GeneratedContent"]))#</script><script>sURIs['#sBaseAttributes.id_template#'] = '#sBaseAttributes.uri#<cfif Len(sBaseAttributes.method)>?method=#sBaseAttributes.method#</cfif>';</script></cfoutput></cfsavecontent>
 		<cfset ArrayAppend(aOutputs,ThisOutput)>
 		<cfset request.cf_mustache_head[Attributes.name] = true>
 	</cfif>
