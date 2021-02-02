@@ -204,6 +204,43 @@ function getData() {
 
 	return sResult;
 }
+function reFetch(regex,string) {
+	var sFind = reFindNoCase(Arguments.regex, Arguments.string, 1, true);
+	if ( StructCount(sFind) AND ArrayLen(sFind.len) AND Val(sFind.len[1]) ) {
+		return Mid(Arguments.string,sFind.pos[1],sFind.len[1]);
+	} else {
+		return "";
+	}
+}
+function preprocess(str,data) {
+	var key = "";
+	var regex_match = "";
+	var str_matched = "";
+	var str_replace = "";
+	//If we have any transform markers, loop through the data keys to do the transformation
+	if ( FindNoCase("{{:", str) ) {
+		for ( key in data ) {
+			//Can't replace non-string values
+			if ( isSimpleValue(data[key]) ) {
+				regex_match = "\{\{:#key#::=::#data[key]#::.*?\}\}";
+				//Replace the matched value with the indicated string
+				if ( ReFindNoCase(regex_match, str) ) {
+					str_matched =  Trim(ReFetch(regex_match, str));
+					//Get the indicated string
+					str_replace = ReReplaceNoCase(
+						ReReplaceNoCase(str_matched, "\{\{:#key#::=::#data[key]#::'", ""),
+						"'\}\}$",
+						""
+					);
+					//Perform the replacement
+					str = ReplaceNoCase(str, str_matched, str_replace);
+				}
+			}
+		}
+		str = ReReplaceNoCase(str, "\{\{:.*?\}\}", "", "ALL");
+	}
+	return ucase_tags(str);
+}
 //Uppercase Mustache tags to make them case insensitive in the same way that ColdFusion is.
 function ucase_tags(string) {
 	var aMatches = REMatch("\{\{.*?\}\}", string);
@@ -221,7 +258,7 @@ if ( ThisTag.ExecutionMode EQ "End" AND Len(Trim(ThisTag.GeneratedContent)) ) {
 	if ( NOT StructKeyExists(request["cf_mustache_templates"],Attributes.name) ) {
 		request["cf_mustache_templates"][Attributes.name] = {};
 		request["cf_mustache_templates"][Attributes.name]["Attributes"] = Attributes;
-		request["cf_mustache_templates"][Attributes.name]["Attributes"]["GeneratedContent"] = ucase_tags(ThisTag.GeneratedContent);
+		request["cf_mustache_templates"][Attributes.name]["Attributes"]["GeneratedContent"] = ThisTag.GeneratedContent;
 		request["cf_mustache_templates"][Attributes.name]["Attributes"]["id_template"] = "#Attributes.id#-template";
 	}
 	ThisTag.GeneratedContent = "";
@@ -433,10 +470,13 @@ ThisOutput = "";
 
 <!--- Actually show the element, with data. --->
 <cfif Attributes.action EQ "show" AND isGoTime()>
-	<cfset oMustache = CreateObject("component","Mustache").init()>
-	<cfset TemplateHTML = sBaseAttributes["GeneratedContent"]>
-	<cfset TemplateID = sBaseAttributes["id_template"]>
-	<cfset sData = getData()>
+	<cfscript>
+	oMustache = CreateObject("component","Mustache").init();
+	TemplateHTML = sBaseAttributes["GeneratedContent"];
+	TemplateID = sBaseAttributes["id_template"];
+	sData = getData();
+	TemplateHTML = preprocess(TemplateHTML,sData);
+	</cfscript>
 	<cfif Attributes.script>
 		<cfsavecontent variable="ThisOutput"><cfoutput><div id="#Attributes.id#" class="cc-mustache cc-mustache-#TemplateID#"<cfif Attributes.script IS true> data-template="#TemplateID#"</cfif>>#oMustache.render(template=TemplateHTML,context=sData)#</div></cfoutput></cfsavecontent>
 	<cfelse>
