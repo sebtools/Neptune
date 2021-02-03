@@ -149,7 +149,8 @@ sAttributes = {
 	id="",
 	uri=Reverse("cfc." & ListRest(Reverse(CGI.SCRIPT_NAME),".")),
 	returnvariable="",
-	script=false
+	script=false,
+	counter="num"
 };
 
 //Set Attribute Defaults
@@ -275,6 +276,7 @@ if ( ThisTag.ExecutionMode EQ "End" AND Len(Trim(ThisTag.GeneratedContent)) ) {
 		request["cf_mustache_templates"][Attributes.name]["Attributes"] = Attributes;
 		request["cf_mustache_templates"][Attributes.name]["Attributes"]["GeneratedContent"] = ThisTag.GeneratedContent;
 		request["cf_mustache_templates"][Attributes.name]["Attributes"]["id_template"] = "#Attributes.id#-template";
+		request["cf_mustache_templates"][Attributes.name]["Counter"] = 0;
 	}
 	ThisTag.GeneratedContent = "";
 }
@@ -410,6 +412,54 @@ ThisOutput = "";
 		}
 		//Load up the triggers
 		cf_mustache.addWindowLoadEvent(cf_mustache.loadMustacheTriggersDocument);
+		cf_mustache.htmlToElem = function(html) {
+		  let temp = document.createElement('template');
+		  html = html.trim(); // Never return a space text node as a result
+		  temp.innerHTML = html;
+		  return temp.content.firstChild;
+		}
+		cf_mustache.appendChild = function(elem,name,data) {
+			var parent = elem;
+			var id = name + '-template';
+			data = data || {};
+			if ( typeof parent == "string" ) {
+				var parent = document.getElementById(parent);
+			}
+			var num = document.querySelectorAll('[data-template="' + id + '"]').length + 2;//One for the next element and another because CF counting starts at one.
+			var id_new = id + '-' + num;
+			var obj = cf_mustache.htmlToElem(document.getElementById(id).innerHTML);
+
+			data[sCounters[id]] = num;
+
+			obj.setAttribute('data-template',id);
+			obj.setAttribute('id',id_new);
+
+			parent.appendChild(obj);
+
+			cf_mustache.renderData(id_new,data);
+			cf_mustache.loadMustacheTriggers(obj);
+		}
+		cf_mustache.insertBefore = function(elem,name,data) {
+			var id = name + '-template';
+			data = data || {};
+			if ( typeof elem == "string" ) {
+				var elem = document.getElementById(elem);
+			}
+			var num = document.querySelectorAll('[data-template="' + id + '"]').length + 2;;//One for the next element and another because CF counting starts at one.
+			var id_new = id + '-' + num;
+			var obj = cf_mustache.htmlToElem(document.getElementById(id).innerHTML);
+
+			data[sCounters[id]] = num;
+
+			obj.setAttribute('data-template',id);
+			obj.setAttribute('id',id_new);
+
+			elem.parentNode.insertBefore(obj,elem);
+
+			cf_mustache.renderData(id_new,data);
+			cf_mustache.loadMustacheTriggers(obj);
+
+		}
 		//Fetch the data from the URI and render it
 		cf_mustache.renderArgs = function(id,args) {
 			var id_template = document.getElementById(id).getAttribute('data-template');
@@ -470,6 +520,7 @@ ThisOutput = "";
 			cf_mustache.loadMustacheTriggers(obj);//Make sure that triggers in the element still work.
 		}
 		sURIs = {};//A place to store URIs for each template
+		sCounters = {};
 		</script>
 		</cfsavecontent>
 		<cfset ArrayAppend(aOutputs,ThisOutput)>
@@ -477,7 +528,7 @@ ThisOutput = "";
 	</cfif>
 	<!--- Store URIs for each template. --->
 	<cfif NOT StructKeyExists(request.cf_mustache_head,Attributes.name)>
-		<cfsavecontent variable="ThisOutput"><cfoutput><script id="#sBaseAttributes.id_template#" type="text/html">#Trim(ucase_tags(sBaseAttributes["GeneratedContent"]))#</script><script>sURIs['#sBaseAttributes.id_template#'] = '#sBaseAttributes.uri#<cfif Len(sBaseAttributes.method)>?method=#sBaseAttributes.method#</cfif>';</script></cfoutput></cfsavecontent>
+		<cfsavecontent variable="ThisOutput"><cfoutput><script id="#sBaseAttributes.id_template#" type="text/html">#Trim(ucase_tags(sBaseAttributes["GeneratedContent"]))#</script><script>sURIs['#sBaseAttributes.id_template#'] = '#sBaseAttributes.uri#<cfif Len(sBaseAttributes.method)>?method=#sBaseAttributes.method#</cfif>';sCounters['#sBaseAttributes.id_template#'] = '#Attributes.Counter#'</script></cfoutput></cfsavecontent>
 		<cfset ArrayAppend(aOutputs,ThisOutput)>
 		<cfset request.cf_mustache_head[Attributes.name] = true>
 	</cfif>
@@ -489,7 +540,10 @@ ThisOutput = "";
 	oMustache = CreateObject("component","Mustache").init();
 	TemplateHTML = sBaseAttributes["GeneratedContent"];
 	TemplateID = sBaseAttributes["id_template"];
+	request["cf_mustache_templates"][Attributes.name]["Counter"]++;
 	sData = getData();
+	//Added Counter to the data
+	sData[request["cf_mustache_templates"][Attributes.name]["Attributes"]["Counter"]] = request["cf_mustache_templates"][Attributes.name]["Counter"];
 	TemplateHTML = preprocess(TemplateHTML,sData);
 	</cfscript>
 	<cfif Attributes.script>
