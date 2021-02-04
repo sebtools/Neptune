@@ -215,21 +215,19 @@ function reFetch(regex,string) {
 }
 function preprocess(str,data) {
 	var key = "";
-	var regex_match = "";
 	var str_matched = "";
 	var str_replace = "";
+	var aMatches = 0;
 	//If we have any transform markers, loop through the data keys to do the transformation
 	if ( FindNoCase("{{~", str) ) {
 		for ( key in data ) {
 			//Can't replace non-string values
 			if ( isSimpleValue(data[key]) ) {
-				regex_match = "\{\{\~#key#:=:#data[key]#==>.*?\}\}";
+				aMatches = REMatchNoCase("\{\{\~#key#:=:#data[key]#==>.*?\}\}", str);
 				//Replace the matched value with the indicated string
-				if ( ReFindNoCase(regex_match, str) ) {
-					str_matched =  Trim(ReFetch(regex_match, str));
-					//Get the indicated string
+				for ( str_matched in aMatches ) {
 					str_replace = ReReplaceNoCase(
-						ReplaceNoCase(str_matched, "{{~#key#:=:#data[key]#==>", ""),
+						ReReplaceNoCase(str_matched, "\{\{\~#key#:=:#data[key]#==>", ""),
 						"\}\}$",
 						""
 					);
@@ -238,9 +236,9 @@ function preprocess(str,data) {
 				}
 			}
 		}
-		str = ReReplaceNoCase(str, "\{\{\~.*?\}\}", "", "ALL");
+		str = reReplaceNoCase(str, "\{\{\~.*?\}\}", "", "ALL");
 	}
-	return ucase_tags(str);
+	return str;
 }
 //Uppercase Mustache tags to make them case insensitive in the same way that ColdFusion is.
 function ucase_tags(string) {
@@ -312,6 +310,54 @@ ThisOutput = "";
 					window.onload = functionName;
 				}
 			}
+		}
+		cf_mustache.preprocess = function(str,data) {
+			var key = "";
+			var aMatches = [];
+			var regex_str_1 = '';
+			var regex_str_2 = '';
+			var regex_re = 0;
+			var str_matched = '';
+			var str_replace = '';
+			//If we have any transform markers, loop through the data keys to do the transformation
+			if ( str.indexOf('{{~') > -1 ) {
+				for ( key in data ) {
+					//alert(key);
+					//Can't replace non-string values
+					if ( typeof data[key] == 'string' ) {
+						regex_str_1 = '\{\{\~' + key.toUpperCase() + ':=:' + data[key].toUpperCase() + '==>';
+						regex_str_2 = '\}\}';
+						regex_re = new RegExp( regex_str_1 + '.*?' + regex_str_2, 'i' );
+						if ( false && regex_re.test(str) ) {
+							aMatches = str.match(regex_re);// + key.toUpperCase() + ':=:' + data[key].toUpperCase() + '==>.*?\}\}'
+							//alert(aMatches.length);
+							//Replace the matched value with the indicated string
+							for ( str_matched in aMatches ) {
+								alert(str_matched);
+								str_replace = str_matched;
+								str_replace.replace(regex_str_1,'');
+								str_replace.replace(regex_str_2,'');
+								//Perform the replacement
+								str.replace(str_matched,str_replace);
+							}
+						}
+					}
+				}
+				str.replace('\{\{\~.*?\}\}','');
+			}
+			return str;
+		}
+		cf_mustache.queryStringFromJSON = function(data) {
+			var result = '';
+			for ( var key in data ) {
+				if ( typeof data[key] == 'string' ) {
+					if ( result.length ) {
+						result += '&';
+					}
+					result += key + '=' + data[key];
+				}
+			}
+			return result;
 		}
 		//Ability to convert q querystring to JSON
 		cf_mustache.queryStringToJSON = function(qs) {
@@ -418,51 +464,72 @@ ThisOutput = "";
 		  temp.innerHTML = html;
 		  return temp.content.firstChild;
 		}
-		cf_mustache.appendChild = function(elem,name,data) {
-			var parent = elem;
+		cf_mustache.add = function(type,elem,name,data) {
+			var aTypes = type.split('-');
+			var action = aTypes[0];
+			var fetch = aTypes[1] || 'data';
 			var id = name + '-template';
-			data = data || {};
-			if ( typeof parent == "string" ) {
-				var parent = document.getElementById(parent);
-			}
-			var num = document.querySelectorAll('[data-template="' + id + '"]').length + 2;//One for the next element and another because CF counting starts at one.
-			var id_new = id + '-' + num;
-			var obj = cf_mustache.htmlToElem(document.getElementById(id).innerHTML);
-
-			data[sCounters[id]] = num;
-
-			obj.setAttribute('data-template',id);
-			obj.setAttribute('id',id_new);
-
-			parent.appendChild(obj);
-
-			cf_mustache.renderData(id_new,data);
-			cf_mustache.loadMustacheTriggers(obj);
-		}
-		cf_mustache.insertBefore = function(elem,name,data) {
-			var id = name + '-template';
-			data = data || {};
-			if ( typeof elem == "string" ) {
-				var elem = document.getElementById(elem);
-			}
 			var num = document.querySelectorAll('[data-template="' + id + '"]').length + 2;;//One for the next element and another because CF counting starts at one.
 			var id_new = id + '-' + num;
 			var obj = cf_mustache.htmlToElem(document.getElementById(id).innerHTML);
 
+			//The elem argument should either be an object or we should get the object for that id.
+			if ( typeof elem == "string" ) {
+				var elem = document.getElementById(elem);
+			}
+			//Default data to an empty structure (object)
+			data = data || {};
+
+			//Add the counter to the data
 			data[sCounters[id]] = num;
 
+			//Make sure that the id and data-template attributes are correct.
 			obj.setAttribute('data-template',id);
 			obj.setAttribute('id',id_new);
 
-			elem.parentNode.insertBefore(obj,elem);
+			//Add data to the element in the requested manner.
+			switch(fetch) {
+				case 'data':
+					cf_mustache.renderData(obj,data);
+				break;
+				case 'args':
+					cf_mustache.renderArgs(obj,data);
+				// code block
+				break;
+				case 'formdata':
+					cf_mustache.renderFormData(obj,data);
+				break;
+				case 'formargs':
+					cf_mustache.renderFormArgs(obj,data);
+				// code block
+				break;
+				default:
+				// code block
+			}
 
-			cf_mustache.renderData(id_new,data);
-			cf_mustache.loadMustacheTriggers(obj);
+			//Take the requested action in adding the element to the DOM.
+			switch(action) {
+				case 'insertBefore':
+					elem.parentNode.insertBefore(obj,elem);
+				break;
+				case 'appendChild':
+					elem.appendChild(obj);
+				// code block
+				break;
+				default:
+				// code block
+			}
 
 		}
 		//Fetch the data from the URI and render it
 		cf_mustache.renderArgs = function(id,args) {
-			var id_template = document.getElementById(id).getAttribute('data-template');
+			//The elem argument should either be an object or we should get the object for that id.
+			if ( typeof id == "string" ) {
+				var obj = document.getElementById(id);
+			} else {
+				var obj = id;
+			}
+			var id_template = obj.getAttribute('data-template');
 			var uri = sURIs[id_template];
 			var request = new XMLHttpRequest();
 
@@ -481,6 +548,9 @@ ThisOutput = "";
 					}
 				}
 			};
+			if ( typeof args != 'string' ) {
+				args = cf_mustache.queryStringFromJSON(args);
+			}
 
 			request.send(args);
 			request = null;
@@ -512,10 +582,16 @@ ThisOutput = "";
 					data = cf_mustache.queryStringToJSON(data);
 				}
 			}
-			var id_template = document.getElementById(id).getAttribute('data-template');
-			var template = document.getElementById(id_template).innerHTML;
+			//The id argument should either be an object or we should get the object for that id.
+			if ( typeof id == "string" ) {
+				var obj = document.getElementById(id);
+			} else {
+				var obj = id;
+			}
+
+			var id_template = obj.getAttribute('data-template');
+			var template = cf_mustache.preprocess(document.getElementById(id_template).innerHTML,data);
 			var rendered = Mustache.render(template, cf_mustache.ucase_keys(data));
-			var obj = document.getElementById(id);
 			obj.innerHTML = rendered;
 			cf_mustache.loadMustacheTriggers(obj);//Make sure that triggers in the element still work.
 		}
