@@ -469,7 +469,7 @@ ThisOutput = "";
 			var action = aTypes[0];
 			var fetch = aTypes[1] || 'data';
 			var id = name + '-template';
-			var num = document.querySelectorAll('[data-template="' + id + '"]').length + 2;;//One for the next element and another because CF counting starts at one.
+			var num = document.querySelectorAll('[data-template="' + id + '"]').length + 1;;//One for the next element
 			var id_new = id + '-' + num;
 			var obj = cf_mustache.htmlToElem(document.getElementById(id).innerHTML);
 
