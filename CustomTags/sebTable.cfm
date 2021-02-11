@@ -108,7 +108,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebtable-overview.cfm?version=1.
 		<cfset attributes.Query_String = QueryStringDeleteVar(attributes.stripurlvars,attributes.Query_String)>
 	</cfif>
 
-	<cfif isDefined("attributes.CFC_Component")>
+	<cfif StructKeyExists(attributes,"CFC_Component")>
 		<cfparam name="attributes.isForm" default="true" type="boolean">
 	<cfelse>
 		<cfparam name="attributes.isForm" default="false" type="boolean">
@@ -119,7 +119,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebtable-overview.cfm?version=1.
 
 	<!--- Get table defaults from component --->
 	<cfif
-			isDefined("attributes.CFC_Component")
+			StructKeyExists(attributes,"CFC_Component")
 		AND (
 					StructKeyExists(attributes.CFC_Component,"getMetaStruct")
 				OR	getMetaData(attributes.CFC_Component).extends.name EQ "_framework.PageController"
@@ -184,7 +184,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebtable-overview.cfm?version=1.
 	</cfif>
 
 	<cfset isProbableRecordsComponent = (
-			isDefined("attributes.CFC_Component")
+			StructKeyExists(attributes,"CFC_Component")
 		AND (
 					(
 						StructKeyExists(attributes.CFC_Component,"getFieldsStruct")
@@ -197,7 +197,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebtable-overview.cfm?version=1.
 
 	<!--- Get field defaults from component --->
 	<cfif
-			isDefined("attributes.CFC_Component")
+			StructKeyExists(attributes,"CFC_Component")
 		AND (
 					StructKeyExists(attributes.CFC_Component,"getFieldsStruct")
 				OR	isProbableRecordsComponent
@@ -219,7 +219,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebtable-overview.cfm?version=1.
 		<cfthrow message="The pkfield attribute for cf_sebTable is required." type="ctag" errorcode="nopkfield">
 	</cfif>
 
-	<cfif NOT ( Len(attributes.query) OR Len(attributes.datasource) OR ( isDefined("attributes.CFC_Component") AND Len(attributes.CFC_GetMethod) ) )>
+	<cfif NOT ( Len(attributes.query) OR Len(attributes.datasource) OR ( StructKeyExists(attributes,"CFC_Component") AND Len(attributes.CFC_GetMethod) ) )>
 		<cfthrow message="Either the query attribute or datasource attribute must be provided." type="ctag">
 	</cfif>
 
@@ -291,10 +291,10 @@ request.cftags[TagName].attributes = attributes;
 	</cfif>
 </cfif>
 
-</cfsilent><cfif isDefined("ThisTag.ExecutionMode") AND ThisTag.ExecutionMode eq "End"><cfsilent>
+</cfsilent><cfif StructKeyExists(ThisTag,"ExecutionMode") AND ThisTag.ExecutionMode eq "End"><cfsilent>
 
-<cfif NOT ( isDefined("ThisTag.qColumns") AND ArrayLen(ThisTag.qColumns) )>
-	<cfif isDefined("attributes.CFC_Component") AND isDefined("attributes.CFC_Component.getFieldsArray")>
+<cfif NOT ( StructKeyExists(ThisTag,"qColumns") AND ArrayLen(ThisTag.qColumns) )>
+	<cfif StructKeyExists(attributes,"CFC_Component") AND StructKeyExists(attributes.CFC_Component,"getFieldsArray")>
 		<cfset aDefFields = attributes.CFC_Component.getFieldsArray(transformer='sebColumn')>
 		<cfloop index="ii" from="1" to="#ArrayLen(aDefFields)#" step="1">
 			<cfif StructKeyExists(aDefFields[ii],"type")>
@@ -310,14 +310,14 @@ request.cftags[TagName].attributes = attributes;
 	</cfif>
 </cfif>
 <!--- Remove excluded columns --->
-<cfif ListLen(attributes.exclude) AND ( isDefined("ThisTag.qColumns") AND ArrayLen(ThisTag.qColumns) )>
+<cfif ListLen(attributes.exclude) AND ( StructKeyExists(ThisTag,"qColumns") AND ArrayLen(ThisTag.qColumns) )>
 	<cfloop index="ii" from="#ArrayLen(ThisTag.qColumns)#" to="1" step="-1">
 		<cfif StructKeyExists(ThisTag.qColumns[ii],"name") AND ListFindNoCase(attributes.exclude,ThisTag.qColumns[ii].name)>
 			<cfset ArrayDeleteAt(ThisTag.qColumns,ii)>
 		</cfif>
 	</cfloop>
 </cfif>
-<cfif NOT ( isDefined("ThisTag.qColumns") AND ArrayLen(ThisTag.qColumns) )><cfthrow message="You must include at least one column with cf_sebColumn in order to use cf_sebTable." type="ctag"></cfif>
+<cfif NOT ( StructKeyExists(ThisTag,"qColumns") AND ArrayLen(ThisTag.qColumns) )><cfthrow message="You must include at least one column with cf_sebColumn in order to use cf_sebTable." type="ctag"></cfif>
 <cfif attributes.isEditable IS NOT false>
 	<cfif NOT FindNoCase("?",attributes.editpage)>
 		<cfset attributes.editpage = "#attributes.editpage#?">
@@ -378,7 +378,7 @@ request.cftags[TagName].attributes = attributes;
 <cfset SubmitCol = 0>
 <cfset SubmitID = 0>
 <cfset SortList = "">
-<cfif isDefined("Form.sebTable") AND Form.sebTable eq sfx AND isDefined("Form.sebTableRows") AND isNumeric(Form.sebTableRows)>
+<cfif StructKeyExists(Form,"sebTable") AND Form.sebTable eq sfx AND StructKeyExists(Form,"sebTableRows") AND isNumeric(Form.sebTableRows)>
 	<cfif StructKeyExists(Form,"SortList") AND Len(Form.SortList)>
 		<cfset SortList = Form["SortList"]>
 	</cfif>
@@ -408,15 +408,15 @@ request.cftags[TagName].attributes = attributes;
 			isSorting = true;
 			SortList = Form.SebTableSortList;
 		}
-		if ( NOT isDefined("Form.Sort_#i#") ) {
-			if (  isDefined("Form.SortUp_#i#") OR ( isDefined("Form.SortUp_#i#.x") AND isDefined("Form.SortUp_#i#.y") )  ) {
+		if ( NOT StructKeyExists(Form,"Sort_#i#") ) {
+			if (  StructKeyExists(Form,"SortUp_#i#") OR ( StructKeyExists(Form,"SortUp_#i#.x") AND StructKeyExists(Form,"SortUp_#i#.y") )  ) {
 				Form["Sort_#i#"] = "+";
 			}
-			if (  isDefined("Form.SortDown_#i#") OR ( isDefined("Form.SortDown_#i#.x") AND isDefined("Form.SortDown_#i#.y") )  ) {
+			if (  StructKeyExists(Form,"SortDown_#i#") OR ( StructKeyExists(Form,"SortDown_#i#.x") AND StructKeyExists(Form,"SortDown_#i#.y") )  ) {
 				Form["Sort_#i#"] = "-";
 			}
 		}
-		if ( isDefined("Form.Sort_#i#") and ListFindNoCase(sorts,Form["Sort_#i#"]) ) {
+		if ( StructKeyExists(Form,"Sort_#i#") and ListFindNoCase(sorts,Form["Sort_#i#"]) ) {
 			isSorting = true;
 			if ( Form["Sort_#i#"] eq "+" ) {
 				if ( ListLen(SortList) ) {
@@ -441,7 +441,7 @@ request.cftags[TagName].attributes = attributes;
 		</cfscript>
 	</cfloop>
 	<cfif isSorting>
-		<cfif isDefined("attributes.CFC_Component") AND Len(attributes.CFC_SortMethod) AND Len(attributes.CFC_SortListArg)>
+		<cfif StructKeyExists(attributes,"CFC_Component") AND Len(attributes.CFC_SortMethod) AND Len(attributes.CFC_SortListArg)>
 			<cfinvoke component="#attributes.CFC_Component#" method="#attributes.CFC_SortMethod#">
 				<cfinvokeargument name="#attributes.CFC_SortListArg#" value="#SortList#">
 				<cfif isStruct(attributes.CFC_SortArgs)>
@@ -493,7 +493,7 @@ request.cftags[TagName].attributes = attributes;
 			</cftry>
 			<cfif StructKeyExists(ThisTag.qColumns[i],"Message") AND Len(ThisTag.qColumns[i].Message)>
 				<cfset Message = ThisTag.qColumns[i].Message>
-				<cfif isDefined("CFC_Result")>
+				<cfif StructKeyExists(Variables,"CFC_Result")>
 					<cfset Message = ReplaceNoCase(Message, "{result}", CFC_Result, "ALL")>
 				</cfif>
 				<cfif attributes.useSessionMessages>
@@ -554,7 +554,7 @@ request.cftags[TagName].attributes = attributes;
 	</cftry>
 	<cfif StructKeyExists(attributes,"Message_Completion") AND Len(attributes.Message_Completion)>
 		<cfset Message = attributes.Message_Completion>
-		<cfif isDefined("CFC_Result")>
+		<cfif StructKeyExists(Variables,"CFC_Result")>
 			<cfset Message = ReplaceNoCase(Message, "{result}", CFC_Result, "ALL")>
 		</cfif>
 		<cfif attributes.useSessionMessages>
@@ -567,7 +567,7 @@ request.cftags[TagName].attributes = attributes;
 </cfif>
 
 <cfif isDeleting>
-	<cfif isDefined("attributes.CFC_Component") AND Len(attributes.CFC_DeleteMethod)>
+	<cfif StructKeyExists(attributes,"CFC_Component") AND Len(attributes.CFC_DeleteMethod)>
 		<cfset sArgs = StructNew()>
 		<cfset sArgs[attributes.pkfield] = DeleteID>
 		<cfif isStruct(attributes.CFC_DeleteArgs)>
@@ -642,7 +642,7 @@ request.cftags[TagName].attributes = attributes;
 </cfloop>
 <cfif attributes.dosort AND NOT Len(attributes.orderby) AND Not ListFindNoCase(liLabels, url["sebSort#sfx#"])><cfset url["sebsort#sfx#"] = ThisTag.qColumns[1].label></cfif>
 
-<cfif isQuery(attributes.query) OR Len(attributes.query) OR ( isDefined("attributes.CFC_Component") AND Len(attributes.CFC_GetMethod) )>
+<cfif isQuery(attributes.query) OR Len(attributes.query) OR ( StructKeyExists(attributes,"CFC_Component") AND Len(attributes.CFC_GetMethod) )>
 	<cfif isQuery(attributes.query)>
 		<cfset qTableData = attributes.query>
 	<cfelseif Len(attributes.query)>
