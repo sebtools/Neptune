@@ -5,6 +5,9 @@
 <cfcomponent displayname="Spam Filter" output="false">
 <cfset cr = "
 ">
+<cfset variables.ignoreKeysDefaults = ["grecaptcharesponse", "g-recaptcha-response", "h-captcha-response", "email"]>
+<cfset variables.ignoreKeys = variables.ignoreKeysDefaults>
+
 <cffunction name="init" access="public" returntype="any" output="no" hint="I instantiate and return this component.">
 	<cfargument name="DataMgr" type="any" required="yes">
 	<cfargument name="getNewDefs" type="boolean" default="0">
@@ -90,7 +93,7 @@
 
 	<cfset var langPoints = 0>
 	<cfset var pointval = 0>
-	<cfset var qWords = variables.DataMgr.getRecords("spamWords")>
+	<cfset var qWords = variables.DataMgr.getRecords("spamWords", {orderBy="points DESC"})>
 	<cfset var qRegExs = variables.DataMgr.getRecords("spamRegExs")>
 	<cfset var field = "">
 	<cfset var finds = 0>
@@ -98,7 +101,9 @@
 	<cfset var duplist = "">
 
 	<cfloop collection="#arguments.data#" item="field">
-		<cfif isSimpleValue(arguments.data[field]) AND Len(field) AND Len(arguments.data[field]) AND field NEQ "Email">
+		<cfif ArrayFindNoCase(variables.ignoreKeys, field) or ListFindNoCase("validate,finger", listFirst(field,"_"))>
+			<!--- Ignore --->
+		<cfelseif isSimpleValue(arguments.data[field]) AND Len(field) and Len(arguments.data[field]) and field NEQ "Email">
 			<cfloop query="qWords">
 				<!--- Get the number of times the word appears --->
 				<cfset finds = numWordMatches(arguments.data[field],trim(Word),Arguments.maxpoints)>
@@ -147,7 +152,7 @@
 	<cfargument name="data" type="struct" required="yes">
 
 	<cfset var pointval = 0>
-	<cfset var qWords = variables.DataMgr.getRecords("spamWords")>
+	<cfset var qWords = variables.DataMgr.getRecords("spamWords", {orderBy="points DESC"})>
 	<cfset var qRegExs = variables.DataMgr.getRecords("spamRegExs")>
 	<cfset var field = "">
 	<cfset var finds = 0>
@@ -373,7 +378,6 @@
 <cffunction name="getForeignLanguagePoints" access="public" returntype="numeric" output="no">
 	<cfargument name="string" type="string" require="true">
 
-	<cfset var key = "">
 	<cfset var pointval = 1>
 	<cfset var result = 0>
 
@@ -423,6 +427,121 @@
 	</cfoutput></cfsavecontent>
 
 	<cfreturn tableXML>
+</cffunction>
+
+<cffunction name="setIgnoreKeys" access="public" returntype="void" output="no" hint="I set struct keys to ignore">
+	<cfargument name="keys" type="any" required="yes">
+	<cfset var k = duplicate(arguments.keys)>
+	<cfset var thisKey = "">
+	<cfif isSimpleValue(k)>
+		<cfset k = listtoarray(k)>
+	</cfif>
+	<cfset variables.ignoreKeys = k>
+	<cfloop array="#variables.ignoreKeysDefault#" index="thisKey">
+		<cfset arrayAppend(variables.ignoreKeys, thisKey)>
+	</cfloop>
+</cffunction>
+
+<cffunction name="identifySpam" access="public" returntype="struct" output="no" hint="I return spam points score and rules that were triggered.">
+	<cfargument name="data" type="struct" required="yes">
+	<cfargument name="maxpoints" type="numeric" default="0">
+
+	<cfset var pointlimit = arguments.maxpoints>
+	<cfset var result = structNew()>
+	<cfset var thisKey = "">
+
+	<!--- If we don't have a point limit, set it to the number of fields --->
+	<cfif NOT pointlimit>
+		<cfset pointlimit = getPointLimit(arguments.data,maxpoints)>
+	</cfif>
+
+	<!--- Run that filter! --->
+	<cfset result = getPointsStruct(arguments.data,maxpoints)>
+
+	<!--- Identify ignored fields --->
+	<cfset result.ignored = StructNew()>
+	<cfloop array="#variables.ignoreKeys#" index="thisKey">
+		<cfif StructKeyExists(data, thisKey)>
+			<cfset result.ignored[thisKey] = data[thisKey]>
+		</cfif>
+	</cfloop>
+
+	<cfset result.isSpam = false>
+	<cfif result.score GT pointlimit>
+		<cfset result.isSpam = true>
+	</cfif>
+
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="getPointsStruct" access="public" returntype="struct" output="no" hint="I return the number of points in the given structure.">
+	<cfargument name="data" type="struct" required="yes">
+	<cfargument name="maxpoints" type="numeric" default="0">
+
+	<cfset var result = {score = 0, rules = ArrayNew(1)}>
+	<cfset var qWords = variables.DataMgr.getRecords("spamWords", {orderBy="points DESC"})>
+	<cfset var qRegExs = variables.DataMgr.getRecords("spamRegExs")>
+	<cfset var field = "">
+	<cfset var finds = 0>
+	<cfset var field2 = "">
+	<cfset var duplist = "">
+
+	<cfloop collection="#arguments.data#" item="field">
+		<cfif ArrayFindNoCase(variables.ignoreKeys, field) or ListFindNoCase("validate,finger", listFirst(Field,"_"))>
+			<!--- Ignore --->
+		<cfelseif isSimpleValue(arguments.data[field]) and Len(field) and Len(arguments.data[field]) and field neq "Email">
+			<cfloop query="qWords">
+				<!--- Get the number of times the word appears --->
+				<cfset finds = numWordMatches(arguments.data[field],trim(Word),Arguments.maxpoints)>
+				<cfif finds gt 0>
+					<cfset result.score = result.score + (finds * Val(points))>
+					<cfset ArrayAppend(result.rules, {points=(finds * points), type="word", rule=trim(Word)})>
+					<cfif maxpoints GT 0 and result.score gt maxpoints>
+						<cfreturn result>
+					</cfif>
+				</cfif>
+			</cfloop>
+			<cfloop query="qRegExs">
+				<!--- Get the number of times the expression is matched --->
+				<cfset finds = numRegExMatches(arguments.data[field],trim(RegEx),Val(checkcase),Arguments.maxpoints)>
+				<cfif finds GT 0>
+					<cfset result.score = result.score + (finds * Val(points))>
+					<cfset ArrayAppend(result.rules, {points=(finds * points), type=Label, rule=trim(Regex)})>
+					<cfif maxpoints gt 0 and result.score gt maxpoints>
+						<cfreturn result>
+					</cfif>
+				</cfif>
+			</cfloop>
+			<!--- Points for duplicate field values --->
+			<cfset duplist = ListAppend(duplist,field)>
+			<cfloop collection="#arguments.data#" item="field2">
+				<cfif
+						(field2 neq field)
+					and	isSimpleValue(arguments.data[field])
+					and	isSimpleValue(arguments.data[field2])
+					and	(arguments.data[field2] EQ arguments.data[field])
+					and not ListFindNoCase(duplist,field2)
+				>
+					<cfset result.score = result.score + 1>
+					<cfset ArrayAppend(result.rules, {points=1, type="duplicate", rule="#field2#=#arguments.data[field2]#"})>
+					<cfset duplist = ListAppend(duplist,field2)>
+					<cfif maxpoints GT 0 and result.score gt maxpoints>
+						<cfreturn result>
+					</cfif>
+				</cfif>
+			</cfloop>
+
+			<!--- get points for banned foreign languages --->
+			<cfset langPoints = getForeignLanguagePoints(arguments.data[field]) />
+			<cfif val(langPoints) gt 1>
+				<cfset result.score = result.score + langPoints />
+				<cfset ArrayAppend(result.rules, {points=langPoints, type="foreign", rule="Cyrilic/Kanji"})>
+			</cfif>
+
+		</cfif>
+	</cfloop>
+
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="getDefaultSpamWords" access="private" returntype="string" output="no">
@@ -525,4 +644,4 @@ zolus</cfoutput></cfsavecontent>
 	<cfreturn result>
 </cffunction>
 
-</cfcomponent>
+</cfcomponent> 
