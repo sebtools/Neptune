@@ -8,6 +8,90 @@
 	</cffunction>
 </cfif>
 
+<cfif NOT StructKeyExists(variables,"makeLink")>
+	<cffunction name="makeLink" access="public" returntype="string" output="no">
+		<cfargument name="Path" type="string" required="true">
+		<cfargument name="Args" type="struct" required="false">
+
+		<cfset var result = Arguments.Path>
+
+		<cfif StructCount(Arguments.Args)>
+			<cfset result = "#result#?#Struct2QueryString(Arguments.Args)#">
+		</cfif>
+
+		<cfreturn result>
+	</cffunction>
+</cfif>
+
+<cfif NOT StructKeyExists(variables,"self")>
+	<cffunction name="self" access="public" returntype="string" output="no">
+
+		<cfset var sURL = QueryStringToStruct(CGI.QUERY_STRING)>
+
+		<cfset StructAppend(sURL,Arguments,true)>
+
+		<cfreturn makeLink(CGI.SCRIPT_NAME,sURL)>
+	</cffunction>
+</cfif>
+
+<cfif NOT StructKeyExists(variables,"selflink")>
+	<cffunction name="selflink" access="public" returntype="string" output="no">
+		<cfargument name="label" type="string" required="true">
+		<cfargument name="args" type="struct" required="false">
+		<cfargument name="activeclass" type="string" required="false">
+
+		<cfset var result = '<a href="#self(ArgumentCollection=args)#"'>
+		<cfset var isActive = false>
+		<cfset var arg = "">
+
+		<cfscript>
+		if ( StructKeyHasLen(Arguments,"activeclass") ) {
+			isActive = true;
+			for ( arg in args ) {
+				if ( NOT ( StructKeyExists(URL,arg) AND args[arg] EQ URL[arg] ) ) {
+					isActive = false;
+				}
+			}
+			if ( isActive ) {
+				result = '#result# class="#Arguments.activeclass#"';
+			}
+		}
+		result = '#result#>#Arguments.label#</a>';
+		</cfscript>
+
+		<cfreturn result>
+	</cffunction>
+</cfif>
+
+<cfif NOT StructKeyExists(variables,"selflink_li")>
+	<cffunction name="selflink_li" access="public" returntype="string" output="no">
+		<cfargument name="label" type="string" required="true">
+		<cfargument name="args" type="struct" required="false">
+		<cfargument name="activeclass" type="string" required="false">
+
+		<cfset var result = '<li'>
+		<cfset var isActive = false>
+		<cfset var arg = "">
+
+		<cfscript>
+		if ( StructKeyHasLen(Arguments,"activeclass") ) {
+			isActive = true;
+			for ( arg in args ) {
+				if ( NOT ( StructKeyExists(URL,arg) AND args[arg] EQ URL[arg] ) ) {
+					isActive = false;
+				}
+			}
+			if ( isActive ) {
+				result = '#result# class="#Arguments.activeclass#"';
+			}
+		}
+		result = '#result#><a href="#self(ArgumentCollection=args)#">#Arguments.label#</a></li>';
+		</cfscript>
+
+		<cfreturn result>
+	</cffunction>
+</cfif>
+
 <cfif NOT StructKeyExists(variables,"ListToHTML")>
 	<cffunction name="ListToHTML" access="public" returntype="string" output="false" hint="I return a list as an HTML list.">
 		<cfargument name="list" type="string" required="true">
@@ -128,6 +212,34 @@
 		</cfscript>
 	</cffunction>
 </cfif>
+
+<cfif NOT StructKeyExists(variables,"QueryStringToStruct")>
+	<cffunction name="QueryStringToStruct" access="private" returntype="any" output="false" hint="I accept a URL query string and return it as a structure.">
+		<cfargument name="querystring" type="string" required="true" hint="I am the query string for which to parse.">
+
+		<cfscript>
+		var aList = ListToArray(Arguments.querystring,"&");
+		return aList.reduce(function(result,item,index){
+			result[ListFirst(item,"=")] = ListRest(item,"=");
+			return result;
+		},{});
+		</cfscript>
+	</cffunction>
+</cfif>
+
+<cfif NOT StructKeyExists(variables,"Struct2QueryString")>
+	<cffunction name="Struct2QueryString" access="private" returntype="string" output="false" hint="I accept a structure and return it as a URL query string.">
+		<cfargument name="struct" type="struct" required="true" hint="I am the struct to turn into a query string.">
+
+		<cfscript>
+		return Arguments.struct.reduce(function(result, key, value) {
+				result = result?:"";
+				return ListAppend(result,"#LCase(key)#=#value#","&");
+		});
+		</cfscript>
+	</cffunction>
+</cfif>
+
 
 <cfif NOT StructKeyExists(variables,"StructKeyHasLen")>
 	<cfscript>

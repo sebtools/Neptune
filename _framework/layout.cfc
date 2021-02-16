@@ -1,28 +1,28 @@
-<!--- 1.0 Beta 1.5 (Build 21) --->
-<!--- Last Updated: 2011-01-16 --->
+<!--- 1.0 Beta 2 (Build 26) --->
+<!--- Last Updated: 2012-08-05 --->
 <!--- Information: sebtools.com --->
 <cfcomponent>
+
+<cfmodule name="com.sebtools.udfs">
 
 <cffunction name="init" access="public" returntype="any" output="no">
 	<cfargument name="CGI" type="struct" required="yes">
 	<cfargument name="Factory" type="any" required="no">
-	
+
 	<cfset initInternal(argumentCollection=arguments)>
-	
+
 	<cfreturn this>
 </cffunction>
 
 <cffunction name="initInternal" access="public" returntype="any" output="no">
 	<cfargument name="CGI" type="struct" required="yes">
 	<cfargument name="Factory" type="any" required="no">
-	
-	<cfset var sThis = 0>
-	 
+
 	<cfset variables.CGI = arguments.CGI>
 	<cfif StructKeyExists(arguments,"Factory")>
 		<cfset variables.Factory = arguments.Factory>
 	</cfif>
-	
+
 	<cfset variables.SCRIPT_NAME = variables.CGI.SCRIPT_NAME>
 	<cfif Len(Trim(variables.CGI.QUERY_STRING))>
 		<cfset variables.PageString = "#variables.CGI.SCRIPT_NAME#?#variables.CGI.QUERY_STRING#">
@@ -31,17 +31,18 @@
 	</cfif>
 	<cfset variables.FileName = ListLast(variables.SCRIPT_NAME,"/")>
 	<cfset variables.DomainName = variables.CGI.SERVER_NAME>
-	
+
 	<cfset variables.me = StructNew()>
 	<cfset variables.me.FileName = variables.FileName>
 	<cfset variables.me.DomainName = variables.DomainName>
-	
-	<cfset sThis = getMetaData(This)>
-	
-	<cfif sThis.name CONTAINS "Admin">
+	<cfset variables.me.IncludeLayout = "layout">
+
+	<cfset Variables.sThis = getMetaData(This)>
+
+	<cfif Variables.sThis.name CONTAINS "Admin" AND ListLast(variables.CGI.SCRIPT_NAME,".") NEQ "cfc">
 		<cfset importAdminMenu()>
 	</cfif>
-	
+
 	<cfreturn this>
 </cffunction>
 
@@ -49,20 +50,20 @@
 
 <cffunction name="switchLayout" access="public" returntype="layout" output="no">
 	<cfargument name="layout" type="string" required="yes">
-	
+
 	<cfset var result = CreateObject("component",layout)>
-	
+
 	<cfset result.init(variables.CGI,variables.Factory)>
-	
+
 	<cfset result.setMe(variables.me)>
 	<cfset this = result>
-	
+
 	<cfreturn result>
 </cffunction>
 
 <cffunction name="setMe" access="package" returntype="void" output="no">
 	<cfargument name="me" type="struct" required="yes">
-	
+
 	<cfset StructAppend(variables.me,arguments.me,"no")>
 
 </cffunction>
@@ -70,28 +71,28 @@
 <cffunction name="getIncludeOutput" access="public" returntype="string" output="no">
 	<cfargument name="Page" type="string" required="yes">
 	<cfargument name="VariablesScope" type="struct" required="no">
-	
+
 	<!---
 	I can set the layout variable here without setting it back to what it was because this is a local-scoped variable
 	The layout component has built-in empty head/body/end methods.
 	Any other output methods should be added to the site's layout.cfc with no output as well.
 	--->
-	<cfset var layout = switchLayout("layout")>
+	<cfset var layout = switchLayout(variables.me.IncludeLayout)>
 	<cfset var result = "">
 	<cfset var TemplateHead = "">
 	<cfset var sHeadMatch = 0>
 	<cfset var PreActions = "">
-	
+
 	<!--- Make sure layout tag doesn't show head and body tag as having been called to that it calls them (so that we can get any embedded header code) --->
 	<cfif StructKeyExists(request,"sLayoutTag") AND StructKeyExists(request.sLayoutTag,"actions")>
 		<cfset PreActions = request.sLayoutTag.actions>
 		<cfset request.sLayoutTag.actions = "">
 	</cfif>
-	
+
 	<cfif Left(arguments.Page,1) NEQ "/">
 		<cfset arguments.Page = getPageBrowserPath(arguments.Page,arguments.VariablesScope)>
 	</cfif>
-	
+
 	<!---
 	It is a bit sinful to mess with the entire variables scope of the component here.
 	The risk is mitigated because:
@@ -102,31 +103,39 @@
 	<cfif StructKeyExists(arguments,"VariablesScope")>
 		<cfset StructAppend(variables,arguments.VariablesScope,"no")>
 	</cfif>
-	
+
 	<!--- This is the main work. Putting it in cfsavecontent breaks cfflush, but allows us to put the header information in the correct place --->
 	<cfsavecontent variable="result"><cfoutput><cfinclude template="#arguments.Page#"></cfoutput></cfsavecontent>
-	
+
 	<!--- Fix the header information --->
 	<cfset sHeadMatch = ReFindNoCase("<head>.*?</head>",result,1,1)>
 	<cfif StructCount(sHeadMatch) AND sHeadMatch.pos[1] AND sHeadMatch.len[1]>
 		<cfset TemplateHead = Mid(result,sHeadMatch.pos[1],sHeadMatch.len[1])>
 		<cfset result = ReplaceNoCase(result,TemplateHead,"")>
-		
+
 		<cfset TemplateHead = Trim(REReplaceNoCase(TemplateHead, "</?head>", "", "ALL"))>
 		<cfif Len(Trim(TemplateHead))>
 			<cfhtmlhead text="#TemplateHead#">
 		</cfif>
 	</cfif>
-	
+
 	<cfif Len(PreActions)>
 		<cfset request.sLayoutTag.actions = PreActions>
 	</cfif>
-	
+
 	<cfreturn result>
 </cffunction>
 
+<cffunction name="loadLocalServices" access="public" returntype="any" output="no">
+	<cfargument name="VariablesScope" type="struct" required="true">
+	<cfargument name="Services" type="string" required="true">
+
+	<cfset Variables.Factory.Framework.loadLocalServices(ArgumentCollection=Arguments)>
+
+</cffunction>
+
 <cffunction name="importAdminMenu" access="private" returntype="void" output="no">
-	
+
 	<cfif
 			StructKeyExists(variables,"Factory")
 		AND	StructKeyExists(variables.Factory,"Framework")
@@ -136,16 +145,16 @@
 	<cfelse>
 		<cfset importAdminMenuOld()>
 	</cfif>
-	
+
 </cffunction>
 
 <cffunction name="importAdminMenuOld" access="private" returntype="void" output="no">
-	
+
 	<cfset var xProgram = variables.Factory.Config.getSetting('ProgramMenu')>
 	<cfset var aAdminMenu = ArrayNew(1)>
 	<cfset var ii = 0>
 	<cfset var jj = 0>
-	
+
 	<cfif StructKeyExists(xProgram.site,"program")>
 		<cfloop index="ii" from="1" to="#ArrayLen(xProgram.site.program)#" step="1">
 			<cfset ArrayAppend(aAdminMenu,StructNew())>
@@ -167,17 +176,25 @@
 		</cfloop>
 	</cfif>
 	<cfset variables.AdminMenu = aAdminMenu>
-	
+
 </cffunction>
 
 <cffunction name="getPageBrowserPath" access="private" returntype="string" output="no">
 	<cfargument name="Page" type="string" required="true">
 	<cfargument name="VariablesScope" type="struct" required="true">
-	
-	<cfset var PathFile = getDirectoryFromPath(getScopeTemplatePath(arguments.VariablesScope))>
+
+	<cfset var PathFile = "">
 	<cfset var PathRoot = "">
-	<cfset var result = PathFile>
-	
+	<cfset var result = "">
+
+	<cftry>
+		<cfset PathFile = getDirectoryFromPath(getScopeTemplatePath(arguments.VariablesScope))>
+	<cfcatch>
+		<cfset PathFile = getDirectoryFromPath(ExpandPath(Arguments.Page))>
+	</cfcatch>
+	</cftry>
+	<cfset result = PathFile>
+
 	<cfif StructKeyExists(variables,"Factory") AND StructKeyExists(variables.Factory,"Config") AND variables.Factory.Config.exists('RootPath')>
 		<cfset PathRoot = variables.Factory.Config.getSetting('RootPath')>
 	<cfelse>
@@ -187,7 +204,7 @@
 	<cfset result = ListChangeDelims(result,"/","\")>
 	<cfset result = ListAppend(result,arguments.Page,"/")>
 	<cfset result = "/#result#">
-	
+
 	<cfreturn result>
 </cffunction>
 <cffunction name="getScopeTemplatePath" access="private" returntype="string" output="no">
