@@ -42,6 +42,135 @@ Use https://github.com/rip747/Mustache.cfc for ColdFusion implementation.
 Use https://github.com/janl/mustache.js for JavaScript implementation.
 
 --->
+
+<cffunction name="compress" access="private" returntype="any" output="false" hint="I compress the given string.">
+	<cfargument name="str" type="string" required="true" hint="I am the string to be compressed.">
+	<cfargument name="type" type="string" required="true" hint="I am the type of compression (js or css).">
+
+	<cfscript>
+	var result = Arguments.str;
+	var compr = 0;
+
+	if ( Attributes.compress EQ true ) {
+		switch(Arguments.type) {
+			case "css":
+			break;
+			case "htm":
+			break;
+			case "js":
+				result	= ReReplaceNoCase(result,"\*((.|\n)(?!/))+\*","","ALL");
+				result	= ReReplaceNoCase(result,"//.*?(\r\n)","","ALL");
+			break;
+		}
+		result = reReplaceNoCase(result, "\s{2,}", " ","ALL");
+	}
+	</cfscript>
+
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="getArguments" access="private" returntype="struct">
+	<cfscript>
+	var sArgs = StructCopy(Attributes.args);
+	var att = "";
+	var name = "";
+
+	for ( att in Attributes ) {
+		if ( ListLen(att,"_") GT 1 AND ListFirst(att,"_") EQ "arg" ) {
+			name = ListRest(att,"_");
+			sArgs[name] = Attributes[att];
+		}
+	}
+
+	//Get arguments from URL, if requested (lowest priority except defaults)
+	if ( Attributes["urlargs"] IS true ) {
+		for ( att in URL ) {
+			if ( ListLen(att,"_") GT 1 AND ListFirst(att,"_") EQ Attributes.id ) {
+				name = ListRest(att,"_");
+				if ( NOT StructKeyExists(sArgs,name) ) {
+					sArgs[name] = URL[att];
+				}
+			}
+		}
+	}
+
+	//Argument defaults are lowest priority
+	StructAppend(sArgs,Attributes.defaultargs,"no");
+	for ( att in Attributes ) {
+		if ( ListLen(att,"_") GT 1 AND ListFirst(att,"_") EQ "defaultarg" ) {
+			name = ListRest(att,"_");
+			if ( NOT StructKeyExists(sArgs,name) ) {
+				sArgs[name] = URL[att];
+			}
+		}
+	}
+
+	return sArgs;
+	</cfscript>
+
+</cffunction>
+
+<cffunction name="getComponentData" access="private" returntype="struct">
+
+	<cfset var sLocal = {}>
+
+	<cfif
+		StructKeyExists(Attributes,"component")
+		AND
+		isObject(Attributes.component)
+		AND
+		Len(Attributes.method)
+	>
+		<cfinvoke
+			returnvariable="sLocal.SCompData"
+			component="#Attributes.component#"
+			method="#Attributes.method#"
+			argumentCollection="#Variables.sArguments#"
+		>
+		</cfinvoke>
+	</cfif>
+
+	<cfif NOT ( StructKeyExists(sLocal,"SCompData") AND isStruct(sLocal.SCompData) )>
+		<cfset sLocal.SCompData = {}>
+	</cfif>
+
+	<cfreturn sLocal.SCompData>
+</cffunction>
+
+<cfscript>
+function getTagData(tag) {
+	var sResult = {};
+	var str = Arguments.tag;
+	var xTag = 0;
+	var att = "";
+	var name = "";
+	var action = "default";
+
+	//Convert to valid XML
+	str = REReplaceNoCase(str, "^{{{{?", "");
+	str = REReplaceNoCase(str, "}}}}?$", "");
+	name = ListFirst(str," ");//Get the name, so we can switch it to "name", since the provided name will be invalid.
+	str = replaceNoCase(str, "#name#", "name");
+
+	//Parse the XML. Not in a try/catch for now since the user will need to know if this didn't work.
+	xTag = XmlParse("<#str#/>");
+
+	for ( att in xTag["name"].XmlAttributes ) {
+		sResult[att] = xTag["name"].XmlAttributes[att];
+	}
+	switch(name) {
+		case "~":
+			action = "transform";
+		break;
+		case "->":
+			action = "point";
+		break;
+	}
+
+	return {"action":action,"attributes":sResult};
+}
+</cfscript>
+
 <cffunction name="QueryStringToStruct" access="private" returntype="any" output="false" hint="I accept a URL query string and return it as a structure.">
 	<cfargument name="querystring" type="string" required="true" hint="I am the query string for which to parse.">
 
@@ -51,6 +180,17 @@ Use https://github.com/janl/mustache.js for JavaScript implementation.
 		result[ListFirst(item,"=")] = ListRest(item,"=");
 		return result;
 	},{});
+	</cfscript>
+</cffunction>
+
+<cffunction name="AsQueryString" access="private" returntype="string" output="false" hint="I return the given data as a querystring.">
+	<cfargument name="data" type="any" required="true">
+
+	<cfscript>
+	if ( isStruct(Arguments.data) ) {
+		return Struct2QueryString(Arguments.data);
+	}
+	return Arguments.data;
 	</cfscript>
 </cffunction>
 
@@ -106,6 +246,126 @@ Use https://github.com/janl/mustache.js for JavaScript implementation.
 	</cfscript>
 </cffunction>
 
+<cffunction name="makeLink" access="public" returntype="string" output="no">
+	<cfargument name="Path" type="string" required="true">
+	<cfargument name="Args" type="struct" required="false">
+
+	<cfset var result = Arguments.Path>
+
+	<cfif StructCount(Arguments.Args)>
+		<cfset result = "#result#?#Struct2QueryString(Arguments.Args)#">
+	</cfif>
+
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="self" access="public" returntype="string" output="no">
+
+	<cfset var sURL = QueryStringToStruct(CGI.QUERY_STRING)>
+
+	<cfscript>
+	var arg = "";
+	for ( arg in Arguments ) {
+		sUrl["#Attributes.urlprefix##arg#"] = Arguments[arg];
+	}
+	</cfscript>
+
+	<cfreturn makeLink("",sURL)>
+</cffunction>
+
+<cffunction name="runPreTag">
+	<cfargument name="str" type="string" required="true">
+	<cfargument name="data" type="struct" required="true">
+
+	<cfset var sTag = getTagData(Arguments.str)>
+	<cfset var replacement = "">
+
+	<cfinvoke
+		returnvariable="replacement"
+		method="runPreTag_#sTag.action#"
+		argumentCollection="#sTag.attributes#"
+		data="#Arguments.data#"
+	>
+
+	<cfreturn replacement>
+</cffunction>
+<cffunction name="runPreTag_default">
+	<cfreturn "">
+</cffunction>
+<cffunction name="runPreTag_point">
+	<cfargument name="Label" type="string" default="Click Here">
+	<cfargument name="args" type="string" default="">
+	<cfargument name="element" type="string" default="a">
+	<cfargument name="activeclass" type="string" default="">
+
+	<cfscript>
+	var result = '';
+	var useOuterElement = ( Len(Arguments.element) AND Arguments.element NEQ "a" );
+	var class = '';
+	var sArgs = QueryStringToStruct(Arguments.args);
+	var href = self(ArgumentCollection=sArgs);
+	var isActive = true;
+	var arg = "";
+	if ( Len(Arguments.activeclass) ) {
+		for ( arg in sArgs ) {
+			if (
+				NOT (
+					( StructKeyExists(Variables.sArguments,arg) AND sArgs[arg] EQ Variables.sArguments[arg] )
+					OR
+					NOT ( StructKeyExists(Variables.sArguments,arg) OR Len(sArgs[arg]) )
+				)
+			) {
+				isActive = false;
+			}
+		}
+		if ( isActive ) {
+			class = Arguments.activeclass;
+		}
+	}
+
+	if ( useOuterElement ) {
+		result &= '<#Arguments.element#';
+		if ( Len(class) ) {
+			result &= ' class="#class#"';
+		}
+		result &= '><a';
+	} else {
+		result &= '<a';
+		if ( Len(class) ) {
+			result &= ' class="#class#"';
+		}
+	}
+
+	result &= ' href="#href#"';
+	if ( Attributes.script IS true ) {
+		result &= ' data-mustacheaction="args" data-data="#Struct2QueryString(sArgs)#"';
+	}
+	result &= '>';
+	result &= Arguments.label;
+	result &= '</a>';
+	if ( useOuterElement ) {
+		result &= '</#Arguments.element#>';
+	}
+	</cfscript>
+
+	<cfreturn result>
+</cffunction>
+<cffunction name="runPreTag_transform">
+	<cfargument name="data" type="struct" default="">
+	<cfargument name="key" type="string" default="">
+	<cfargument name="value" type="string" default="">
+	<cfargument name="output" type="string" default="">
+
+	<cfscript>
+	result = "";
+	if ( StructKeyExists(Arguments.data,Arguments.key) AND Arguments.data[key] EQ Arguments.value ) {
+		result = output;
+	}
+	</cfscript>
+
+	<cfreturn result>
+</cffunction>
+
 <cfscript>
 function QueryRowToStruct(query) {
 	var row = 1; //by default, do this to the first row of the query
@@ -126,17 +386,20 @@ function QueryRowToStruct(query) {
 }
 
 //Make sure request variable used by cf_mustache exists.
-if ( NOT StructKeyExists(request,"cf_mustache_templates") ) {
-	request["cf_mustache_templates"] = {};
+if ( NOT StructKeyExists(request,"cf_mustache") ) {
+	request["cf_mustache"] = {
+		"templates":{},
+		"instances":{}
+	};
 }
 
 //Make sure that the default name for the template is unique.
 default_name = "template";
-if ( StructKeyExists(request.cf_mustache_templates,default_name) ) {
+if ( StructKeyExists(request.cf_mustache.templates,default_name) ) {
 	ii = 1;
-	while ( StructKeyExists(request.cf_mustache_templates,default_name) ) {
+	while ( StructKeyExists(request.cf_mustache.templates,default_name) ) {
 		ii++;
-		default_name = "template_#ii#";
+		default_name = "template#ii#";
 	}
 }
 
@@ -150,7 +413,11 @@ sAttributes = {
 	uri=Reverse("cfc." & ListRest(Reverse(CGI.SCRIPT_NAME),".")),
 	returnvariable="",
 	script=false,
-	counter="num"
+	counter="num",
+	args={},
+	defaultargs={},
+	urlargs=false,
+	compress=true
 };
 
 //Set Attribute Defaults
@@ -163,6 +430,54 @@ for ( att in sAttributes ) {
 if ( NOT Len(Attributes.id) ) {
 	Attributes.id = Attributes.name;
 }
+
+//Make sure that the id for the template is unique.
+Variables.id_orig = Attributes.id;
+if ( StructKeyExists(request.cf_mustache.instances,Attributes.id) ) {
+	ii = 1;
+	while ( StructKeyExists(request.cf_mustache.templates,Attributes.id) ) {
+		ii++;
+		Attributes.id = "#Variables.id_orig##ii#";
+	}
+}
+request.cf_mustache.instances[Attributes.id] = {};
+
+//Use the id of the tag as the prefix by default
+if ( NOT Len(Attributes.urlargs) ) {
+	Attributes.urlargs = false;
+}
+if ( NOT StructKeyExists(Attributes,"urlprefix") ) {
+	if ( Attributes.urlargs IS true ) {
+		Attributes.urlprefix = Attributes.id;
+	} else {
+		Attributes.urlprefix = Attributes.urlargs;
+	}
+}
+//Make sure urlprefix uses an underscore if it exists.
+if ( Len(Attributes.urlprefix) AND NOT Right(Attributes.urlprefix,1) EQ "_" ) {
+	Attributes.urlprefix = "#Attributes.urlprefix#_";
+}
+
+sAttributes["urlprefix"] = "";//So it won't get included in data. Not in the original struct so that it can manually be set to an empty string.
+
+//Parse args if provided as string.
+if ( isSimpleValue(Attributes.args) ) {
+	if ( isJSON(Attributes.args) ) {
+		Attributes.args = DeserializeJSON(Attributes.args);
+	} else {
+		Attributes.args = QueryStringToStruct(Attributes.args);
+	}
+}
+
+//Parse defaultargs if provided as string.
+if ( isSimpleValue(Attributes.defaultargs) ) {
+	if ( isJSON(Attributes.defaultargs) ) {
+		Attributes.defaultargs = DeserializeJSON(Attributes.defaultargs);
+	} else {
+		Attributes.defaultargs = QueryStringToStruct(Attributes.defaultargs);
+	}
+}
+
 //Parse data if provided as string.
 if ( isSimpleValue(Attributes.data) ) {
 	if ( isJSON(Attributes.data) ) {
@@ -179,6 +494,8 @@ function isGoTime() {
 //Get data from the data attribute of the tag or from attributes other than those used by the tag itself.
 function getData() {
 	var sResult = {};
+	var att = "";
+	var sCompData = getComponentData();
 
 	if ( isQuery(Attributes.data) ) {
 		sResult = QueryRowToStruct(Attributes.data);
@@ -188,12 +505,12 @@ function getData() {
 
 	for ( att in Attributes ) {
 		if ( NOT StructKeyExists(sAttributes,att) ) {
-			if ( ListLen(att,"_") GT 1 AND ListFirst(att,"_") EQ "data" ) {
+			if ( ListLen(att,"_") GT 1 AND ListFirst(att,"_") EQ "arg" ) {
+			} else if ( ListLen(att,"_") GT 1 AND ListFirst(att,"_") EQ "data" ) {
 				sResult[ListRest(att,"_")] = Attributes[att];
 			} else {
 				sResult[att] = Attributes[att];
 			}
-
 		}
 	}
 
@@ -203,40 +520,29 @@ function getData() {
 		}
 	}
 
+	//Data attributes take priority over data returned from method.
+	StructAppend(sResult,sCompData,"no");
+
 	return sResult;
-}
-function reFetch(regex,string) {
-	var sFind = reFindNoCase(Arguments.regex, Arguments.string, 1, true);
-	if ( StructCount(sFind) AND ArrayLen(sFind.len) AND Val(sFind.len[1]) ) {
-		return Mid(Arguments.string,sFind.pos[1],sFind.len[1]);
-	} else {
-		return "";
-	}
 }
 function preprocess(str,data) {
 	var key = "";
 	var str_matched = "";
 	var str_replace = "";
 	var aMatches = 0;
-	//If we have any transform markers, loop through the data keys to do the transformation
-	if ( FindNoCase("{{~", str) ) {
-		for ( key in data ) {
-			//Can't replace non-string values
-			if ( isSimpleValue(data[key]) ) {
-				aMatches = REMatchNoCase("\{\{\~#key#:=:#data[key]#==>.*?\}\}", str);
-				//Replace the matched value with the indicated string
-				for ( str_matched in aMatches ) {
-					str_replace = ReReplaceNoCase(
-						ReReplaceNoCase(str_matched, "\{\{\~#key#:=:#data[key]#==>", ""),
-						"\}\}$",
-						""
-					);
-					//Perform the replacement
-					str = ReplaceNoCase(str, str_matched, str_replace);
-				}
-			}
+
+	//If we have any preprocess markers, loop through and apply them
+	if ( FindNoCase("{{{{", str) ) {
+		aMatches = REMatchNoCase("\{{4}.*?\}{4}", str);
+		//Replace the matched value with the indicated string
+		for ( str_matched in aMatches ) {
+			str = ReplaceNoCase(
+				str,
+				str_matched,
+				runPreTag(str_matched,data)
+			);
 		}
-		str = reReplaceNoCase(str, "\{\{\~.*?\}\}", "", "ALL");
+		str = reReplaceNoCase(str, "\{{4}.*?\}{4}", "", "ALL");
 	}
 	return str;
 }
@@ -247,16 +553,7 @@ function ucase_tags(string) {
 	var markerloc = 0;
 
 	for ( tag in aMatches ) {
-		if ( Left(tag,3) EQ "{{~" ) {
-			//Capitalize everything but the replacement value for transformation tags
-			markerloc = findNoCase("==>", tag);
-			string = ReplaceNoCase(
-				string,
-				tag,
-				UCase( Left(tag,markerloc) ) & Right(tag,Len(tag)-markerloc),
-				"ALL"
-			);
-		} else {
+		if ( NOT Left(tag,4) EQ "{{{{" ) {
 			//Capitalize everything in every other tag
 			string = ReplaceNoCase(string, tag, UCase(tag),"ALL");
 		}
@@ -267,33 +564,46 @@ function ucase_tags(string) {
 </cfscript>
 
 <cfscript>
-if ( ThisTag.ExecutionMode EQ "End" AND Len(Trim(ThisTag.GeneratedContent)) ) {
+if ( isGoTime() ) {
 	//Define the data from the first use of the template (if more than one, suggested to use action of "set" or "head" to define a reference).
-	if ( NOT StructKeyExists(request["cf_mustache_templates"],Attributes.name) ) {
-		request["cf_mustache_templates"][Attributes.name] = {};
-		request["cf_mustache_templates"][Attributes.name]["Attributes"] = Attributes;
-		request["cf_mustache_templates"][Attributes.name]["Attributes"]["GeneratedContent"] = ThisTag.GeneratedContent;
-		request["cf_mustache_templates"][Attributes.name]["Attributes"]["id_template"] = "#Attributes.id#-template";
-		request["cf_mustache_templates"][Attributes.name]["Counter"] = 0;
+	if ( NOT StructKeyExists(request["cf_mustache"]["templates"],Attributes.name) ) {
+		request["cf_mustache"]["templates"][Attributes.name] = {};
+		request["cf_mustache"]["templates"][Attributes.name]["Attributes"] = Attributes;
+		request["cf_mustache"]["templates"][Attributes.name]["Attributes"]["GeneratedContent"] = ThisTag.GeneratedContent;
+		request["cf_mustache"]["templates"][Attributes.name]["Attributes"]["id_template"] = "#Attributes.id#-template";
+		request["cf_mustache"]["templates"][Attributes.name]["Counter"] = 0;
 	}
 	ThisTag.GeneratedContent = "";
 }
 //The reference attributes for this cf_mustache name
 sBaseAttributes = {};
-if ( StructKeyExists(request["cf_mustache_templates"],Attributes.name) ) {
-	sBaseAttributes = request["cf_mustache_templates"][Attributes.name]["Attributes"];
+if ( StructKeyExists(request["cf_mustache"]["templates"],Attributes.name) ) {
+	sBaseAttributes = request["cf_mustache"]["templates"][Attributes.name]["Attributes"];
 }
 aOutputs = [];
 ThisOutput = "";
 </cfscript>
 
-<cfif Attributes.action NEQ "set" AND isGoTime() AND  Attributes.script IS true>
+<cfif Attributes.action NEQ "set" AND isGoTime()>
+	<cfset Variables.sArguments = getArguments()>
+	<!---
+	<cfif Attributes.name CONTAINS "card">
+		<cfdump var="#Variables.sArguments#">
+		<cfabort>
+	</cfif>
+	--->
+</cfif>
+
+<cfif Attributes.action NEQ "set" AND isGoTime() AND Attributes.script IS true>
 	<!--- Output the head the first chance we get unless this is in action="set". Preferably using action="head". --->
-	<cfif NOT StructKeyExists(request,"cf_mustache_head")>
+	<cfif NOT StructKeyExists(request.cf_mustache,"head")>
 		<cfsavecontent variable="ThisOutput">
 		<script src="https://unpkg.com/mustache@latest"></script>
+		</cfsavecontent>
+		<cfset ArrayAppend(aOutputs,ThisOutput)>
+		<cfsavecontent variable="ThisOutput">
 		<script>
-		var cf_mustache = {};
+		cf_mustache = {};
 		//Make sure we can respond to window.onload without external dependencies or harming other JavaScript code.
 		cf_mustache.addWindowLoadEvent = function(functionName) {
 			if ( window.attachEvent ) {
@@ -310,43 +620,203 @@ ThisOutput = "";
 					window.onload = functionName;
 				}
 			}
-		}
-		cf_mustache.preprocess = function(str,data) {
-			var key = "";
-			var aMatches = [];
-			var regex_str_1 = '';
-			var regex_str_2 = '';
-			var regex_re = 0;
-			var str_matched = '';
-			var str_replace = '';
-			//If we have any transform markers, loop through the data keys to do the transformation
-			if ( str.indexOf('{{~') > -1 ) {
-				for ( key in data ) {
-					//alert(key);
-					//Can't replace non-string values
-					if ( typeof data[key] == 'string' ) {
-						regex_str_1 = '\{\{\~' + key.toUpperCase() + ':=:' + data[key].toUpperCase() + '==>';
-						regex_str_2 = '\}\}';
-						regex_re = new RegExp( regex_str_1 + '.*?' + regex_str_2, 'i' );
-						if ( false && regex_re.test(str) ) {
-							aMatches = str.match(regex_re);// + key.toUpperCase() + ':=:' + data[key].toUpperCase() + '==>.*?\}\}'
-							//alert(aMatches.length);
-							//Replace the matched value with the indicated string
-							for ( str_matched in aMatches ) {
-								alert(str_matched);
-								str_replace = str_matched;
-								str_replace.replace(regex_str_1,'');
-								str_replace.replace(regex_str_2,'');
-								//Perform the replacement
-								str.replace(str_matched,str_replace);
-							}
-						}
+		};
+		cf_mustache.getAttributes = function(str) {
+			var sResult = {};
+			if ( window.DOMParser ) {
+				parser = new DOMParser();
+				xmlDoc = parser.parseFromString(str, "text/xml");
+			}
+			else // Internet Explorer
+			{
+				xmlDoc = new ActiveXObject("Microsoft.XMLDOM");
+				xmlDoc.async = false;
+				xmlDoc.loadXML(str);
+			}
+			for ( var i=0; i < xmlDoc.getElementsByTagName('name')[0].attributes.length; i++ ) {
+				var attrib = xmlDoc.getElementsByTagName('name')[0].attributes[i];
+				sResult[attrib.name] = attrib.value;
+			}
+			return sResult;
+		};
+		cf_mustache.getTagData = function(str) {
+			var action = 'default';
+			str = str.replace(/^\{+/,'');
+			str = str.replace(/\}+$/,'');
+			aParts = str.split(' ');
+			str = str.replace(aParts[0],'name');
+			str = '<' + str + '/>';
+
+			switch(aParts[0]) {
+				case "~":
+					action = "transform";
+				break;
+				case "-&gt;":
+					action = "point";
+				break;
+				case "->":
+					action = "point";
+				break;
+			}
+
+			return {"action":action,"attributes":cf_mustache.getAttributes(str)};
+		};
+		cf_mustache.getURLParams = function() {
+			var match,
+				pl     = /\+/g,  // Regex for replacing addition symbol with a space
+				search = /([^&=]+)=?([^&]*)/g,
+				decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
+				query  = window.location.search.substring(1);
+
+			urlParams = {};
+			while (match = search.exec(query)) {
+				urlParams[decode(match[1]).toLowerCase()] = decode(match[2]);
+			}
+			return urlParams;
+		};
+		cf_mustache.makeLink = function(path,args) {
+			var result = path;
+			var querystring =  cf_mustache.queryStringFromJSON(args);
+
+			if ( querystring.length ) {
+				result = result + '?' + querystring;
+			}
+
+			return result;
+		};
+		cf_mustache.runPreTag = function(id,str,data) {
+			var sTag = cf_mustache.getTagData(str);
+			var methodName = 'runPreTag_' + sTag['action'];
+			var sArgs = sTag['attributes'];
+			sArgs['id'] = id;
+			sArgs['data'] = data;
+
+			return cf_mustache[methodName].call(null,sArgs);
+		};
+		cf_mustache.runPreTag_default = function(id,str,data) {
+			return '';
+		};
+		cf_mustache.runPreTag_point = function(id,str,data) {
+			var result = '';
+			var useOuterElement = (
+				typeof arguments[0]['element'] == 'string'
+				&&
+				arguments[0]['element'].length
+				&&
+				arguments[0]['element'] != 'a'
+			);
+			var className = '';
+			var sArgs = {};
+			var href = '';
+			var isActive = true;
+			var arg = "";
+			var idname = arguments[0]['id'];
+
+			//Convert args to object if provided
+			if (
+				typeof arguments[0]['args'] == 'string'
+				&&
+				arguments[0]['args'].length
+			) {
+				sArgs = cf_mustache.queryStringToJSON(arguments[0]['args']);
+			}
+			href = cf_mustache.self(sArgs);
+
+			if (
+				typeof arguments[0]['activeclass'] == 'string'
+				&&
+				arguments[0]['activeclass'].length
+			) {
+				for ( arg in sArgs ) {
+					if (
+						!(
+							(
+								typeof cf_mustache.sInstances[idname].sArgs[arg.toLowerCase()] == 'string'
+								&&
+								sArgs[arg].toLowerCase() == cf_mustache.sInstances[idname].sArgs[arg.toLowerCase()].toLowerCase()
+							)
+							||
+							!( typeof cf_mustache.sInstances[idname].sArgs[arg.toLowerCase()] == 'string' || sArgs[arg].length > 0 )
+						)
+					) {
+						isActive = false;
 					}
 				}
-				str.replace('\{\{\~.*?\}\}','');
+				if ( isActive ) {
+					className = arguments[0]['activeclass'];
+				}
+			}
+
+			if ( useOuterElement ) {
+				result = result + '<' + arguments[0]['element'];
+				if ( className.length ) {
+					result = result + ' class="' + className + '"';
+				}
+				result += '><a';
+			} else {
+				result += '<a';
+				if ( className.length > 0 ) {
+					result = result + ' class="' + className + '"';
+				}
+			}
+			result = result + ' href="' + href + '"';
+			result = result + ' data-mustacheaction="args" data-data="' + cf_mustache.queryStringFromJSON(sArgs) + '"';
+			result += '>';
+			result += arguments[0]['label'];
+			result += '</a>';
+			if ( useOuterElement ) {
+				result = result + '</' + arguments[0]['element'] + '>';
+			}
+
+			return result;
+		};
+		cf_mustache.runPreTag_transform = function(str,data) {
+			if (
+				typeof arguments[0]['key'] == 'string'
+				&&
+				typeof arguments[0]['value'] == 'string'
+				&&
+				typeof arguments[0]['output'] == 'string'
+				&&
+				typeof arguments[0]['data'][arguments[0]['key']] == 'string'
+				&&
+				arguments[0]['data'][arguments[0]['key']] == arguments[0]['value']
+
+			) {
+				return arguments[0]['output'];
+			} else {
+				return '';
+			}
+		};
+		cf_mustache.self = function(sArgs) {
+			var sURL = cf_mustache.sURLParams;
+			var arg = '';
+			for ( arg in sArgs ) {
+				sURL[arg.toLowerCase()] = sArgs[arg];
+			}
+
+			return cf_mustache.makeLink(window.location.pathname,sURL);
+		};
+		cf_mustache.preprocess = function(id,str,data) {
+			var regex_re = new RegExp('\{{4}.*?\}{4}', 'g' );
+			var str_matched = '';
+
+			if ( typeof id != 'string' ) {
+				id = id.getAttribute('id');
+			}
+
+			//If we have any preprocess markers, loop through and apply them
+			if ( str.indexOf('{{{{') > -1 ) {
+				str = str.replace(
+					regex_re,
+					function(str_matched) {
+				  		return cf_mustache.runPreTag(id,str_matched,data);
+					}
+				);
+				str.replace('\{{4}.*?\}{4}','');
 			}
 			return str;
-		}
+		};
 		cf_mustache.queryStringFromJSON = function(data) {
 			var result = '';
 			for ( var key in data ) {
@@ -358,7 +828,7 @@ ThisOutput = "";
 				}
 			}
 			return result;
-		}
+		};
 		//Ability to convert q querystring to JSON
 		cf_mustache.queryStringToJSON = function(qs) {
 			qs = qs || location.search.slice(1);
@@ -397,11 +867,11 @@ ThisOutput = "";
 				data = Object.assign(data, aData[i]);
 			};
 			return data;
-		}
+		};
 		//Load Mustache trigger events to the document
 		cf_mustache.loadMustacheTriggersDocument = function() {
 			cf_mustache.loadMustacheTriggers(document);
-		}
+		};
 		//Load mustache trigger events to any given object
 		cf_mustache.loadMustacheTriggers = function(object) {
 			aTriggers = object.querySelectorAll('[data-mustacheaction]');
@@ -455,15 +925,13 @@ ThisOutput = "";
 
 				});
 			}
-		}
-		//Load up the triggers
-		cf_mustache.addWindowLoadEvent(cf_mustache.loadMustacheTriggersDocument);
+		};
 		cf_mustache.htmlToElem = function(html) {
-		  let temp = document.createElement('template');
-		  html = html.trim(); // Never return a space text node as a result
-		  temp.innerHTML = html;
-		  return temp.content.firstChild;
-		}
+			let temp = document.createElement('template');
+			html = html.trim(); // Never return a space text node as a result
+			temp.innerHTML = html;
+			return temp.content.firstChild;
+	  	};
 		cf_mustache.add = function(type,elem,name,data) {
 			var aTypes = type.split('-');
 			var action = aTypes[0];
@@ -481,7 +949,7 @@ ThisOutput = "";
 			data = data || {};
 
 			//Add the counter to the data
-			data[sCounters[id]] = num;
+			data[cf_mustache.sCounters[id]] = num;
 
 			//Make sure that the id and data-template attributes are correct.
 			obj.setAttribute('data-template',id);
@@ -520,9 +988,10 @@ ThisOutput = "";
 				// code block
 			}
 
-		}
+		};
 		//Fetch the data from the URI and render it
 		cf_mustache.renderArgs = function(id,args) {
+			var arg = '';
 			//The elem argument should either be an object or we should get the object for that id.
 			if ( typeof id == "string" ) {
 				var obj = document.getElementById(id);
@@ -530,8 +999,21 @@ ThisOutput = "";
 				var obj = id;
 			}
 			var id_template = obj.getAttribute('data-template');
-			var uri = sURIs[id_template];
+			var uri = cf_mustache.sTemplates[id_template]['uri'];
+			var sArgs = {};
 			var request = new XMLHttpRequest();
+
+			//We need the args as a struct so we can add data to them.
+			if ( typeof args == 'string' ) {
+				args = cf_mustache.queryStringToJSON(args);
+			}
+
+			//Set arguments (needed both to get data and because other code compares against the current argument state).
+			for ( arg in args ) {
+				cf_mustache.sInstances[obj.getAttribute('id')].sArgs[arg] = args[arg];
+			}
+			sArgs = cf_mustache.sInstances[obj.getAttribute('id')].sArgs;//Just the local copy of the arguments.
+
 
 			request.open('POST', uri, true);
 			request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
@@ -540,6 +1022,7 @@ ThisOutput = "";
 				if (this.readyState === 4) {
 					if (this.status >= 200 && this.status < 400) {
 						// Success!
+						//console.log(this.responseText);
 						data = JSON.parse(this.responseText);
 
 						cf_mustache.renderData(id,data);
@@ -548,31 +1031,36 @@ ThisOutput = "";
 					}
 				}
 			};
-			if ( typeof args != 'string' ) {
-				args = cf_mustache.queryStringFromJSON(args);
-			}
-
-			request.send(args);
+			sArgs = cf_mustache.queryStringFromJSON(sArgs);
+			//console.log(sArgs);
+			request.send(sArgs);
 			request = null;
-		}
+		};
 		//Use the form to fetch the data from the uri and render it
 		cf_mustache.renderFormArgs = function(id,form) {
 			cf_mustache.renderArgs(id,cf_mustache.getFormData(form));
-		}
+		};
 		//Use the form to render the data
 		cf_mustache.renderFormData = function(id,form) {
 			cf_mustache.renderData(id,cf_mustache.getFormData(form));
-		}
+		};
 		//Just to make keys case-insensitive
 		cf_mustache.ucase_keys = function(data) {
 			for (var key in data) {
-				if ( key != key.toUpperCase() ) {
+				if ( typeof data[key] == 'string' ) {
+					//Simple replacement for strings
 					data[key.toUpperCase()] = data[key];
+				} else {
+					//Dive down replacement for non-strings
+					data[key.toUpperCase()] = cf_mustache.ucase_keys(data[key]);
+				}
+				//Ditch original key if case doesn't match.
+				if ( key !== key.toUpperCase() ) {
 					delete data[key];
 				}
 			}
 			return data;
-		}
+		};
 		//The base rendering method
 		cf_mustache.renderData = function(id,data) {
 			if ( typeof data == "string" ) {
@@ -582,6 +1070,7 @@ ThisOutput = "";
 					data = cf_mustache.queryStringToJSON(data);
 				}
 			}
+
 			//The id argument should either be an object or we should get the object for that id.
 			if ( typeof id == "string" ) {
 				var obj = document.getElementById(id);
@@ -590,24 +1079,46 @@ ThisOutput = "";
 			}
 
 			var id_template = obj.getAttribute('data-template');
-			var template = cf_mustache.preprocess(document.getElementById(id_template).innerHTML,data);
+			var template = cf_mustache.preprocess(obj.getAttribute('id'),document.getElementById(id_template).innerHTML,data);
 			var rendered = Mustache.render(template, cf_mustache.ucase_keys(data));
 			obj.innerHTML = rendered;
 			cf_mustache.loadMustacheTriggers(obj);//Make sure that triggers in the element still work.
-		}
-		sURIs = {};//A place to store URIs for each template
-		sCounters = {};
+		};
+		cf_mustache.sURLParams = cf_mustache.getURLParams();
+		cf_mustache.sTemplates = {};//A place to store URIs for each template
+		cf_mustache.sInstances = {};//A place to store instance data
+		cf_mustache.sCounters = {};
+		//Load up the triggers
+		cf_mustache.addWindowLoadEvent(cf_mustache.loadMustacheTriggersDocument);
 		</script>
 		</cfsavecontent>
-		<cfset ArrayAppend(aOutputs,ThisOutput)>
-		<cfset request.cf_mustache_head = {}>
+		<cfset ArrayAppend(aOutputs,compress(ThisOutput,"js"))>
+		<cfset request["cf_mustache"]["head"] = {}>
 	</cfif>
 	<!--- Store URIs for each template. --->
-	<cfif NOT StructKeyExists(request.cf_mustache_head,Attributes.name)>
-		<cfsavecontent variable="ThisOutput"><cfoutput><script id="#sBaseAttributes.id_template#" type="text/html">#Trim(ucase_tags(sBaseAttributes["GeneratedContent"]))#</script><script>sURIs['#sBaseAttributes.id_template#'] = '#sBaseAttributes.uri#<cfif Len(sBaseAttributes.method)>?method=#sBaseAttributes.method#</cfif>';sCounters['#sBaseAttributes.id_template#'] = '#Attributes.Counter#'</script></cfoutput></cfsavecontent>
-		<cfset ArrayAppend(aOutputs,ThisOutput)>
-		<cfset request.cf_mustache_head[Attributes.name] = true>
+	<cfif NOT StructKeyExists(request["cf_mustache"]["head"],Attributes.name)>
+		<cfsavecontent variable="ThisOutput">
+		<cfoutput>
+		<script id="#sBaseAttributes.id_template#" type="text/html">
+		#Trim(ucase_tags(sBaseAttributes["GeneratedContent"]))#
+		</script>
+		<script>
+		cf_mustache.sTemplates['#sBaseAttributes.id_template#'] = {
+			'uri':'#sBaseAttributes.uri#<cfif Len(sBaseAttributes.method)>?method=#sBaseAttributes.method#</cfif>'
+		};
+		cf_mustache.sCounters['#sBaseAttributes.id_template#'] = '#Attributes.Counter#'
+		</script></cfoutput></cfsavecontent>
+		<cfset ArrayAppend(aOutputs,compress(ThisOutput,"htm"))>
+		<cfset request["cf_mustache"]["head"][Attributes.name] = true>
 	</cfif>
+	<cfsavecontent variable="ThisOutput"><cfoutput>
+	<script>
+	cf_mustache.sInstances['#Attributes.id#'] = {
+		'sArgs':cf_mustache.queryStringToJSON('#AsQueryString(Variables.sArguments)#')
+	};
+	</script>
+	</cfoutput></cfsavecontent>
+	<cfset ArrayAppend(aOutputs,compress(ThisOutput,"htm"))>
 </cfif>
 
 <!--- Actually show the element, with data. --->
@@ -616,10 +1127,10 @@ ThisOutput = "";
 	oMustache = CreateObject("component","Mustache").init();
 	TemplateHTML = sBaseAttributes["GeneratedContent"];
 	TemplateID = sBaseAttributes["id_template"];
-	request["cf_mustache_templates"][Attributes.name]["Counter"]++;
+	request["cf_mustache"]["templates"][Attributes.name]["Counter"]++;
 	sData = getData();
 	//Added Counter to the data
-	sData[request["cf_mustache_templates"][Attributes.name]["Attributes"]["Counter"]] = request["cf_mustache_templates"][Attributes.name]["Counter"];
+	sData[request["cf_mustache"]["templates"][Attributes.name]["Attributes"]["Counter"]] = request["cf_mustache"]["templates"][Attributes.name]["Counter"];
 	TemplateHTML = preprocess(TemplateHTML,sData);
 	</cfscript>
 	<cfif Attributes.script>
