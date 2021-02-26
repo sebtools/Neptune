@@ -6,28 +6,37 @@
 </cfif>
 <!--- Find layout component --->
 <cfif NOT StructKeyExists(attributes,"layout")>
-	<cfif StructKeyExists(Caller,"layout") AND isObject(Caller.layout)>
-		<cfset attributes.layout = Caller.layout>
-	<cfelseif StructKeyExists(Caller,"This") AND isObject(Caller.This)>
-		<cfset attributes.layout = Caller.This>
-	<cfelseif StructKeyExists(request,"layout") AND isObject(Caller.layout)>
-		<cfset attributes.layout = request.layout>
+	<cfscript>
+	Me = Variables;
+	while ( StructKeyExists(Me,"Caller") AND NOT StructKeyExists(attributes,"layout")  ) {
+		Me = Me["Caller"];
+		if ( StructKeyExists(Me,"layout") AND isObject(Me["layout"]) ) {
+			Attributes.layout = Me["layout"];
+		} else if ( StructKeyExists(Me,"Attributes") AND StructKeyExists(Me["Attributes"],"layout") AND isObject(Me["Attributes"]["layout"]) ) {
+			Attributes.layout = Me["Attributes"]["layout"];
+		} else if ( StructKeyExists(Me,"This") AND StructKeyExists(Me["This"],"layout") AND isObject(Me["This"]["layout"]) ) {
+			Attributes.layout = Me["This"]["layout"];
+		} else if ( StructKeyExists(Me,"This") AND isObject(Me["This"]) ) {
+			Attributes.layout = Me["This"];
+		}
+	}
+	</cfscript>
+</cfif>
+<cfif NOT StructKeyExists(attributes,"layout")>
+	<cfif FileExists(ExpandPath("/layouts/Default.cfc"))>
+		<!--- If the Default layout is where it is expected, go ahead and create the layout object --->
+		<cfinvoke returnvariable="attributes.layout" component="layouts.Default" method="init">
+			<cfinvokeargument name="CGI" value="#CGI#">
+			<cfif StructKeyExists(Application,"Framework") AND StructKeyExists(Application.Framework,"Loader") AND isObject(Application.Framework.Loader)>
+				<cfinvokeargument name="Factory" value="#Application.Framework.Loader#">
+			</cfif>
+		</cfinvoke>
+		<cfset Caller.layout = attributes.layout>
+		<cfset request.layout = attributes.layout>
 	<cfelse>
-		<cfif FileExists(ExpandPath("/layouts/Default.cfc"))>
-			<!--- If the Default layout is where it is expected, go ahead and create the layout object --->
-			<cfinvoke returnvariable="attributes.layout" component="layouts.Default" method="init">
-				<cfinvokeargument name="CGI" value="#CGI#">
-				<cfif StructKeyExists(Application,"Framework") AND StructKeyExists(Application.Framework,"Loader") AND isObject(Application.Framework.Loader)>
-					<cfinvokeargument name="Factory" value="#Application.Framework.Loader#">
-				</cfif>
-			</cfinvoke>
-			<cfset Caller.layout = attributes.layout>
-			<cfset request.layout = attributes.layout>
-		<cfelse>
-			<!---<cfparam name="attributes.layout">--->
-			<!--- Throwing an error because it isn't sufficient for the variable to exists. It also must be an object --->
-			<cfthrow message="layout attribute is not defined" type="layout">
-		</cfif>
+		<!---<cfparam name="attributes.layout">--->
+		<!--- Throwing an error because it isn't sufficient for the variable to exists. It also must be an object --->
+		<cfthrow message="layout attribute is not defined" type="layout">
 	</cfif>
 </cfif>
 
@@ -48,32 +57,34 @@ if ( isGoTime() ) {
 		request["cf_show_tags"][Attributes.name] = 0;
 	}
 	request["cf_show_tags"][Attributes.name]++;
-	if ( StructKeyExists(Attributes,"data") ) {
-		Variables.sMustacheAtts = StructCopy(Attributes);
-	} else {
-		Variables.sDataAttributes["data"] = {};
-		for ( att in Attributes ) {
-			if ( ListLen(att,"_") GT 1 AND ListFirst(att,"_") EQ "data" ) {
-				Variables.sDataAttributes[ListRest(att,"_")] = Attributes[att];
-			}
-		}
-		if ( NOT StructCount(Variables.sDataAttributes["data"]) ) {
-			StructDelete(Variables.sDataAttributes,"data");
-
-			if ( StructKeyExists(Attributes.layout,"get_#attributes.name#") ) {
-
-			}
-		}
-	}
+	Variables.sMustacheAtts = StructCopy(Attributes);
 
 	//Name is reserved for cf_show
 	Variables.sMustacheAtts["name"] = Attributes["name"] & "_" & request["cf_show_tags"][Attributes.name];
 }
+if ( isGoTime() ) {
+	Variables.sArguments = {};
+	if ( StructKeyExists(Attributes,"args") AND isStruct(Attributes.args) ) {
+		Variables.sArguments = StructCopy(Attributes.args);
+	}
+	for ( attr in Attributes ) {
+		if ( ListLen(attr,"_") GT 1 AND ListFirst(attr,"_") EQ "arg" ) {
+			Variables.sArguments[ListRest(attr,'_')] = Attributes[attr];
+		}
+	}
+	Variables.sMustacheAtts["Component"] = Attributes.layout;
+	Variables.sMustacheAtts["Method"] = "get_#attributes.name#";
+	Variables.sMustacheAtts["args"] = Variables.sArguments;
+}
 </cfscript>
+<!---
 <cfif isGoTime() AND NOT StructKeyExists(Variables.sMustacheAtts,"data")>
 	<cfif StructKeyExists(Attributes.layout,"get_#attributes.name#")>
 		<cfinvoke returnvariable="Variables.sMustacheAtts.data" component="#Attributes.layout#" method="get_#attributes.name#">
+			<cfinvokeargument name="ArgumentCollection" value="#Variables.sArguments#">
+		</cfinvoke>
 	</cfif>
 </cfif>
+--->
 
-<cfif isGoTime()><cf_mustache attributeCollection="#Variables.sMustacheAtts#"><cfinvoke returnvariable="result" component="#attributes.layout#" method="show_#attributes.name#"><cfif StructKeyExists(Variables,"result")><cfoutput>#Variables.result#</cfoutput></cfif></cf_mustache></cfif>
+<cfif isGoTime()><cf_mustache attributeCollection="#Variables.sMustacheAtts#"><cfinvoke returnvariable="result" component="#attributes.layout#" method="show_#attributes.name#" argumentCollection="#Variables.sArguments#"><cfif StructKeyExists(Variables,"result")><cfoutput>#Variables.result#</cfoutput></cfif></cf_mustache></cfif>
