@@ -85,8 +85,15 @@ Use https://github.com/janl/mustache.js for JavaScript implementation.
 	//Get arguments from URL, if requested (lowest priority except defaults)
 	if ( Attributes["urlargs"] IS true ) {
 		for ( att in URL ) {
-			if ( ListLen(att,"_") GT 1 AND ListFirst(att,"_") EQ Attributes.id ) {
-				name = ListRest(att,"_");
+			//This is basically getting the rest of a underscore-delimited list, except that the id itself may have an underscore in it.
+			if (
+				ListLen(att,"_") GT 1
+				AND
+				Len(att) GT ( Len(Attributes.id) + 1)
+				AND
+				Left(att,Len(Attributes.id)+1) EQ "#Attributes.id#_"
+			) {
+				name = ReplaceNoCase(att,"#Attributes.id#_","");
 				if ( NOT StructKeyExists(sArgs,name) ) {
 					sArgs[name] = URL[att];
 				}
@@ -256,6 +263,11 @@ function getTagData(tag) {
 		<cfset result = "#result#?#Struct2QueryString(Arguments.Args)#">
 	</cfif>
 
+	<!--- Add anchor to links to go to div if it is in use. --->
+	<cfif Attributes.useDiv IS true>
+		<cfset result &= "###Attributes.id#">
+	</cfif>
+
 	<cfreturn result>
 </cffunction>
 
@@ -389,7 +401,8 @@ function QueryRowToStruct(query) {
 if ( NOT StructKeyExists(request,"cf_mustache") ) {
 	request["cf_mustache"] = {
 		"templates":{},
-		"instances":{}
+		"instances":{},
+		"external_files":{}
 	};
 }
 
@@ -417,7 +430,10 @@ sAttributes = {
 	args={},
 	defaultargs={},
 	urlargs=false,
-	compress=true
+	compress=true,
+	require_css="",
+	require_js="",
+	useDiv=false
 };
 
 //Set Attribute Defaults
@@ -449,6 +465,8 @@ if ( NOT Len(Attributes.urlargs) ) {
 if ( NOT StructKeyExists(Attributes,"urlprefix") ) {
 	if ( Attributes.urlargs IS true ) {
 		Attributes.urlprefix = Attributes.id;
+	} else if ( Attributes.urlargs IS false ) {
+		Attributes.urlprefix = "";
 	} else {
 		Attributes.urlprefix = Attributes.urlargs;
 	}
@@ -485,6 +503,10 @@ if ( isSimpleValue(Attributes.data) ) {
 	} else {
 		Attributes.data = QueryStringToStruct(Attributes.data);
 	}
+}
+
+if ( Attributes.script ) {
+	Attributes.useDiv = true;
 }
 
 //Operations to run at end of tag, if available. Otherwise run at the start.
@@ -586,12 +608,26 @@ ThisOutput = "";
 
 <cfif Attributes.action NEQ "set" AND isGoTime()>
 	<cfset Variables.sArguments = getArguments()>
-	<!---
-	<cfif Attributes.name CONTAINS "card">
-		<cfdump var="#Variables.sArguments#">
-		<cfabort>
+
+	<!--- Include required files that haven't already been put on the page --->
+	<cfif Len(Attributes.require_css)>
+		<cfloop list="#Attributes.require_css#" index="path">
+			<cfif NOT StructKeyExists(request.cf_mustache.external_files,path)>
+				<cfsavecontent variable="ThisOutput"><cfoutput><link rel="stylesheet" href="#path#"></cfoutput></cfsavecontent>
+				<cfset ArrayAppend(aOutputs,ThisOutput)>
+				<cfset request.cf_mustache.external_files[path] = now()>
+			</cfif>
+		</cfloop>
 	</cfif>
-	--->
+	<cfif Len(Attributes.require_js)>
+		<cfloop list="#Attributes.require_js#" index="path">
+			<cfif NOT StructKeyExists(request.cf_mustache.external_files,path)>
+				<cfsavecontent variable="ThisOutput"><cfoutput><script src="#path#"></script></cfoutput></cfsavecontent>
+				<cfset ArrayAppend(aOutputs,ThisOutput)>
+				<cfset request.cf_mustache.external_files[path] = now()>
+			</cfif>
+		</cfloop>
+	</cfif>
 </cfif>
 
 <cfif Attributes.action NEQ "set" AND isGoTime() AND Attributes.script IS true>
@@ -752,9 +788,9 @@ ThisOutput = "";
 				if ( className.length ) {
 					result = result + ' class="' + className + '"';
 				}
-				result += '><a';
+				result += '><' + 'a';//Weird formatting on code here just to keep from messing up the colorizing in my editor
 			} else {
-				result += '<a';
+				result += '<' + 'a';//Weird formatting on code here just to keep from messing up the colorizing in my editor
 				if ( className.length > 0 ) {
 					result = result + ' class="' + className + '"';
 				}
@@ -997,6 +1033,7 @@ ThisOutput = "";
 				var obj = document.getElementById(id);
 			} else {
 				var obj = id;
+				id = obj.getAttribute('id');
 			}
 			var id_template = obj.getAttribute('data-template');
 			var uri = cf_mustache.sTemplates[id_template]['uri'];
@@ -1009,11 +1046,13 @@ ThisOutput = "";
 			}
 
 			//Set arguments (needed both to get data and because other code compares against the current argument state).
-			for ( arg in args ) {
-				cf_mustache.sInstances[obj.getAttribute('id')].sArgs[arg] = args[arg];
+			if ( typeof cf_mustache.sInstances[id] == 'undefined' ) {
+				cf_mustache.sInstances[id] = {'sArgs':{}};
 			}
-			sArgs = cf_mustache.sInstances[obj.getAttribute('id')].sArgs;//Just the local copy of the arguments.
-
+			for ( arg in args ) {
+				cf_mustache.sInstances[id].sArgs[arg] = args[arg];
+			}
+			sArgs = cf_mustache.sInstances[id].sArgs;//Just the local copy of the arguments.
 
 			request.open('POST', uri, true);
 			request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
@@ -1133,7 +1172,7 @@ ThisOutput = "";
 	sData[request["cf_mustache"]["templates"][Attributes.name]["Attributes"]["Counter"]] = request["cf_mustache"]["templates"][Attributes.name]["Counter"];
 	TemplateHTML = preprocess(TemplateHTML,sData);
 	</cfscript>
-	<cfif Attributes.script>
+	<cfif Attributes.useDiv>
 		<cfsavecontent variable="ThisOutput"><cfoutput><div id="#Attributes.id#" class="cc-mustache cc-mustache-#TemplateID#"<cfif Attributes.script IS true> data-template="#TemplateID#"</cfif>>#oMustache.render(template=TemplateHTML,context=sData)#</div></cfoutput></cfsavecontent>
 	<cfelse>
 		<cfsavecontent variable="ThisOutput"><cfoutput>#oMustache.render(template=TemplateHTML,context=sData)#</cfoutput></cfsavecontent>
