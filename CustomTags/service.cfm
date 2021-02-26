@@ -16,7 +16,7 @@
 		while ( StructKeyExists(MyCaller,"Caller") AND NOT StructKeyExists(Variables,Attributes.service)  ) {
 			MyCaller = MyCaller["Caller"];
 			if ( StructKeyExists(MyCaller,Attributes.service) AND isObject(MyCaller[Attributes.service]) ) {
-				Variables.Slack = MyCaller[Attributes.service];
+				Variables.result = MyCaller[Attributes.service];
 			}
 		}
 		</cfscript>
