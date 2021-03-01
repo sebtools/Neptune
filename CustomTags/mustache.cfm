@@ -144,6 +144,31 @@ Use https://github.com/janl/mustache.js for JavaScript implementation.
 	<cfreturn sLocal.SCompData>
 </cffunction>
 
+<cffunction name="getTemplateFromURI" access="private" returntype="string">
+	<cfargument name="uri" type="string" required="true">
+
+	<cfscript>
+	var FullURL = "";
+	var sHTTP = 0;
+
+	FullURL = Arguments.uri;
+	if ( NOT ( REFindNoCase("(http(s)?:)?//", FullURL) ) ) {
+		if ( Left(FullURL,1) NEQ "/" ) {
+			FullURL = "/#FullURL#";
+		}
+		FullURL = "#CGI.SERVER_NAME##FullURL#";
+		if ( CGI.HTTPS EQ "on" ) {
+			FullURL = "https:/" & "/#FullURL#";
+		} else {
+			FullURL = "http:/" & "/#FullURL#";
+		}
+	}
+	</cfscript>
+	<cfhttp url="#FullURL#" result="sHTTP">
+
+	<cfreturn sHTTP["FileContent"]>
+</cffunction>
+
 <cfscript>
 function getTagData(tag) {
 	var sResult = {};
@@ -1231,6 +1256,11 @@ ThisOutput = "";
 <!--- Actually show the element, with data. --->
 <cfif Attributes.action EQ "show" AND isGoTime()>
 	<cfscript>
+	//Use template_uri for GeneratedContent if it is provided and no GeneratedContent
+	if ( Len(sBaseAttributes.template_uri) AND NOT Len(Trim(sBaseAttributes["GeneratedContent"])) ) {
+		sBaseAttributes["GeneratedContent"] = getTemplateFromURI(sBaseAttributes.template_uri);
+	}
+
 	oMustache = CreateObject("component","Mustache").init();
 	TemplateHTML = sBaseAttributes["GeneratedContent"];
 	TemplateID = sBaseAttributes["id_template"];
