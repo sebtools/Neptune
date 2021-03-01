@@ -140,6 +140,7 @@
 			AND		main.TABLE_NAME = <cf_DMParam value="#Arguments.tablename#" cfsqltype="CF_SQL_VARCHAR">
 			AND		trashcan.TABLE_NAME = <cf_DMParam value="#trashtable#" cfsqltype="CF_SQL_VARCHAR">
 			AND		main.CHARACTER_MAXIMUM_LENGTH > trashcan.CHARACTER_MAXIMUM_LENGTH
+			AND		trashcan.CHARACTER_MAXIMUM_LENGTH > 0
 	</cf_DMQuery>
 
 	<cfoutput query="qColumns">
