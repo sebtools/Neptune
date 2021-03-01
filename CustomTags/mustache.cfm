@@ -424,6 +424,7 @@ sAttributes = {
 	data={},
 	id="",
 	uri=Reverse("cfc." & ListRest(Reverse(CGI.SCRIPT_NAME),".")),
+	template_uri="",
 	returnvariable="",
 	script=false,
 	counter="num",
@@ -1025,6 +1026,32 @@ ThisOutput = "";
 			}
 
 		};
+		cf_mustache.post = function(uri,args,returncall) {
+			var request = new XMLHttpRequest();
+			if ( typeof args != 'string' ) {
+				args = cf_mustache.queryStringFromJSON(args);
+			}
+
+			request.open('POST', uri, true);
+			request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+
+			request.onreadystatechange = function() {
+				if (this.readyState === 4) {
+					if (this.status >= 200 && this.status < 400) {
+						// Success!
+						//console.log('RESPONSE: ' + this.responseText);
+						returncall(this.responseText);
+					} else {
+						// Error :(
+					}
+				}
+			};
+
+			//console.log('POST uri: ' + uri);
+			//console.log('POST args: ' + args);
+			request.send(args);
+			request = null;
+		};
 		//Fetch the data from the URI and render it
 		cf_mustache.renderArgs = function(id,args) {
 			var arg = '';
@@ -1054,26 +1081,12 @@ ThisOutput = "";
 			}
 			sArgs = cf_mustache.sInstances[id].sArgs;//Just the local copy of the arguments.
 
-			request.open('POST', uri, true);
-			request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+			cf_mustache.post(
+				uri,
+				cf_mustache.sInstances[id].sArgs,
+				function(data) { cf_mustache.renderData(id,JSON.parse(data)) }
+			);
 
-			request.onreadystatechange = function() {
-				if (this.readyState === 4) {
-					if (this.status >= 200 && this.status < 400) {
-						// Success!
-						//console.log(this.responseText);
-						data = JSON.parse(this.responseText);
-
-						cf_mustache.renderData(id,data);
-					} else {
-						// Error :(
-					}
-				}
-			};
-			sArgs = cf_mustache.queryStringFromJSON(sArgs);
-			//console.log(sArgs);
-			request.send(sArgs);
-			request = null;
 		};
 		//Use the form to fetch the data from the uri and render it
 		cf_mustache.renderFormArgs = function(id,form) {
@@ -1100,6 +1113,23 @@ ThisOutput = "";
 			}
 			return data;
 		};
+		//Uppercase Mustache tags to make them case insensitive in the same way that ColdFusion is.
+		cf_mustache.ucase_tags = function(str) {
+			var regex_re = new RegExp('\{{2}.*?\}{2}', 'g' );
+			var str_matched = '';
+
+			str = str.replace(
+				regex_re,
+				function(str_matched) {
+					if ( str_matched.indexOf('{{{{') == 0 ) {
+						return str_matched;
+					} else {
+						return str_matched.toUpperCase();
+					}
+				}
+			);
+			return str;
+		};
 		//The base rendering method
 		cf_mustache.renderData = function(id,data) {
 			if ( typeof data == "string" ) {
@@ -1117,10 +1147,46 @@ ThisOutput = "";
 				var obj = id;
 			}
 
+			cf_mustache.renderDataA(obj,data);
+		};
+		cf_mustache.renderDataA = function(obj,data) {
+			var id = obj.getAttribute('id');
 			var id_template = obj.getAttribute('data-template');
-			var template = cf_mustache.preprocess(obj.getAttribute('id'),document.getElementById(id_template).innerHTML,data);
-			var rendered = Mustache.render(template, cf_mustache.ucase_keys(data));
-			obj.innerHTML = rendered;
+			//Make sure that a key exists for the template
+			if ( typeof cf_mustache.sTemplates[id_template] == 'undefined' ) {
+				cf_mustache.sTemplates[id_template] = {};
+			}
+			if ( typeof cf_mustache.sTemplates[id_template]['html'] != 'string' ) {
+				cf_mustache.sTemplates[id_template]['html'] = '';
+			}
+			if ( typeof cf_mustache.sTemplates[id_template]['html'] == 'string' && cf_mustache.sTemplates[id_template]['html'].length ) {
+				//If the string already exists, just use that.
+				cf_mustache.renderDataB(obj,id_template,data);
+			} else if ( !!document.getElementById(id_template) ) {
+				//If the object exists in the DOM, use that.
+				cf_mustache.sTemplates[id_template]['html'] = document.getElementById(id_template).innerHTML;
+				cf_mustache.renderDataB(obj,id_template,data);
+			} else if ( typeof cf_mustache.sTemplates[id_template]['template_uri'] == 'string' ) {
+				//If we have a template_uri, get the HTML from that.
+				cf_mustache.post(
+					cf_mustache.sTemplates[id_template]['template_uri'],
+					cf_mustache.sInstances[id].sArgs,
+					function(str) {
+						cf_mustache.processTemplateHTML(id_template,str);
+						cf_mustache.renderDataB(obj,id_template,data)
+					}
+				);
+			} else {
+				//Otherwise log the failure.
+				console.log('No template found for ' + obj.getAttribute('id') + '.');
+			}
+		};
+		cf_mustache.processTemplateHTML = function(id_template,html) {
+			cf_mustache.sTemplates[id_template]['html'] = cf_mustache.ucase_tags(html);
+		};
+		cf_mustache.renderDataB = function(obj,id_template,data) {
+			var template = cf_mustache.preprocess(obj.getAttribute('id'),cf_mustache.sTemplates[id_template]['html'],data);
+			obj.innerHTML = Mustache.render(template, cf_mustache.ucase_keys(data));
 			cf_mustache.loadMustacheTriggers(obj);//Make sure that triggers in the element still work.
 		};
 		cf_mustache.sURLParams = cf_mustache.getURLParams();
@@ -1136,14 +1202,16 @@ ThisOutput = "";
 	</cfif>
 	<!--- Store URIs for each template. --->
 	<cfif NOT StructKeyExists(request["cf_mustache"]["head"],Attributes.name)>
-		<cfsavecontent variable="ThisOutput">
-		<cfoutput>
-		<script id="#sBaseAttributes.id_template#" type="text/html">
-		#Trim(ucase_tags(sBaseAttributes["GeneratedContent"]))#
-		</script>
+		<cfsavecontent variable="ThisOutput"><cfoutput>
+		<cfif NOT Len(sBaseAttributes.template_uri)>
+			<script id="#sBaseAttributes.id_template#" type="text/html">
+			#Trim(ucase_tags(sBaseAttributes["GeneratedContent"]))#
+			</script>
+		</cfif>
 		<script>
 		cf_mustache.sTemplates['#sBaseAttributes.id_template#'] = {
-			'uri':'#sBaseAttributes.uri#<cfif Len(sBaseAttributes.method)>?method=#sBaseAttributes.method#</cfif>'
+			'uri':'#sBaseAttributes.uri#<cfif Len(sBaseAttributes.method)>?method=#sBaseAttributes.method#</cfif>'<cfif Len(sBaseAttributes.template_uri)>,
+			'template_uri':'#sBaseAttributes.template_uri#'</cfif>
 		};
 		cf_mustache.sCounters['#sBaseAttributes.id_template#'] = '#Attributes.Counter#'
 		</script></cfoutput></cfsavecontent>
