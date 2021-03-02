@@ -58,7 +58,7 @@ Use https://github.com/janl/mustache.js for JavaScript implementation.
 			case "htm":
 			break;
 			case "js":
-				result	= ReReplaceNoCase(result,"\*((.|\n)(?!/))+\*","","ALL");
+				//result	= ReReplaceNoCase(result,"\*((.|\n)(?!/))+\*","","ALL");
 				result	= ReReplaceNoCase(result,"//.*?(\r\n)","","ALL");
 			break;
 		}
@@ -1051,6 +1051,23 @@ ThisOutput = "";
 			}
 
 		};
+		cf_mustache.processResponse = function(str) {
+			//Handle ColdFusion errors
+			if ( str.indexOf('cfdump') > 0 ) {
+				var re_begin = 'Message(.*?)<\/td>(.*?)<td>';
+				var re_end = '<\/td>';
+				var regex_msg = new RegExp(re_begin + '(.*?)' + re_end, 'g' );
+				var str_msg = str.replace(/(?:\r\n|\r|\n)/g, '');
+				str_msg = str_msg.match(regex_msg)[0];
+				str_msg = str_msg.replace(RegExp(re_begin),'');
+				str_msg = str_msg.replace(RegExp(re_end + '$'),'');
+				str_msg = str_msg.trim();
+
+				console.log('cf_mustache ERROR: ' + str_msg);
+				str = '{"Message":"' + str_msg + '"}';
+			}
+			return str;
+		};
 		cf_mustache.post = function(uri,args,returncall) {
 			var request = new XMLHttpRequest();
 			if ( typeof args != 'string' ) {
@@ -1064,16 +1081,14 @@ ThisOutput = "";
 				if (this.readyState === 4) {
 					if (this.status >= 200 && this.status < 400) {
 						// Success!
-						//console.log('RESPONSE: ' + this.responseText);
-						returncall(this.responseText);
+						returncall(cf_mustache.processResponse(this.responseText));
 					} else {
 						// Error :(
 					}
 				}
 			};
 
-			//console.log('POST uri: ' + uri);
-			//console.log('POST args: ' + args);
+			console.log('cf_mustache.post() to url: ' + uri + ' with args: ' + args);
 			request.send(args);
 			request = null;
 		};
