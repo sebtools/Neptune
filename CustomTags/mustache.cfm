@@ -299,11 +299,15 @@ function getTagData(tag) {
 <cffunction name="self" access="public" returntype="string" output="no">
 
 	<cfset var sURL = QueryStringToStruct(CGI.QUERY_STRING)>
+	<cfset var sArgs = StructCopy(Arguments)>
 
 	<cfscript>
 	var arg = "";
-	for ( arg in Arguments ) {
-		sUrl["#Attributes.urlprefix##arg#"] = Arguments[arg];
+
+	StructAppend(sArgs,Variables.sArguments,false);
+
+	for ( arg in sArgs ) {
+		sUrl["#Attributes.urlprefix##arg#"] = sArgs[arg];
 	}
 	</cfscript>
 
@@ -343,6 +347,7 @@ function getTagData(tag) {
 	var href = self(ArgumentCollection=sArgs);
 	var isActive = true;
 	var arg = "";
+
 	if ( Len(Arguments.activeclass) ) {
 		for ( arg in sArgs ) {
 			if (
@@ -634,25 +639,31 @@ ThisOutput = "";
 
 <cfif Attributes.action NEQ "set" AND isGoTime()>
 	<cfset Variables.sArguments = getArguments()>
-
-	<!--- Include required files that haven't already been put on the page --->
-	<cfif Len(Attributes.require_css)>
-		<cfloop list="#Attributes.require_css#" index="path">
-			<cfif NOT StructKeyExists(request.cf_mustache.external_files,path)>
-				<cfsavecontent variable="ThisOutput"><cfoutput><link rel="stylesheet" href="#path#"></cfoutput></cfsavecontent>
-				<cfset ArrayAppend(aOutputs,ThisOutput)>
-				<cfset request.cf_mustache.external_files[path] = now()>
+	<!--- Require files. Use cf_require, if available --->
+	<cfif Len(Attributes.require_css) OR Len(Attributes.require_js)>
+		<cfif FileExists('#GetDirectoryFromPath(GetCurrentTemplatePath())#require.cfm')>
+			<cf_require files_css="#Attributes.require_css#" files_js="#Attributes.require_js#">
+		<cfelse>
+			<!--- Include required files that haven't already been put on the page --->
+			<cfif Len(Attributes.require_css)>
+				<cfloop list="#Attributes.require_css#" index="path">
+					<cfif NOT StructKeyExists(request.cf_mustache.external_files,path)>
+						<cfsavecontent variable="ThisOutput"><cfoutput><link rel="stylesheet" href="#path#"></cfoutput></cfsavecontent>
+						<cfset ArrayAppend(aOutputs,ThisOutput)>
+						<cfset request.cf_mustache.external_files[path] = now()>
+					</cfif>
+				</cfloop>
 			</cfif>
-		</cfloop>
-	</cfif>
-	<cfif Len(Attributes.require_js)>
-		<cfloop list="#Attributes.require_js#" index="path">
-			<cfif NOT StructKeyExists(request.cf_mustache.external_files,path)>
-				<cfsavecontent variable="ThisOutput"><cfoutput><script src="#path#"></script></cfoutput></cfsavecontent>
-				<cfset ArrayAppend(aOutputs,ThisOutput)>
-				<cfset request.cf_mustache.external_files[path] = now()>
+			<cfif Len(Attributes.require_js)>
+				<cfloop list="#Attributes.require_js#" index="path">
+					<cfif NOT StructKeyExists(request.cf_mustache.external_files,path)>
+						<cfsavecontent variable="ThisOutput"><cfoutput><script src="#path#"></script></cfoutput></cfsavecontent>
+						<cfset ArrayAppend(aOutputs,ThisOutput)>
+						<cfset request.cf_mustache.external_files[path] = now()>
+					</cfif>
+				</cfloop>
 			</cfif>
-		</cfloop>
+		</cfif>
 	</cfif>
 </cfif>
 
