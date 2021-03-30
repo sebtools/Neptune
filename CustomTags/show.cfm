@@ -1,3 +1,4 @@
+<cfset Variables.TagAttributes = "name,layout,args">
 <cfparam name="attributes.name" default="">
 
 <!--- *** GET LAYOUT *** --->
@@ -70,11 +71,13 @@ if ( isGoTime() ) {
 	for ( attr in Attributes ) {
 		if ( ListLen(attr,"_") GT 1 AND ListFirst(attr,"_") EQ "arg" ) {
 			Variables.sArguments[ListRest(attr,'_')] = Attributes[attr];
+		} else if ( NOT ListFindNoCase(Variables.TagAttributes,attr) ) {
+			Variables.sArguments[attr] = Attributes[attr];
 		}
 	}
 	Variables.sMustacheAtts["Component"] = Attributes.layout;
 	Variables.sMustacheAtts["Method"] = "get_#attributes.name#";
-	Variables.sMustacheAtts["args"] = Variables.sArguments;
+	//Variables.sMustacheAtts["args"] = Variables.sArguments;
 }
 </cfscript>
 <!---
