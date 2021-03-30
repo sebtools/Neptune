@@ -149,6 +149,16 @@
 	</cfloop>
 
 </cfif>
+<cfscript>
+if ( isExcel ) {
+	sMetaTags = {};
+	attributes.files_css = "";
+	attributes.head_css = "";
+	attributes.files_js = "";
+	attributes.head_js = "";
+	attributes.head = "";
+}
+</cfscript>
 </cfsilent>
 <!--- A hack for PDF support --->
 <cfif ThisTag.ExecutionMode EQ "End" AND StructKeyExists(Attributes,"use") AND Attributes.use EQ "PDF">
@@ -159,18 +169,17 @@
 </cfdocument>
 <cfabort>
 </cfif>
-<cfswitch expression="#ThisTag.ExecutionMode#"><cfcase value="start"><cfoutput>
-#layout.head(title=attributes.title)#<cfif NOT isExcel><cfif StructCount(sMetaTags)><cfloop collection="#sMetaTags#" item="tag">
-	<meta name="#LCase(tag)#" content="#HTMLEditFormat(sMetaTags[tag])#" /></cfloop></cfif><cfif Len(attributes.files_css)><cfloop index="path" list="#attributes.files_css#">
-	<link rel="stylesheet" href="#path#" type="text/css" media="all"/></cfloop></cfif><cfif Len(attributes.head_css)>
-	<style type="text/css">#attributes.head_css#</style></cfif><cfif Len(attributes.files_js)><cfloop index="path" list="#attributes.files_js#">
-	<script type="text/javascript" src="#path#"></script></cfloop></cfif><cfif Len(attributes.head_js)>
-	<script type="text/javascript">#attributes.head_js#</script></cfif><cfif Len(attributes.head)>
-	#attributes.head#</cfif></cfif>#layout.body()#<cfif Len(TitleOutput)>
+<cfswitch expression="#ThisTag.ExecutionMode#">
+<cfcase value="start">
+<cfoutput>#layout.head(title=attributes.title)#
+<cf_require meta_tags="#sMetaTags#" files_css="#attributes.files_css#" files_js="#attributes.files_js#" head_css="#attributes.head_css#" head_js="#attributes.head_js#"><cfoutput>#attributes.head#</cfoutput></cf_require>
+#layout.body()#<cfif Len(TitleOutput)>
 #TitleOutput#</cfif><cfif Len(attributes.HTMLAbove) AND NOT StructKeyExists(request,"CF_Template_HTMLAbove")>
 
 #attributes.HTMLAbove#<cfset request.CF_Template_HTMLAbove = true></cfif>
 <cf_sebMessage>
 </cfoutput></cfcase><cfcase value="end"><cfoutput><cfif Len(attributes.HTMLBelow) AND NOT StructKeyExists(request,"CF_Template_HTMLBelow")>#attributes.HTMLBelow#<cfset request.CF_Template_HTMLBelow = true>
 </cfif>
-#layout.end()#</cfoutput></cfcase></cfswitch>
+#layout.end()#</cfoutput>
+</cfcase>
+</cfswitch>
