@@ -381,8 +381,12 @@
 		</cfif>
 	</cfif>
 
-	<cfif isObject(arguments.Component) AND NOT StructKeyExists(variables.sComponents,arguments.ComponentPath)>
-		<cfset variables.sComponents[arguments.ComponentPath] = arguments.Component>
+	<!---
+	Set the component even if we have it to ensure that we are always using the newest version of a component.
+	The component could have gotten loaded while loading missing tasks, using an old copy.
+	--->
+	<cfif isObject(arguments.Component)>
+		<cfset setComponent(arguments.ComponentPath,arguments.Component)>
 	</cfif>
 
 	<cfset variables.tasks[ExpandedTaskName] = arguments>
