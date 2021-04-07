@@ -642,7 +642,8 @@ ThisOutput = "";
 	<!--- Require files. Use cf_require, if available --->
 	<cfif Len(Attributes.require_css) OR Len(Attributes.require_js)>
 		<cfif FileExists('#GetDirectoryFromPath(GetCurrentTemplatePath())#require.cfm')>
-			<cf_require files_css="#Attributes.require_css#" files_js="#Attributes.require_js#">
+			<cfsavecontent variable="ThisOutput"><cf_require files_css="#Attributes.require_css#" files_js="#Attributes.require_js#"></cfsavecontent>
+			<cfset ArrayAppend(aOutputs,ThisOutput)>
 		<cfelse>
 			<!--- Include required files that haven't already been put on the page --->
 			<cfif Len(Attributes.require_css)>
