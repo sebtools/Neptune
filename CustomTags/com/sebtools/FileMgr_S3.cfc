@@ -63,6 +63,13 @@
 
 </cffunction>
 
+<cffunction name="setFilePermissions" access="public" returntype="void" output="no">
+	<cfargument name="destination" type="string" required="yes">
+
+	<cfset StoreSetACL("#Arguments.destination#",getStandardS3Permissions())>
+
+</cffunction>
+
 <cffunction name="uploadFile" access="public" returntype="any" output="no">
 	<cfargument name="FieldName" type="string" required="yes">
 	<cfargument name="Folder" type="string" required="no">
@@ -120,7 +127,7 @@
 	<cfset StoreSetMetadata("#serverPath#",convertS3MetaFromCFFILE(CFFILE))>
 
 	<!--- set permissions on the newly created file on S3 --->
-	<cfset StoreSetACL("#serverPath#",getStandardS3Permissions())>
+	<cfset setFilePermissions(serverPath)>
 
 	<cfset CFFILE.ServerDirectory = getDirectoryFromPath(serverPath)>
 	<cfset CFFILE.ServerFile = getFileFromPath(serverPath)>
@@ -151,7 +158,7 @@
 	<cfset var destination = Super.writeFile(ArgumentCollection=Arguments)>
 
 	<!--- set permissions on the newly created file on S3 --->
-	<cfset StoreSetACL("#destination#",getStandardS3Permissions())>
+	<cfset setFilePermissions(destination)>
 
 	<cfreturn destination>
 </cffunction>
@@ -164,7 +171,7 @@
 	<cfset var destination = Super.writeBinaryFile(ArgumentCollection=Arguments)>
 
 	<!--- set permissions on the newly created file on S3 --->
-	<cfset StoreSetACL("#destination#",getStandardS3Permissions())>
+	<cfset setFilePermissions(destination)>
 
 	<cfreturn destination>
 </cffunction>
