@@ -236,7 +236,7 @@
 
 	<cfloop query="qFiles">
 		<cfif arguments.overwrite OR NOT FileExists("#dir_to##name#")>
-			<cffile action="copy" source="#dir_from##name#" destination="#dir_to#">
+			<cffile action="copy" source="#dir_from##name#" destination="#dir_to##name#">
 			<cfset notifyEvent(
 				"copyFiles:file",
 				StructFromArgs(source="#dir_from##name#",destination="#dir_to#")
@@ -301,6 +301,7 @@
 	<cfset var qFiles = 0>
 	<cfset var cols = "attributes,datelastmodified,mode,name,size,type,directory">
 	<cfset var sDirectoryAttributes = {name="qFiles",directory="#arguments.directory#",type="file"}>
+	<cfset var replacer = ReplaceNoCase(Arguments.directory, Variables.UploadPath, "", "ONE")>
 
 	<cfif Right(arguments.directory,1) NEQ delim>
 		<cfset arguments.directory = "#arguments.directory##delim#">
@@ -351,7 +352,7 @@
 		<cfset QuerySetCell(arguments.dirInfo,"attributes",attributes)>
 		<cfset QuerySetCell(arguments.dirInfo,"datelastmodified",datelastmodified)>
 		<cfset QuerySetCell(arguments.dirInfo,"mode",mode)>
-		<cfset QuerySetCell(arguments.dirInfo,"name",name)>
+		<cfset QuerySetCell(arguments.dirInfo,"name",ReplaceNoCase(name,replacer,"","ONE"))>
 		<cfset QuerySetCell(arguments.dirInfo,"size",size)>
 		<cfset QuerySetCell(arguments.dirInfo,"type",type)>
 		<cfset QuerySetCell(arguments.dirInfo,"directory",arguments.directory)>
