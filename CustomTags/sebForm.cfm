@@ -1767,7 +1767,7 @@ if ( isDefined("ThisTag.subforms") ) {
 				<cfset EmailFieldsOutput = "">
 				<cfloop index="thisField" from="1" to="#ArrayLen(arrFields)#" step="1"><cfset thisName = arrFields[thisField].fieldname>
 					<cfscript>
-					if ( arrFields[thisField].type eq "file" AND Len(sForm[thisName]) ) {
+					if ( arrFields[thisField].type eq "file" AND StructKeyExists(sForm,thisName) AND Len(sForm[thisName]) ) {
 						Attachments = ListAppend(Attachments, "#arrFields[thisField].destination##sForm[thisName]#");
 					} else {
 						if ( StructKeyExists(attributes.config["EmailFields"], arrFields[thisField].type) ) {
