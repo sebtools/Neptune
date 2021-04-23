@@ -165,6 +165,10 @@
 	<cfset var sFields = StructNew()>
 	<cfset var sData = {}>
 
+	<cfif NOT ArrayLen(aSheets)>
+		<cfreturn false>
+	</cfif>
+
 	<cfset StructDeleteKeys(sArgs,"component,method,ExcelFile,RequiredColumns,CatchErrTypes")>
 
 	<cfif NOT StructKeyExists(arguments,"RequiredColumns")>
@@ -320,9 +324,7 @@
 	</cfcatch>
 	</cftry>
 
-	<cfif ArrayLen(aSheets)>
-		<cfreturn aSheets>
-	</cfif>
+	<cfreturn aSheets>
 </cffunction>
 
 <cffunction name="getNamedQuery" access="public" returntype="query" output="false" hint="I return a query that uses the header row of the spreadsheet for the column names in the query.">
