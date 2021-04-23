@@ -391,21 +391,21 @@
 	}
 
 	if (structKeyExists(arguments,"subject") and len(trim(arguments.subject))) {
-		sParams['Message.Subject.Data'] = trim(arguments.subject);
+		sParams['Message.Subject.Data'] = urlEncodedFormat(trim(arguments.subject));
 		if(structKeyExists(arguments,"subject_charset") and len(trim(arguments.subject_charset))){
 			sParams['Message.Subject.Charset'] = trim(arguments.subject_charset);
 		}
 	}
 
 	if (structKeyExists(arguments,"text") and len(trim(arguments.text))) {
-		sParams['Message.Body.Text.Data'] = trim(arguments.text);
+		sParams['Message.Body.Text.Data'] = urlEncodedFormat(trim(arguments.text));
 		if (structKeyExists(arguments,"text_charset") and len(trim(arguments.text_charset))){
 			sParams['Message.Body.Text.Charset'] = trim(arguments.text_charset);
 		}
 	}
 
 	if (structKeyExists(arguments,"html") and len(trim(arguments.html))) {
-		sParams['Message.Body.Html.Data'] = trim(arguments.html);
+		sParams['Message.Body.Html.Data'] = urlEncodedFormat(trim(arguments.html));
 		if (structKeyExists(arguments,"html_charset") and len(trim(arguments.html_charset))){
 			sParams['Message.Body.Html.Charset'] = trim(arguments.html_charset);
 		}
