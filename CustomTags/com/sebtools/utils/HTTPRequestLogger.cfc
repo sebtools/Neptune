@@ -35,6 +35,15 @@
 	<cfset var begin = 0>
 	<cfset var end = 0>
 
+	<cfset setUpRequestVars()>
+
+	<!--- Don't sent external HTTP requests when testing. --->
+	<cfif request["HTTPRequest"]["isTesting"]>
+		<cfreturn {
+			"FileContent":"Testing: No request sent."
+		}>
+	</cfif>
+
 	<cfif StructKeyExists(Arguments.Attribs,"result") AND isSimpleValue(Arguments.Attribs["result"]) AND Len(Trim(Arguments.Attribs["result"]))>
 		<cfset resultkey = Arguments.Attribs["result"]>
 	</cfif>
@@ -128,6 +137,25 @@
 	</cfif>
 
 	<cfreturn sLog>
+</cffunction>
+
+<cffunction name="setTestingPage" access="public" returntype="void" output="no" hint="I indicate if the Current ColdFusion request is for testing.">
+	<cfargument name="isTesting" type="boolean" default="true">
+
+	<cfset setUpRequestVars()>
+
+	<cfset request["HTTPRequest"]["isTesting"] = Arguments.isTesting>
+</cffunction>
+
+<cffunction name="setUpRequestVars" access="private" returntype="void" output="no">
+	<cfscript>
+	if (  NOT StructKeyExists(request,"HTTPRequest") ) {
+		request["HTTPRequest"] = {};
+	}
+	if (  NOT StructKeyExists(request["HTTPRequest"],"isTesting") ) {
+		request["HTTPRequest"]["isTesting"] = false;
+	}
+	</cfscript>
 </cffunction>
 
 <cffunction name="LogTableXML" access="public" returntype="string" output="no">
