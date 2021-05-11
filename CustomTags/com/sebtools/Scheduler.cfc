@@ -160,7 +160,7 @@
 	<cfif NOT ( StructKeyExists(Variables,"DateLastRunTasks") AND DateDiff("h",Variables.DateLastRunTasks,now()) LTE 3 )>
 		<!--- Otherwise, raise the alerm and call the method to keep things running. --->
 		<cf_scaledAlert><cfoutput>
-		Scheduler runTasks hasn't run since <cfif isDate(Variables.DateLastRunTasks)>#DateFormat(Variables.DateLastRunTasks,'mmm d yyy')# at #TimeFormat(Variables.DateLastRunTasks,'hh:mm:ss tt')#<cfelse>it was loaded</cfif>.
+		Scheduler (#CGI.SERVER_NAME#) runTasks hasn't run since <cfif isDate(Variables.DateLastRunTasks)>#DateFormat(Variables.DateLastRunTasks,'mmm d yyy')# at #TimeFormat(Variables.DateLastRunTasks,'hh:mm:ss tt')#<cfelse>it was loaded</cfif>.
 		Running now...
 		</cfoutput></cf_scaledAlert>
 		<cfset runTasks()>
