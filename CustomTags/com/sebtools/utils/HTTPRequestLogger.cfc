@@ -38,6 +38,7 @@
 	<cfset setUpRequestVars()>
 
 	<!--- Don't sent external HTTP requests when testing. --->
+	<cfdump var="#request.HTTPRequest#"><cfabort>
 	<cfif request["HTTPRequest"]["isTesting"]>
 		<cfreturn {
 			"FileContent":"Testing: No request sent."
