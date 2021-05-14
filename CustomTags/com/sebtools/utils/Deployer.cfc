@@ -47,6 +47,21 @@
 	<cfreturn This>
 </cffunction>
 
+<cffunction name="require" access="public" returntype="void" output="no">
+	<cfargument name="Component" type="any" required="yes">
+	<cfargument name="MethodName" type="string" required="yes">
+
+	<cfset var sComponent = getMetaData(Arguments.Component)>
+
+	<cfset deploy(
+		Name = "#sComponent.FullName#.#Arguments.MethodName#()",
+		ComponentPath = "#sComponent.FullName#",
+		Component = "#Arguments.Component#",
+		MethodName = "#Arguments.MethodName#"
+	)>
+
+</cffunction>
+
 <cffunction name="runDeployment" access="public" returntype="any" output="no">
 
 	<cfset var TimeMarkBegin = 0>
