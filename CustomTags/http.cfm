@@ -110,13 +110,17 @@
 
 	<cfset sArgs = StructCopy(Attributes)>
 	<cfset begin = getTickCount()>
-	<cfhttp attributeCollection="#Attributes#">
-		<cfif StructKeyExists(ThisTag,"aParams")>
-			<cfloop index="ii" from="1" to="#ArrayLen(ThisTag.aParams)#">
-				<cfhttpparam attributeCollection="#ThisTag.aParams[ii]#">
-			</cfloop>
-		</cfif>
-	</cfhttp>
+	<cfif StructKeyExists(request,"HTTPRequest") AND StructKeyExists(request["HTTPRequest"],"isTesting") AND request["HTTPRequest"]["isTesting"] IS true>
+		<cfset Variables[Variables.result] = {"FileContent":"Testing: No request sent."}>
+	<cfelse>
+		<cfhttp attributeCollection="#Attributes#">
+			<cfif StructKeyExists(ThisTag,"aParams")>
+				<cfloop index="ii" from="1" to="#ArrayLen(ThisTag.aParams)#">
+					<cfhttpparam attributeCollection="#ThisTag.aParams[ii]#">
+				</cfloop>
+			</cfif>
+		</cfhttp>
+	</cfif>
 	<cfset end = getTickCount()>
 	<cfif Attributes.log>
 		<cf_service name="DataMgr">
