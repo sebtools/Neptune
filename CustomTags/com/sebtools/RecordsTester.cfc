@@ -4,6 +4,7 @@
 <cfcomponent displayname="Records" extends="mxunit.framework.TestCase">
 
 <cfinclude template="udfs.cfm">
+<cfset request["isTesting"] = true>
 
 <cffunction name="init" access="public" returntype="any" output="no">
 
