@@ -89,6 +89,17 @@
 
 </cffunction>
 
+<cffunction name="addRelationListValue" access="public" returntype="void" output="no" hint="I add a value to a list field if it doesn't already exist. Can be used with any list value (not just relation fields).">
+	<cfargument name="pkvalue" type="string" required="yes">
+	<cfargument name="field" type="string" required="yes">
+	<cfargument name="value" type="string" required="yes">
+
+	<cfset Arguments.tablename = getTableVariable()>
+
+	<cfset Variables.DataMgr.addRelationListValue(ArgumentCollection=Arguments)>
+
+</cffunction>
+
 <cffunction name="getFieldList" access="public" returntype="string" output="no">
 	<cfreturn variables.sMetaData[variables.table].fieldlist>
 </cffunction>
