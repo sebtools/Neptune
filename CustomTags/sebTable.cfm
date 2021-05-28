@@ -378,29 +378,33 @@ request.cftags[TagName].attributes = attributes;
 <cfset SubmitCol = 0>
 <cfset SubmitID = 0>
 <cfset SortList = "">
-<cfif StructKeyExists(Form,"sebTable") AND Form.sebTable eq sfx AND StructKeyExists(Form,"sebTableRows") AND isNumeric(Form.sebTableRows)>
+<cfset aSubmitRows = getSubmittedRowsArray()><!--- This holds the primary key values for each row in the submitted form. --->
+<cfif StructKeyExists(Form,"sebTable") AND Form.sebTable eq sfx AND ArrayLen(aSubmitRows)>
+
+	<cfset NumRows = ArrayLen(aSubmitRows)>
+
 	<cfif StructKeyExists(Form,"SortList") AND Len(Form.SortList)>
 		<cfset SortList = Form["SortList"]>
 	</cfif>
 	<cfif StructKeyExists(Form,"sebTableSubmit")>
 		<cfset isSubmittingTable = true>
 	</cfif>
-	<cfloop index="i" from="1" to="#Form.sebTableRows#" step="1">
+	<cfloop index="i" from="1" to="#NumRows#" step="1">
 		<!--- Handle submission --->
 		<cfif StructKeyExists(Form,"submit_#i#")>
-			<cfloop index="j" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
-				<cfif Form["submit_#i#"] eq ThisTag.qColumns[j].label>
+			<cfloop index="jj" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
+				<cfif Form["submit_#i#"] eq ThisTag.qColumns[jj].label>
 					<cfset isSubmittingColumn = true>
-					<cfset SubmitCol = j>
-					<cfset SubmitID = Form["sebTable_#i#"]>
+					<cfset SubmitCol = jj>
+					<cfset SubmitID = aSubmitRows[i]>
 				</cfif>
 			</cfloop>
 		</cfif>
 		<!--- Handle deletion --->
-		<cfif StructKeyExists(Form,"delete_#i#") AND StructKeyExists(Form,"sebTable_#i#")>
+		<cfif StructKeyExists(Form,"delete_#i#") AND ArrayLen(aSubmitRows) GTE i>
 			<cfset isSubmittingTable = false>
 			<cfset isDeleting = true>
-			<cfset DeleteID = Form["sebTable_#i#"]>
+			<cfset DeleteID = aSubmitRows[i]>
 		</cfif>
 		<cfscript>
 		//Handle sort
@@ -420,22 +424,22 @@ request.cftags[TagName].attributes = attributes;
 			isSorting = true;
 			if ( Form["Sort_#i#"] eq "+" ) {
 				if ( ListLen(SortList) ) {
-					SortList = ListInsertAt(SortList, ListLen(SortList), Form["sebTable_#i#"]);
+					SortList = ListInsertAt(SortList, ListLen(SortList), aSubmitRows[i]);
 				} else {
-					SortList = ListAppend(SortList,Form["sebTable_#i#"]);
+					SortList = ListAppend(SortList,aSubmitRows[i]);
 				}
 			} else {
-				if ( i lt Form.sebTableRows ) {
-					SortList = ListAppend(SortList,Form["sebTable_#(i+1)#"]);
-					SortList = ListAppend(SortList,Form["sebTable_#i#"]);
+				if ( i lt NumRows ) {
+					SortList = ListAppend(SortList,aSubmitRows[i+1]);
+					SortList = ListAppend(SortList,aSubmitRows[i]);
 					i = i + 1;
 				} else {
-					SortList = ListAppend(SortList,Form["sebTable_#i#"]);
+					SortList = ListAppend(SortList,aSubmitRows[i]);
 				}
 			}
 		} else {
-			if ( StructKeyExists(Form,"sebTable_#i#") AND NOT ListFindNoCase(SortList,Form["sebTable_#i#"]) ) {
-				SortList = ListAppend(SortList,Form["sebTable_#i#"]);
+			if ( ArrayLen(aSubmitRows) GTE i AND NOT ListFindNoCase(SortList,aSubmitRows[i]) ) {
+				SortList = ListAppend(SortList,aSubmitRows[i]);
 			}
 		}
 		</cfscript>
@@ -510,19 +514,17 @@ request.cftags[TagName].attributes = attributes;
 <cfif isSubmittingTable AND StructKeyExists(attributes,"CFC_Component") AND StructKeyExists(attributes,"CFC_Method")>
 	<!---<cfdump var="#ThisTag.qColumns#"><cfabort>--->
 	<cfset aRows = ArrayNew(1)>
-	<cfloop index="ii" from="1" to="#Form.SebTableRows#" step="1">
+	<cfloop index="ii" from="1" to="#NumRows#" step="1">
 		<cfset aRows[ii] = StructNew()>
 		<cfif StructKeyExists(attributes,"CFC_MethodArgs") AND isStruct(attributes.CFC_MethodArgs)>
 			<cfset StructAppend(aRows[ii],attributes.CFC_MethodArgs)>
 		</cfif>
-		<cfif StructKeyExists(Form,"SebTable_#ii#")>
-			<cfset aRows[ii][attributes.pkfield] = Form["SebTable_#ii#"]>
-		</cfif>
+		<cfset aRows[ii][attributes.pkfield] = aSubmitRows[ii]>
 	</cfloop>
 	<cfloop collection="#Form#" item="arg">
 		<cfset num = ListLast(arg,"_")>
 		<cfset name = Reverse(ListRest(Reverse(arg),"_"))>
-		<cfif isNumeric(num) AND num GTE 1 AND num LTE Form.SebTableRows AND Len(name) AND name NEQ "SebTable">
+		<cfif isNumeric(num) AND num GTE 1 AND num LTE NumRows AND Len(name) AND name NEQ "SebTable">
 			<cfset aRows[num][name] = Form[arg]>
 		</cfif>
 	</cfloop>
@@ -796,6 +798,13 @@ request.cftags[TagName].attributes = attributes;
 	</cfquery>
 </cfif>
 
+<!--- Create data array --->
+<cfset aShowRows = []>
+<cfoutput query="qTableData">
+	<cfset pkid = qTableData[attributes.pkfield][CurrentRow]>
+	<cfset ArrayAppend(aShowRows,pkid)>
+</cfoutput>
+
 <!--- Check for individual row updates --->
 <cfif isSubmittingTable AND StructKeyExists(attributes,"CFC_Component") AND StructKeyExists(attributes,"CFC_RowMethod")>
 	<cfset hasUpdatedRow = false>
@@ -809,7 +818,7 @@ request.cftags[TagName].attributes = attributes;
 		(if data has changed since submit, some updates may not take
 			- better than huge performance hit or messed up data)
 		--->
-		<cfif StructKeyExists(Form,"sebTable_#CurrentRow#") AND Form["sebTable_#CurrentRow#"] EQ pkid>
+		<cfif ArrayLen(aSubmitRows) GTE CurrentRow AND aSubmitRows[CurrentRow] EQ pkid>
 			<cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
 				<!--- Check each column that is both submitted in a named form field and has a database field --->
 				<cfif
@@ -925,7 +934,6 @@ if ( Len(attributes.ClassEven) ) {
 if ( Len(attributes.ClassOver) ) {
 	TrOver = TrOver & ' onmouseover="seb#attributes.Table##sfx#On(this);" onmouseout="seb#sfx##attributes.Table##sfx#Off(this);"';
 }
-arrHiddenPK = ArrayNew(1);
 </cfscript>
 
 </cfsilent><cfoutput><cfsavecontent variable="htmlhead"><style type="text/css"><cfif attributes.isRowClickable>.sebTable tr {cursor:pointer;}; .sebTable td, </cfif>.sebTable th {text-align:left;}<cfif hasSorter>
@@ -990,7 +998,7 @@ $(document).ready(function() {
 <div id="sebTable#sfx#" class="seb sebTable"<cfif Len(attributes.width)> style="width:#attributes.width#<cfif isNumeric(attributes.width)>px</cfif>;"</cfif>><cfif Len(ErrMessage)>
 <p class="sebMessage sebError">#ErrMessage#</p></cfif><cfif Len(Message)>
 <p class="sebMessage">#Message#</p></cfif><cfif attributes.isForm>
-<form action="#CGI.SCRIPT_NAME#?#XmlFormat(attributes.QUERY_STRING)#" method="post" name="frmSebTable#sfx#" id="frmSebTable#sfx#"><input type="hidden" name="sebTable" value="#sfx#"/></cfif>
+<form action="#CGI.SCRIPT_NAME#?#XmlFormat(attributes.QUERY_STRING)#" method="post" name="frmSebTable#sfx#" id="frmSebTable#sfx#"><input type="hidden" name="sebTable" value="#sfx#"/></cfif><input type="hidden" name="sebTableRowData" value="#URLEncodedFormat(SerializeJSON(aShowRows))#"/>
 	<cfif attributes.showHeader><p class="sebTableCount"><cfif EndRow>(#url["sebstartrow#sfx#"]# - #EndRow#) of </cfif>#qTableData.RecordCount# record<cfif numRecords neq 1>s</cfif></p></cfif>
 	<cfif attributes.showHeader><p class="sebHeader"><cfif Len(attributes.label)><strong>#attributes.label# #attributes.labelSuffix#</strong></cfif><cfif attributes.isAddable> [<a href="#attributes.editpage#">Add New #attributes.label#</a>]</cfif></p></cfif>
 	<cfif Len(RolodexField) AND useRolodex>
@@ -1018,7 +1026,7 @@ $(document).ready(function() {
 	<th><cfif Len(ThisTag.qColumns[i].header)><cfif hasSorter OR attributes.isExcel>#ThisTag.qColumns[i].header#<cfelse><a href="#varThisPage#sebrolodex#sfx#=#url['sebrolodex#sfx#']#&amp;sebsort#sfx#=#URLEncodedFormat(ThisTag.qColumns[i].label)#<cfif (url['sebsort#sfx#'] eq ThisTag.qColumns[i].label) AND (url['sebsortorder#sfx#'] neq 'DESC')>&amp;sebsortorder#sfx#=desc</cfif>##sebTable#sfx#" title="Sort by #ThisTag.qColumns[i].label#"<cfif (url["sebsort#sfx#"] eq ThisTag.qColumns[i].label)> class="sort #LCase(url['sebsortorder#sfx#'])#"</cfif>>#ThisTag.qColumns[i].header#</a></cfif><cfelse>&nbsp;</cfif></th></cfloop><!---<cfif attributes.isEditable>
 	<th class="sebTable-editlink">&nbsp;</th></cfif>---><!---<cfif attributes.isDeletable>
 	<th class="sebTable-deletelink">&nbsp;</th></cfif>--->
-</tr><cfloop query="qTableData" startrow="#url['sebstartrow#sfx#']#" endrow="#EndRow#"><cfset editLinkShowed = false><cfset deleteShowed = false><cfif CurrentRow MOD 2><cfset rowClass = ClassOdd><cfelse><cfset rowClass = ClassEven></cfif><cfset pkid = qTableData[attributes.pkfield][CurrentRow]><cfset arrHiddenPK[CurrentRow] = false>
+</tr><cfloop query="qTableData" startrow="#url['sebstartrow#sfx#']#" endrow="#EndRow#"><cfset editLinkShowed = false><cfset deleteShowed = false><cfif CurrentRow MOD 2><cfset rowClass = ClassOdd><cfelse><cfset rowClass = ClassEven></cfif><cfset pkid = qTableData[attributes.pkfield][CurrentRow]>
 <tr id="row#attributes.Table##CurrentRow#" class="#rowclass#"#TrOver#><cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
 	<cfscript>
 	if ( Len(ThisTag.qColumns[i].dbfield) ) {
@@ -1067,11 +1075,6 @@ $(document).ready(function() {
 		thisDisplay = ThisTag.qColumns[i].noshowalt;
 	}
 
-	if ( hasInputs AND NOT arrHiddenPK[CurrentRow] ) {//ThisTag.qColumns[i].isInput AND NOT arrHiddenPK[CurrentRow]
-		thisDisplayHidden = '<input type="hidden" name="sebTable_#CurrentRow#" class="sebcolval" id="sebTable#CurrentRow#" value="#pkid#"/>';
-		thisDisplay = thisDisplay & thisDisplayHidden;
-		arrHiddenPK[CurrentRow] = true;
-	}
 	if ( (ThisTag.qColumns[i].DataType neq "icon") AND NOT Len(thisName) ) {
 		thisName = thisValue;
 		if ( attributes.xhtml ) {
@@ -1091,7 +1094,7 @@ $(document).ready(function() {
 	<td class="sebTable-editlink">&nbsp;<a href="#varEditPage##URLEncodedFormat(pkid)#">edit</a>&nbsp;</td></cfif>---><!---<cfif attributes.isDeletable AND NOT deleteShowed>
 	<td class="sebTable-deletelink">&nbsp;<a href="##" onclick="javascript:sebDeleteIt('#pkid#','#JSStringFormat(XmlFormat(thisName))#');">delete</a>&nbsp;</td></cfif>--->
 </tr><cfset thisName = ""></cfloop>
-</table><cfif hasSorter><input type="hidden" name="SebTableSortList" id="sebTable#sfx#-sortlist" value=""/></cfif><cfif hasInputs><input type="hidden" name="sebTableRows" id="sebTableRows" value="#qTableData.RecordCount#"/></cfif><cfif attributes.isForm><cfif requiresSubmit>
+</table><cfif hasSorter><input type="hidden" name="SebTableSortList" id="sebTable#sfx#-sortlist" value=""/></cfif><cfif attributes.isForm><cfif requiresSubmit>
 <p><input name="sebTableSubmit" id="sebTable#sfx#-submit" type="hidden" value="#attributes.tableSubmitValue#"/><input type="submit" value="#attributes.tableSubmitValue#"/></p>
 </cfif>
 </cfif>
