@@ -91,6 +91,7 @@ if ( isGoTime() ) {
 
 	if ( Len(Trim(ThisTag.GeneratedContent)) ) {
 		addText(Trim(ThisTag.GeneratedContent));
+		ThisTag.GeneratedContent = "";
 	}
 
 	for ( entry in Variables.aOutputs ) {
