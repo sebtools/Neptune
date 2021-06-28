@@ -9,7 +9,6 @@
 <cfparam name="Attributes.meta_tags" default="#{}#">
 
 <cfscript>
-Variables.aOutputs = [];
 Variables.output = "";
 
 Variables.sMetaTags = Attributes.meta_tags;
@@ -32,7 +31,7 @@ function addFile(path,type) {
 	}
 }
 function addOutput(text) {
-	ArrayAppend(Variables.aOutputs,Arguments.text);
+	ArrayAppend(request["cf_require"]["aOutputs"],Arguments.text);
 }
 function addText(text) {
 	var hashed = Hash(text);
@@ -47,7 +46,8 @@ if ( NOT StructKeyExists(request,"cf_require") ) {
 	request["cf_require"] = {
 		"files":{},
 		"textblocks":{},
-		"title":""
+		"title":"",
+		"aOutputs":[]
 	};
 }
 
@@ -94,7 +94,7 @@ if ( isGoTime() ) {
 		ThisTag.GeneratedContent = "";
 	}
 
-	for ( entry in Variables.aOutputs ) {
+	for ( entry in request["cf_require"]["aOutputs"] ) {
 		Variables.output &= entry;
 	}
 
