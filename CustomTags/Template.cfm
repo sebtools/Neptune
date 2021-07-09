@@ -172,7 +172,7 @@ if ( isExcel ) {
 <cfswitch expression="#ThisTag.ExecutionMode#">
 <cfcase value="start">
 <cfoutput>#layout.head(title=attributes.title)#
-<cf_require meta_tags="#sMetaTags#" files_css="#attributes.files_css#" files_js="#attributes.files_js#" head_css="#attributes.head_css#" head_js="#attributes.head_js#"><cfoutput>#attributes.head#</cfoutput></cf_require>
+<cf_require meta_tags="#sMetaTags#" files_css="#attributes.files_css#" files_js="#attributes.files_js#" head_css="#attributes.head_css#" head_js="#attributes.head_js#" display="true"><cfoutput>#attributes.head#</cfoutput></cf_require>
 #layout.body()#<cfif Len(TitleOutput)>
 #TitleOutput#</cfif><cfif Len(attributes.HTMLAbove) AND NOT StructKeyExists(request,"CF_Template_HTMLAbove")>
 

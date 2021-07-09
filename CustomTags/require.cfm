@@ -7,6 +7,7 @@
 <cfparam name="Attributes.head_css" default="">
 <cfparam name="Attributes.head_js" default="">
 <cfparam name="Attributes.meta_tags" default="#{}#">
+<cfparam name="Attributes.display" default="false">
 
 <cfscript>
 Variables.output = "";
@@ -100,4 +101,4 @@ if ( isGoTime() ) {
 
 }
 </cfscript>
-</cfsilent><cfif isGoTime()><cfoutput>#Variables.output#</cfoutput></cfif>
+</cfsilent><cfif isGoTime() AND Attributes.display EQ true><cfoutput>#Variables.output#</cfoutput><cfset request["cf_require"]["aOutputs"] = []></cfif>
