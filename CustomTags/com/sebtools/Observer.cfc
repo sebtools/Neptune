@@ -5,6 +5,8 @@
 
 	<!--- Here is where event listeners will be stored.  --->
 	<cfset Variables.sEvents = StructNew()>
+	<cfset Variables.aDelayeds = []>
+	<cfset Variables.sDelayeds = {}>
 
 	<!--- Default the number of times a particular event can be announced in the same request. --->
 	<cfset Variables.RecursionLimit = 15>
@@ -70,12 +72,7 @@
 		<cfif ArrLen>
 			<cfloop index="ii" from="1" to="#ArrLen#">
 				<cfset begin = getTickCount()>
-				<cfinvoke
-					component="#Variables.sEvents[EventName][ii].Listener#"
-					method="#Variables.sEvents[EventName][ii].ListenerMethod#"
-					argumentcollection="#Arguments.Args#"
-				>
-				</cfinvoke>
+				<cfset callListener(Variables.sEvents[EventName][ii],Arguments.Args)>
 				<cfset end = getTickCount()>
 				<!--- Observer should know about its own announcements. --->
 				<cfif NOT StructKeyExists(request,"Observer_announcingevent")>
@@ -104,6 +101,40 @@
 	</cfif>
 
 	<cfset request.ObserverEventStack[Arguments.EventName] = request.ObserverEventStack[Arguments.EventName] - 1>
+
+</cffunction>
+
+<cffunction name="callListener" access="public" returntype="any" output="no" hint="I call the method for a listener.">
+	<cfargument name="sListener" type="struct" required="true">
+	<cfargument name="Args" type="struct" required="false">
+
+	<cfset var ListenerHash = "">
+
+	<cfif sListener.delay>
+		<cfset ListenerHash = makeListenerCallHash(ArgumentCollection=Arguments)>
+		<cfif NOT StructKeyExists(Variables.sDelayeds,ListenerHash)>
+			<cfset Variables.sDelayeds[ListenerHash] = now()>
+			<cfset ArrayAppend(
+				Variables.aDelayeds,
+				Arguments
+			)>
+		</cfif>
+	<cfelse>
+		<cfset callListenerNow(ArgumentCollection=Arguments)>
+	</cfif>
+
+</cffunction>
+
+<cffunction name="callListenerNow" access="public" returntype="any" output="no" hint="I call the method for a listener.">
+	<cfargument name="sListener" type="struct" required="true">
+	<cfargument name="Args" type="struct" required="false">
+
+	<cfinvoke
+		component="#sListener.Listener#"
+		method="#sListener.ListenerMethod#"
+		argumentcollection="#Arguments.Args#"
+	>
+	</cfinvoke>
 
 </cffunction>
 
@@ -156,6 +187,7 @@
 	<cfargument name="ListenerName" type="string" required="true" hint="A name for the listening component.">
 	<cfargument name="ListenerMethod" type="string" default="listen" hint="The method to call on the component when the event occurs.">
 	<cfargument name="EventName" type="string" default="update" hint="The name of the event to which this listener should respond.">
+	<cfargument name="delay" type="boolean" default="false" hint="Indicate if the listener method call should be delayed until the runDelays method is called at the end of the request.">
 
 	<cfset unregisterListener(ArgumentCollection=Arguments)>
 
@@ -172,12 +204,27 @@
 	<cfargument name="ListenerName" type="string" required="true" hint="A name for the listening component.">
 	<cfargument name="ListenerMethod" type="string" default="listen" hint="The method to call on the component when the event occurs.">
 	<cfargument name="EventNames" type="string" required="true" hint="A list of events to which this listener should respond.">
+	<cfargument name="delay" type="boolean" default="false" hint="Indicate if the listener method call should be delayed until the runDelays method is called at the end of the request.">
 
 	<cfset var event = "">
 
 	<cfloop list="#Arguments.EventNames#" index="event">
 		<cfset registerListener(Listener=Listener,ListenerName=ListenerName,ListenerMethod=ListenerMethod,EventName=event)>
 	</cfloop>
+
+</cffunction>
+
+<cffunction name="runDelays" access="public" returntype="void" output="no" hint="I run any delayed listener method calls.">
+
+	<cfset var aRuns = Variables.aDelayeds>
+	<cfset var ii = 0>
+
+	<cfloop index="ii" from="1" to="#ArrayLen(aRuns)#">
+		<cfset callListenerNow(ArgumentCollection=aRuns[ii])>
+	</cfloop>
+
+	<cfset Variables.aDelayeds = []>
+	<cfset Variables.sDelayeds = {}>
 
 </cffunction>
 
@@ -232,6 +279,33 @@
 	</cfif>
 
 	<cfreturn This>
+</cffunction>
+
+<cffunction name="makeListenerCallHash" access="private" returntype="string" output="no">
+	<cfargument name="sListener" type="struct" required="true">
+	<cfargument name="Args" type="struct" required="false">
+
+	<cfset var result = Arguments.sListener.ListenerName & "." & Arguments.sListener.ListenerMethod & "." & Arguments.sListener.EventName>
+	<cfset var sCanonicalArgs = {}>
+	<cfset var key = "">
+
+	<cfscript>
+	if ( StructKeyExists(Arguments,"Args") AND StructCount(Arguments.Args) ) {
+		for ( key in Arguments.Args ) {
+			//We don't want to deal with null args
+			if ( StructKeyExists(Arguments.Args,key) ) {
+				sCanonicalArgs[key] = Arguments.Args[key];
+			}
+		}
+		if ( StructCount(sCanonicalArgs) ) {
+			result = result & "." & SerializeJSON(sCanonicalArgs);
+		}
+	}
+
+	result = Hash(LCase(result));
+	</cfscript>
+
+	<cfreturn result>
 </cffunction>
 
 </cfcomponent>
