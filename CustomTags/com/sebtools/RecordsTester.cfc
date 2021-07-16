@@ -5,6 +5,8 @@
 
 <cfinclude template="udfs.cfm">
 <cfset request["isTesting"] = true>
+<cfset Variables.sObserverChecks = {}>
+<cfset Variables.sObserverEvents = {}>
 
 <cffunction name="init" access="public" returntype="any" output="no">
 
@@ -838,6 +840,93 @@ function isListInList(l1,l2) {
 	</cfif>
 
 	<cfreturn Arguments>
+</cffunction>
+
+<!--- *** Observer Tests *** --->
+
+<cffunction name="assertAnnounced" access="public" returntype="void" output="no" hint="I assert that the given listener was called.">
+	<cfargument name="UUID" type="string" required="true">
+	<cfargument name="message" type="string" default="">
+
+	<cfset listened(Arguments.UUID)>
+
+	<cfif NOT ArrayLen(Variables.sObserverEvents[UUID])>
+		<cfset fail(Arguments.message)>
+	</cfif>
+
+</cffunction>
+
+<cffunction name="assertNotAnnounced" access="public" returntype="void" output="no" hint="I assert that the given listener was called.">
+	<cfargument name="UUID" type="string" required="true">
+	<cfargument name="message" type="string" default="">
+
+	<cfset listened(Arguments.UUID)>
+
+	<cfif ArrayLen(Variables.sObserverEvents[UUID])>
+		<cfset fail(Arguments.message)>
+	</cfif>
+
+</cffunction>
+
+<cffunction name="listen" access="public" returntype="string" output="no" hint="I make sure that the listener is listening for the given event.">
+	<cfargument name="EventName" type="string" required="true">
+	<cfargument name="Args" type="struct" required="false">
+
+	<cfset var UUID = createUUID()>
+
+	<cfset Variables.sObserverChecks[UUID] = Arguments>
+	<cfset Variables.sObserverEvents[UUID] = []>
+
+	<cf_service name="Observer">
+
+	<cfset Variables.Observer.registerListener(
+		Listener=This,
+		ListenerName=UUID,
+		ListenerMethod="listen_callback",
+		EventName=Arguments.EventName
+	)>
+
+	<cfreturn UUID>
+</cffunction>
+
+<cffunction name="listen_callback" access="public" returntype="any" output="no" hint="I respond to the an event from a listener.">
+
+	<cfset var UUID = "">
+
+	<cfscript>
+	var UUID = "";
+	var isCalled = false;
+	var arg = "";
+	for ( UUID in Variables.sObserverChecks  ) {
+		isCalled = true;
+		for ( arg in Variables.sObserverChecks[UUID]["Args"] ) {
+			//Make sure every argument matches what is expected.
+			if ( NOT ( StructKeyExists(Arguments,arg) AND Arguments[arg] EQ Variables.sObserverChecks[UUID]["Args"][arg] ) ) {
+				isCalled = false;
+			}
+		}
+		if ( isCalled IS true ) {
+			ArrayAppend(Variables.sObserverEvents[UUID],Arguments);
+		}
+	}
+	</cfscript>
+
+</cffunction>
+
+<cffunction name="listened" access="public" returntype="void" output="no" hint="I run code to end listening for an event.">
+	<cfargument name="UUID" type="string" required="true">
+
+	<cfset Variables.Observer.runDelays()>
+
+	<cfif StructKeyExists(Variables.sObserverChecks,UUID)>
+		<cfset Variables.Observer.registerListener(
+			Listener=This,
+			ListenerName=UUID,
+			ListenerMethod="listen_callback",
+			EventName=Variables.sObserverChecks[UUID].EventName
+		)>
+	</cfif>
+
 </cffunction>
 
 <cffunction name="saveTestRecords" access="public" returntype="string" output="no">
