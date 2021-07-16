@@ -5,8 +5,6 @@
 
 	<!--- Here is where event listeners will be stored.  --->
 	<cfset Variables.sEvents = StructNew()>
-	<cfset Variables.aDelayeds = []>
-	<cfset Variables.sDelayeds = {}>
 
 	<!--- Default the number of times a particular event can be announced in the same request. --->
 	<cfset Variables.RecursionLimit = 15>
@@ -108,20 +106,37 @@
 	<cfargument name="sListener" type="struct" required="true">
 	<cfargument name="Args" type="struct" required="false">
 
-	<cfset var ListenerHash = "">
-
 	<cfif sListener.delay>
-		<cfset ListenerHash = makeListenerCallHash(ArgumentCollection=Arguments)>
-		<cfif NOT StructKeyExists(Variables.sDelayeds,ListenerHash)>
-			<cfset Variables.sDelayeds[ListenerHash] = now()>
-			<cfset ArrayAppend(
-				Variables.aDelayeds,
-				Arguments
-			)>
-		</cfif>
+		<cfset callListenerLater(ArgumentCollection=Arguments)>
 	<cfelse>
 		<cfset callListenerNow(ArgumentCollection=Arguments)>
 	</cfif>
+
+</cffunction>
+
+<cffunction name="callListenerLater" access="public" returntype="any" output="no" hint="I call the method for a listener.">
+	<cfargument name="sListener" type="struct" required="true">
+	<cfargument name="Args" type="struct" required="false">
+
+	<cfscript>
+	var ii = 0;
+
+	Arguments["Hash"] = makeListenerCallHash(ArgumentCollection=Arguments);
+
+	loadRequestVars();
+
+	//If this listener call already exists, remove it (so we can add it back at the end of the queue)
+	for ( ii = ArrayLen(request["Observer"]["aDelayeds"]); ii GTE 1; ii=ii-1 ) {
+		if ( request["Observer"]["aDelayeds"][ii]["Hash"] EQ Arguments["Hash"] ) {
+			ArrayDeleteAt(request["Observer"]["aDelayeds"], ii);
+		}
+	}
+
+	ArrayAppend(
+		request["Observer"]["aDelayeds"],
+		Arguments
+	);
+	</cfscript>
 
 </cffunction>
 
@@ -216,15 +231,19 @@
 
 <cffunction name="runDelays" access="public" returntype="void" output="no" hint="I run any delayed listener method calls.">
 
-	<cfset var aRuns = Variables.aDelayeds>
-	<cfset var ii = 0>
+	<cfscript>
+	var sListener = 0;
 
-	<cfloop index="ii" from="1" to="#ArrayLen(aRuns)#">
-		<cfset callListenerNow(ArgumentCollection=aRuns[ii])>
-	</cfloop>
+	//Make sure request variables exist.
+	loadRequestVars();
 
-	<cfset Variables.aDelayeds = []>
-	<cfset Variables.sDelayeds = {}>
+	//Get the first item and delete it instead of looping through the array so that items can be appeneded as we are moving through the list.
+	while ( ArrayLen(request.Observer.aDelayeds) ) {
+		sListener = StructCopy(request.Observer.aDelayeds[1]);
+		ArrayDeleteAt(request.Observer.aDelayeds,1);
+		callListenerNow(ArgumentCollection=sListener);
+	}
+	</cfscript>
 
 </cffunction>
 
@@ -279,6 +298,17 @@
 	</cfif>
 
 	<cfreturn This>
+</cffunction>
+
+<cffunction name="loadRequestVars" access="private" returntype="any" output="no" hint="I make sure the needed request variables exist.">
+	<cfscript>
+	if ( NOT StructKeyExists(request,"Observer") ) {
+		request["Observer"] = {};
+	}
+	if ( NOT StructKeyExists(request["Observer"],"aDelayeds") ) {
+		request["Observer"]["aDelayeds"] = [];
+	}
+	</cfscript>
 </cffunction>
 
 <cffunction name="makeListenerCallHash" access="private" returntype="string" output="no">
