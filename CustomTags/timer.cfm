@@ -15,12 +15,21 @@
 	////// --->
 
 <!--- //	set defaults	//---><cfsilent>
+<cfscript>
+if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, "cf_timer") ) {
+	StructAppend(Attributes, request.cftags["cf_timer"], "no");
+}
+</cfscript>
 <cfparam name="Attributes.Label" default="execution time" type="string">
 <cfparam name="Attributes.Active" default="true" type="boolean">
 <cfparam name="Attributes.Name" type="string" default="">
 <cfparam name="Attributes.Type" type="string" default="comment"><!--- Possible Values: comment,hidden,inline,outline,log,database --->
 <cfparam name="Attributes.tablename" default="cf_timer" type="string">
 <cfparam name="Attributes.data" default="#StructNew()#" type="struct">
+
+<cfif NOT Attributes.Active>
+	<cfexit method="exitTemplate">
+</cfif>
 
 <!--- <cfif ThisTag.ExecutionMode EQ "Start" AND Attributes.Active>
 	<cfscript>
