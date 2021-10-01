@@ -562,11 +562,13 @@
 		ORDER BY ActionID DESC
 		#variables.DataMgr.getMaxRowsSuffix(1)#
 		</cfquery>
-		<cfset Arguments.lastrun = qLastRun.DateRun>
+		<cfif isDate(qLastRun.DateRun)>
+			<cfset Arguments.lastrun = qLastRun.DateRun>
+		</cfif>
 	</cfif>
 
 	<cfif StructKeyExists(Arguments,"lastrun")>
-		<cfreturn hasRunWithinInterval(Arguments.Name,Arguments.lastrun,Arguments.runtime)>
+		<cfreturn hasRunWithinInterval(qTask.interval,Arguments.lastrun,Arguments.runtime)>
 	</cfif>
 
 	<cfreturn false>
