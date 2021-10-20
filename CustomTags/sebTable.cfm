@@ -379,8 +379,8 @@ request.cftags[TagName].attributes = attributes;
 <cfset SubmitID = 0>
 <cfset SortList = "">
 <cfset aSubmitRows = getSubmittedRowsArray()><!--- This holds the primary key values for each row in the submitted form. --->
-<cfif StructKeyExists(Form,"sebTable") AND Form.sebTable eq sfx AND ArrayLen(aSubmitRows)>
 
+<cfif StructKeyExists(Form,"sebTable") AND Form.sebTable eq sfx AND ArrayLen(aSubmitRows)>
 	<cfset NumRows = ArrayLen(aSubmitRows)>
 
 	<cfif StructKeyExists(Form,"SortList") AND Len(Form.SortList)>

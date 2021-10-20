@@ -378,6 +378,29 @@ function QueryStringDeleteVar(variable) {
 	<cfreturn result>
 </cffunction>
 
+<cffunction name="getSubmittedRowsArray" access="private" returntype="array" output="false">
+
+	<cfset var aRows = []>
+	<cfset var aSubmittedRows = []>
+	<cfset var ii = 0>
+
+	<cfscript>
+	if ( StructKeyExists(Form,"sebTableRowData") )	 {
+		Form.sebTableRowData = URLDecode(Form.sebTableRowData);
+		if ( isJSON(Form.sebTableRowData) ) {
+			aSubmittedRows = DeserializeJSON(Form.sebTableRowData);
+			for ( ii=1; ii LTE ArrayLen(aSubmittedRows); ii++ ) {
+				if ( isSimpleValue(aSubmittedRows[ii]) ) {
+					ArrayAppend(aRows,aSubmittedRows[ii]);
+				}
+			}
+		}
+	}
+	</cfscript>
+
+	<cfreturn aRows>
+</cffunction>
+
 <cffunction name="populateMarkers" returntype="string" output="no">
 	<cfargument name="string" type="string" required="true">
 	<cfargument name="query" type="query" required="true">
