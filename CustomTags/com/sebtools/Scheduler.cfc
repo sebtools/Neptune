@@ -125,7 +125,11 @@
 		</cfloop>
 
 		<!--- Figure out timespan --->
-		<cfset timespan = ListLast(arguments.interval," ")>
+		<cfif IsNumeric(arguments.interval)>
+            <cfset timespan = "second">
+        <cfelse>
+            <cfset timespan = ListLast(arguments.interval," ")>
+        </cfif>
 
 		<!--- Ditch ending "s" or "ly" --->
 		<cfif Right(timespan,1) EQ "s">
