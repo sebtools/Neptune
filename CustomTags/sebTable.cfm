@@ -977,15 +977,15 @@ $(document).ready(function() {
 		$(sebTableId + '-table').tableDnD({
 			onDragStyle: "dragging",
 			onDrop: function(table, row) {
-				var sRowOrder = "";
-				$(sebTableId + "-table tr input.sebcolval").each(function(i,o){
-					if (sRowOrder.length) {
-						sRowOrder += "," + o.value;
-					} else {
-						sRowOrder = o.value;
+				var aPKs = JSON.parse(decodeURIComponent($('input[name="sebTableRowData"]').val()));
+				var aNewPKOrder = [];
+				$.each(table.rows,function() {
+					if (!$(this).hasClass('nodrop')) {
+						var originalRowNum = parseInt($(this).attr('id').substr(3)) - 1;
+						aNewPKOrder.push(aPKs[originalRowNum]);
 					}
 				});
-				$(sebTableId + "-sortlist").val(sRowOrder);
+				$(sebTableId + "-sortlist").val(aNewPKOrder.join(","));
 			}
 		});
 		$(sebTableId + "-table tr").addClass('draggable');
