@@ -15,6 +15,7 @@
 <cffunction name="loadPastDeployments" access="public" returntype="any" output="no">
 
 	<cfset var qDeployments = 0>
+	<cfset var DeploymentStructKey = "">
 
 	<cfif NOT StructKeyExists(Variables,"sPastDeployments")>
 		<cfset Variables.sPastDeployments = StructNew()>
@@ -22,7 +23,8 @@
 		<cfset qDeployments = Variables.DataMgr.getRecords(tablename="utilDeployments",fieldlist="ComponentPath,Name,DateRun")>
 
 		<cfoutput query="qDeployments">
-			<cfset Variables.sPastDeployments[getDeploymentStructKey(Name=Name,ComponentPath=ComponentPath)] = DateRun>
+			<cfset DeploymentStructKey = getDeploymentStructKey(Name=Name,ComponentPath=ComponentPath)>
+			<cfset Variables.sPastDeployments[DeploymentStructKey] = DateRun>
 		</cfoutput>
 	</cfif>
 
@@ -117,8 +119,10 @@
 
 <cffunction name="recordDeployment" access="public" returntype="void" output="no">
 
+	<cfset var DeploymentStructKey = getDeploymentStructKey(ArgumentCollection=Arguments)>
+
 	<cfset Variables.DataMgr.insertRecord(tablename="utilDeployments",data=Arguments,truncate=true)>
-	<cfset Variables.sPastDeployments[getDeploymentStructKey(ArgumentCollection=Arguments)] = now()>
+	<cfset Variables.sPastDeployments[DeploymentStructKey] = now()>
 
 </cffunction>
 
