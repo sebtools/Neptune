@@ -541,6 +541,47 @@
 	<cfreturn sResult>
 </cffunction>
 
+<cffunction name="getIntervalFromDate" access="public" returntype="date" output="false" hint="I return the date since which a task would have been run to be within the current interval defined for it.">
+	<cfargument name="Name" type="string" required="yes">
+	<cfargument name="runtime" type="date" default="#now()#">
+
+	<cfset var sIntervals = getIntervals()>
+	<cfset var adjustedtime = DateAdd("n",10,arguments.runtime)><!--- Tasks run every 15 minutes at most and we need a margin of error for date checks. --->
+	<cfset var result = now()>
+	<cfset var task = expandTaskName(Arguments.Name)>
+
+	<cfscript>
+	// If the interval is numeric, check by the number of seconds
+	if ( isNumeric(variables.tasks[task].interval) AND variables.tasks[task].interval GT 0 ) {
+		adjustedtime = DateAdd("s",Int(variables.tasks[task].interval/10),arguments.runtime);
+		result = DateAdd("s", -Int(variables.tasks[task].interval), adjustedtime);
+	// If a key exists for the interval, use that
+	} else if ( StructKeyExists(sIntervals,variables.tasks[task].interval) ) {
+		// If the key value is numeric, check by the number of seconds
+		if ( sIntervals[variables.tasks[task].interval] GT 0 ) {
+			adjustedtime = DateAdd("s",Int(sIntervals[variables.tasks[task].interval]/10),arguments.runtime);
+			result = DateAdd("s", -Int(sIntervals[variables.tasks[task].interval]), adjustedtime);
+		// If the key value is "daily", check by one day
+		} else if ( variables.tasks[task].interval EQ "daily" ) {
+			adjustedtime = DateAdd("n",55,arguments.runtime);
+			result = DateAdd("d", -1, adjustedtime);
+		// If the key value is "weekly", check by one week
+		} else if ( variables.tasks[task].interval EQ "weekly" ) {
+			adjustedtime = DateAdd("h",12,arguments.runtime);
+			result = DateAdd("ww", -1, adjustedtime);
+		// If the key value is "monthly", check by one month
+		} else if ( variables.tasks[task].interval EQ "monthly" ) {
+			adjustedtime = DateAdd("h",12,arguments.runtime);
+			result = DateAdd("m", -1, adjustedtime);
+		}
+	} else {
+		result = DateAdd("s", -3600, adjustedtime);
+	}
+	</cfscript>
+
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="hasRunWithinInterval" access="public" returntype="boolean" output="false" hint="I check to see if the given task has already run within the period of the interval defined for it.">
 	<cfargument name="interval" type="string" required="yes">
 	<cfargument name="lastrun" type="date" required="yes">
