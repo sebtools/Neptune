@@ -1237,9 +1237,24 @@ ThisOutput = "";
 			cf_mustache.sTemplates[id_template]['html'] = cf_mustache.ucase_tags(html);
 		};
 		cf_mustache.renderDataB = function(obj,id_template,data) {
+			delete data.GeneratedContent;
 			var template = cf_mustache.preprocess(obj.getAttribute('id'),cf_mustache.sTemplates[id_template]['html'],data);
+			var evt = new CustomEvent(
+				'cf_mustache.render',
+				{
+					detail: {
+						'id': obj.getAttribute('id'),
+						'data': data
+					}
+				}
+			);
+			document.getElementById( obj.getAttribute('id') + '-data' ).innerHTML = JSON.stringify(data);
 			obj.innerHTML = Mustache.render(template, cf_mustache.ucase_keys(data));
 			cf_mustache.loadMustacheTriggers(obj);//Make sure that triggers in the element still work.
+			document.body.style.cursor = 'default';
+
+			// dispatch the events
+			window.dispatchEvent(evt);
 		};
 		cf_mustache.sURLParams = cf_mustache.getURLParams();
 		cf_mustache.sTemplates = {};//A place to store URIs for each template
@@ -1297,6 +1312,17 @@ ThisOutput = "";
 	sData[request["cf_mustache"]["templates"][Attributes.name]["Attributes"]["Counter"]] = request["cf_mustache"]["templates"][Attributes.name]["Counter"];
 	TemplateHTML = preprocess(TemplateHTML,sData);
 	</cfscript>
+	<cfif Attributes.script>
+		<cfset sCopyData = StructCopy(sData)>
+		<cfset StructDelete(sCopyData,"GeneratedContent")>
+		<cfsavecontent variable="ThisOutput"><cfoutput><script id="#Attributes.id#-data" class="cc-mustache-data" type="text/data">#SerializeJSON(sCopyData)#</script></cfoutput></cfsavecontent>
+		<cftry>
+				<cfhtmlhead text="#ThisOutput#">
+			<cfcatch>
+				<cfset ArrayAppend(aOutputs,ThisOutput)>
+			</cfcatch>
+		</cftry>
+	</cfif>
 	<cfif Attributes.useDiv>
 		<cfsavecontent variable="ThisOutput"><cfoutput><div id="#Attributes.id#" class="cc-mustache cc-mustache-#TemplateID#"<cfif Attributes.script IS true> data-template="#TemplateID#"</cfif>>#oMustache.render(template=TemplateHTML,context=sData)#</div></cfoutput></cfsavecontent>
 	<cfelse>
