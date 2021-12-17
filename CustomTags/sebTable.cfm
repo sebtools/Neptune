@@ -1019,7 +1019,7 @@ $(document).ready(function() {
 	</div>
 	</cfif>
 <cfif qTableData.RecordCount>
-<table id="sebTable#sfx#-table"<cfif Len(attributes.width)> width="#attributes.width#"</cfif> border="<cfif attributes.isExcel>1<cfelse>0</cfif>" cellspacing="0"><cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
+<table id="sebTable#sfx#-table"<cfif Len(attributes.width)> width="#attributes.width#"</cfif><cfif Len(attributes.class)> class="#attributes.class#"</cfif> border="<cfif attributes.isExcel>1<cfelse>0</cfif>" cellspacing="0"><cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
 <col<cfif StructKeyExists(ThisTag.qColumns[i],"width") AND Len(ThisTag.qColumns[i].width) AND isNumeric(ThisTag.qColumns[i].width) AND ThisTag.qColumns[i].width> width="#ThisTag.qColumns[i].width#"</cfif><cfloop index="att" list="#liColAtts#"><cfif StructKeyExists(ThisTag.qColumns[i],att) AND Len(ThisTag.qColumns[i][att])> #att#="#ThisTag.qColumns[i][att]#"</cfif></cfloop>><cfif attributes.xhtml></col></cfif></cfloop>
 <tr id="row#attributes.Table#0" class="nodrag nodrop"><cfset editLinkShowed = false><cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1"><cfif StructKeyExists(ThisTag.qColumns[i],"datatype") AND ThisTag.qColumns[i].datatype eq "delete" AND attributes.isEditable IS NOT false AND NOT editLinkShowed>
 	<td>&nbsp;</td><cfset editLinkShowed = true></cfif>
