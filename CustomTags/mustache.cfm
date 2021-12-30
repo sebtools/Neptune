@@ -43,6 +43,19 @@ Use https://github.com/janl/mustache.js for JavaScript implementation.
 
 --->
 
+<cffunction name="addToHead" access="private" returntype="any" output="false" hint="I compress the given string.">
+	<cfargument name="array" type="array" required="true" hint="I am the output array.">
+	<cfargument name="str" type="string" required="true" hint="I am the string to add to the head.">
+
+	<cftry>
+			<cfhtmlhead text="#Arguments.str#">
+		<cfcatch>
+			<cfset ArrayAppend(Arguments.array,Arguments.str)>
+		</cfcatch>
+	</cftry>
+
+</cffunction>
+
 <cffunction name="compress" access="private" returntype="any" output="false" hint="I compress the given string.">
 	<cfargument name="str" type="string" required="true" hint="I am the string to be compressed.">
 	<cfargument name="type" type="string" required="true" hint="I am the type of compression (js or css).">
@@ -659,7 +672,7 @@ ThisOutput = "";
 				<cfloop list="#Attributes.require_js#" index="path">
 					<cfif NOT StructKeyExists(request.cf_mustache.external_files,path)>
 						<cfsavecontent variable="ThisOutput"><cfoutput><script src="#path#"></script></cfoutput></cfsavecontent>
-						<cfset ArrayAppend(aOutputs,ThisOutput)>
+						<cfset addToHead(aOutputs,ThisOutput)>
 						<cfset request.cf_mustache.external_files[path] = now()>
 					</cfif>
 				</cfloop>
@@ -674,7 +687,7 @@ ThisOutput = "";
 		<cfsavecontent variable="ThisOutput">
 		<script src="https://unpkg.com/mustache@latest"></script>
 		</cfsavecontent>
-		<cfset ArrayAppend(aOutputs,ThisOutput)>
+		<cfset addToHead(aOutputs,ThisOutput)>
 		<cfsavecontent variable="ThisOutput">
 		<script>
 		cf_mustache = {};
@@ -1264,7 +1277,7 @@ ThisOutput = "";
 		cf_mustache.addWindowLoadEvent(cf_mustache.loadMustacheTriggersDocument);
 		</script>
 		</cfsavecontent>
-		<cfset ArrayAppend(aOutputs,compress(ThisOutput,"js"))>
+		<cfset addToHead(aOutputs,compress(ThisOutput,"js"))>
 		<cfset request["cf_mustache"]["head"] = {}>
 	</cfif>
 	<!--- Store URIs for each template. --->
@@ -1282,7 +1295,7 @@ ThisOutput = "";
 		};
 		cf_mustache.sCounters['#sBaseAttributes.id_template#'] = '#Attributes.Counter#'
 		</script></cfoutput></cfsavecontent>
-		<cfset ArrayAppend(aOutputs,compress(ThisOutput,"htm"))>
+		<cfset addToHead(aOutputs,compress(ThisOutput,"htm"))>
 		<cfset request["cf_mustache"]["head"][Attributes.name] = true>
 	</cfif>
 	<cfsavecontent variable="ThisOutput"><cfoutput>
@@ -1292,7 +1305,7 @@ ThisOutput = "";
 	};
 	</script>
 	</cfoutput></cfsavecontent>
-	<cfset ArrayAppend(aOutputs,compress(ThisOutput,"htm"))>
+	<cfset addToHead(aOutputs,compress(ThisOutput,"htm"))>
 </cfif>
 
 <!--- Actually show the element, with data. --->
@@ -1316,12 +1329,7 @@ ThisOutput = "";
 		<cfset sCopyData = StructCopy(sData)>
 		<cfset StructDelete(sCopyData,"GeneratedContent")>
 		<cfsavecontent variable="ThisOutput"><cfoutput><script id="#Attributes.id#-data" class="cc-mustache-data" type="text/data">#SerializeJSON(sCopyData)#</script></cfoutput></cfsavecontent>
-		<cftry>
-				<cfhtmlhead text="#ThisOutput#">
-			<cfcatch>
-				<cfset ArrayAppend(aOutputs,ThisOutput)>
-			</cfcatch>
-		</cftry>
+		<cfset addToHead(aOutputs,ThisOutput)>
 	</cfif>
 	<cfif Attributes.useDiv>
 		<cfsavecontent variable="ThisOutput"><cfoutput><div id="#Attributes.id#" class="cc-mustache cc-mustache-#TemplateID#"<cfif Attributes.script IS true> data-template="#TemplateID#"</cfif>>#oMustache.render(template=TemplateHTML,context=sData)#</div></cfoutput></cfsavecontent>
