@@ -1144,11 +1144,18 @@ ThisOutput = "";
 
 			//Set arguments (needed both to get data and because other code compares against the current argument state).
 			if ( typeof cf_mustache.sInstances[id] == 'undefined' ) {
-				cf_mustache.sInstances[id] = {'sArgs':{}};
+				cf_mustache.sInstances[id] = {'sDefaults':{}};
 			}
+			cf_mustache.sInstances[id]['sArgs'] = {};
+
+			for ( arg in cf_mustache.sInstances[id]['sDefaults'] ) {
+				cf_mustache.sInstances[id]['sArgs'][arg] = cf_mustache.sInstances[id]['sDefaults'][arg];
+			}
+
 			for ( arg in args ) {
 				cf_mustache.sInstances[id].sArgs[arg] = args[arg];
 			}
+
 			sArgs = cf_mustache.sInstances[id].sArgs;//Just the local copy of the arguments.
 
 			cf_mustache.post(
@@ -1220,7 +1227,7 @@ ThisOutput = "";
 			cf_mustache.renderDataA(obj,data);
 
 			obj.style.opacity = obj.style.opacity / 0.3;
-			
+
 		};
 		cf_mustache.renderDataA = function(obj,data) {
 			var id = obj.getAttribute('id');
@@ -1308,8 +1315,9 @@ ThisOutput = "";
 	<cfsavecontent variable="ThisOutput"><cfoutput>
 	<script>
 	cf_mustache.sInstances['#Attributes.id#'] = {
-		'sArgs':cf_mustache.queryStringToJSON('#AsQueryString(Variables.sArguments)#')
+		'sDefaults':cf_mustache.queryStringToJSON('#AsQueryString(Variables.sArguments)#')
 	};
+	cf_mustache.sInstances['#Attributes.id#']['sArgs'] = cf_mustache.sInstances['#Attributes.id#']['sDefaults'];
 	</script>
 	</cfoutput></cfsavecontent>
 	<cfset addToHead(aOutputs,compress(ThisOutput,"htm"))>
