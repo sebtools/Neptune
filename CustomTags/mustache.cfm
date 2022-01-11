@@ -1132,6 +1132,11 @@ ThisOutput = "";
 			var sArgs = {};
 			var request = new XMLHttpRequest();
 
+			if ( !obj.style.opacity.length ) {
+				obj.style.opacity = "1";
+			}
+			obj.style.opacity = obj.style.opacity * 0.3;
+
 			//We need the args as a struct so we can add data to them.
 			if ( typeof args == 'string' ) {
 				args = cf_mustache.queryStringToJSON(args);
@@ -1213,6 +1218,9 @@ ThisOutput = "";
 			}
 
 			cf_mustache.renderDataA(obj,data);
+
+			obj.style.opacity = obj.style.opacity / 0.3;
+			
 		};
 		cf_mustache.renderDataA = function(obj,data) {
 			var id = obj.getAttribute('id');
@@ -1264,7 +1272,6 @@ ThisOutput = "";
 			document.getElementById( obj.getAttribute('id') + '-data' ).innerHTML = JSON.stringify(data);
 			obj.innerHTML = Mustache.render(template, cf_mustache.ucase_keys(data));
 			cf_mustache.loadMustacheTriggers(obj);//Make sure that triggers in the element still work.
-			document.body.style.cursor = 'default';
 
 			// dispatch the events
 			window.dispatchEvent(evt);
