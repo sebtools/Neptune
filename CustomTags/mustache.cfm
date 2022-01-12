@@ -1132,10 +1132,7 @@ ThisOutput = "";
 			var sArgs = {};
 			var request = new XMLHttpRequest();
 
-			if ( !obj.style.opacity.length ) {
-				obj.style.opacity = "1";
-			}
-			obj.style.opacity = obj.style.opacity * 0.3;
+			obj.style.opacity = 0.3;
 
 			//We need the args as a struct so we can add data to them.
 			if ( typeof args == 'string' ) {
@@ -1224,9 +1221,11 @@ ThisOutput = "";
 				var obj = id;
 			}
 
+			obj.style.opacity = 0.3;
+
 			cf_mustache.renderDataA(obj,data);
 
-			obj.style.opacity = obj.style.opacity / 0.3;
+			obj.style.opacity = 1;
 
 		};
 		cf_mustache.renderDataA = function(obj,data) {
