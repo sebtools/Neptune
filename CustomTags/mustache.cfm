@@ -1118,7 +1118,7 @@ ThisOutput = "";
 			request = null;
 		};
 		//Fetch the data from the URI and render it
-		cf_mustache.renderArgs = function(id,args) {
+		cf_mustache.renderArgs = function(id,args,reset) {
 			var arg = '';
 			//The elem argument should either be an object or we should get the object for that id.
 			if ( typeof id == "string" ) {
@@ -1143,10 +1143,15 @@ ThisOutput = "";
 			if ( typeof cf_mustache.sInstances[id] == 'undefined' ) {
 				cf_mustache.sInstances[id] = {'sDefaults':{}};
 			}
-			cf_mustache.sInstances[id]['sArgs'] = {};
+
+			if ( reset == true ) {
+				cf_mustache.sInstances[id]['sArgs'] = {};
+			}
 
 			for ( arg in cf_mustache.sInstances[id]['sDefaults'] ) {
-				cf_mustache.sInstances[id]['sArgs'][arg] = cf_mustache.sInstances[id]['sDefaults'][arg];
+				if ( typeof cf_mustache.sInstances[id]['sArgs'][arg] == 'undefined' ) {
+					cf_mustache.sInstances[id]['sArgs'][arg] = cf_mustache.sInstances[id]['sDefaults'][arg];
+				}
 			}
 
 			for ( arg in args ) {
@@ -1163,8 +1168,8 @@ ThisOutput = "";
 
 		};
 		//Use the form to fetch the data from the uri and render it
-		cf_mustache.renderFormArgs = function(id,form) {
-			cf_mustache.renderArgs(id,cf_mustache.getFormData(form));
+		cf_mustache.renderFormArgs = function(id,form,reset) {
+			cf_mustache.renderArgs(id,cf_mustache.getFormData(form),reset);
 		};
 		//Use the form to render the data
 		cf_mustache.renderFormData = function(id,form) {
