@@ -1076,6 +1076,15 @@ ThisOutput = "";
 			}
 
 		};
+		cf_mustache.handleError = function(id,error,message) {
+			var obj = document.getElementById(id);
+			if ( !message ) {
+				message = "Something went wrong. You may want to refresh the page in your browser and try again.";
+			}
+			obj.style.opacity = 1;
+			obj.innerHTML = '<div class="cf_mustache-error" style="border:1px solid red;padding:5px;height:100%;width:100%;"><p style="color:red;">' + message + '</p></div>';
+			console.error(error);
+		};
 		cf_mustache.processResponse = function(str) {
 			//Handle ColdFusion errors
 			if ( str.indexOf('cfdump') > 0 ) {
@@ -1093,7 +1102,7 @@ ThisOutput = "";
 			}
 			return str;
 		};
-		cf_mustache.post = function(uri,args,returncall) {
+		cf_mustache.post = function(id,uri,args,returncall) {
 			var request = new XMLHttpRequest();
 			if ( typeof args != 'string' ) {
 				args = cf_mustache.queryStringFromJSON(args);
@@ -1109,6 +1118,11 @@ ThisOutput = "";
 						returncall(cf_mustache.processResponse(this.responseText));
 					} else {
 						// Error :(
+						if ( this.status == 401 ) {
+							cf_mustache.handleError(id,this.responseText,"You don't have access to this resource. You may need to log in and try again.");
+						} else {
+							cf_mustache.handleError(id,this.responseText);
+						}
 					}
 				}
 			};
@@ -1160,12 +1174,22 @@ ThisOutput = "";
 
 			sArgs = cf_mustache.sInstances[id].sArgs;//Just the local copy of the arguments.
 
-			cf_mustache.post(
-				uri,
-				cf_mustache.sInstances[id].sArgs,
-				function(data) { cf_mustache.renderData(id,JSON.parse(data)) }
-			);
-
+			try {
+				cf_mustache.post(
+					id,
+					uri,
+					cf_mustache.sInstances[id].sArgs,
+					function(data) {
+						try {
+							cf_mustache.renderData(id,JSON.parse(data));
+						} catch (error) {
+							cf_mustache.handleError(id,data);
+						}
+					}
+				);
+			} catch (error) {
+				cf_mustache.handleError(id,error);
+			}
 		};
 		//Use the form to fetch the data from the uri and render it
 		cf_mustache.renderFormArgs = function(id,form,reset) {
@@ -1253,6 +1277,7 @@ ThisOutput = "";
 			} else if ( typeof cf_mustache.sTemplates[id_template]['template_uri'] == 'string' ) {
 				//If we have a template_uri, get the HTML from that.
 				cf_mustache.post(
+					id,
 					cf_mustache.sTemplates[id_template]['template_uri'],
 					cf_mustache.sInstances[id].sArgs,
 					function(str) {
