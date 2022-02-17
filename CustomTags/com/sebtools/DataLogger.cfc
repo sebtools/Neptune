@@ -325,6 +325,41 @@
 	<cfreturn Variables.logged_tables>
 </cffunction>
 
+<cffunction name="isFieldChanged" access="public" returntype="any" output="no">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="FieldName" type="string" required="yes">
+	<cfargument name="pkvalue" type="string" required="yes">
+	<cfargument name="withadd" type="boolean" default="true">
+	<cfargument name="since" type="date" required="no">
+
+	<cfset var qChanges = 0>
+
+	<!--- Default time to within the last minute --->
+	<cfif NOT StructKeyExists(Arguments,"since")>
+		<cfset Arguments.since = DateAdd("n",-1,now())>
+	</cfif>
+
+	<cf_DMQuery name="qChanges">
+	SELECT		s.ChangeSetID
+	FROM		audChangeSets s
+	LEFT JOIN	audChanges c
+		ON		s.ChangeSetID = c.ChangeSetID
+	WHERE		1 = 1
+		AND		tablename = <cf_DMParam name="tablename" value="#Arguments.tablename#" cfsqltype="CF_SQL_VARCHAR">
+		AND		pkvalue = <cf_DMParam name="pkvalue" value="#Arguments.pkvalue#" cfsqltype="CF_SQL_VARCHAR">
+		AND		DateLogged >= <cf_DMParam name="since" value="#Arguments.since#" cfsqltype="CF_SQL_DATE">
+		AND		(
+					FieldName = <cf_DMParam name="FieldName" value="#Arguments.FieldName#" cfsqltype="CF_SQL_VARCHAR">
+				<cfif Arguments.withadd>
+					OR
+					[Action] = 'insert'
+				</cfif>
+				)
+	</cf_DMQuery>
+
+	<cfreturn ( qChanges.RecordCount GT 0 )>
+</cffunction>
+
 <cffunction name="logTable" access="public" returntype="any" output="no">
 	<cfargument name="tablename" type="string" required="yes">
 
@@ -365,6 +400,7 @@
 
 	<cfif qRecord.RecordCount>
 		<cfset sRecord = Variables.DataMgr.QueryRowToStruct(qRecord,qRecord.RecordCount)>
+		<cfset sRecord[pkfield] = Arguments.pkvalue>
 
 		<cfif Variables.DataMgr.hasRecords(Arguments.tablename,{"#pkfield#"=Arguments.pkvalue})>
 			<cfset Variables.DataMgr.saveRecord(tablename=Arguments.tablename,data=sRecord)>
