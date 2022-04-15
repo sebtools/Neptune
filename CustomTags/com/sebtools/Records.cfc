@@ -204,6 +204,14 @@
 	</cfif>
 </cffunction>
 
+<cffunction name="getFieldSelectSQL" access="public" returntype="any" output="no">
+	<cfargument name="field" type="string" required="yes">
+	<cfargument name="tablealias" type="string" required="no">
+	<cfargument name="useFieldAlias" type="boolean" default="true">
+
+	<cfreturn Variables.DataMgr.getFieldSelectSQL(tablename=Variables.table,ArgumentCollection=Arguments)>
+</cffunction>
+
 <cffunction name="getFieldsStruct" access="public" returntype="struct" output="no">
 	<cfargument name="transformer" type="string" required="no">
 
@@ -440,14 +448,6 @@
 <cffunction name="validateRecord" access="public" returntype="struct" output="no">
 
 	<cfreturn Arguments>
-</cffunction>
-
-<cffunction name="getFieldSelectSQL" access="package" returntype="any" output="no">
-	<cfargument name="field" type="string" required="yes">
-	<cfargument name="tablealias" type="string" required="no">
-	<cfargument name="useFieldAlias" type="boolean" default="true">
-
-	<cfreturn Variables.DataMgr.getFieldSelectSQL(tablename=Variables.table,ArgumentCollection=Arguments)>
 </cffunction>
 
 <cffunction name="addMethods" access="private" returntype="void" output="no">
