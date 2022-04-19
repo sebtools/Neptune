@@ -241,10 +241,27 @@
 
 <cffunction name="validateSetting" access="public" returntype="struct" output="no">
 
+	<cfset Arguments = validateSettingID(ArgumentCollection=Arguments)>
 	<cfset Arguments = validateSettingType(ArgumentCollection=Arguments)>
 	<cfset Arguments = validateSettingValue(ArgumentCollection=Arguments)>
 
 	<cfreturn Arguments>
+</cffunction>
+
+<cffunction name="validateSettingID" access="private" returntype="struct" output="no">
+	<cfscript>
+	var id = 0;
+
+	//If a SettingName is passed in without a SettingID, try to determine the SettingID and put it in Arguments.
+	if ( StructKeyHasLen(Arguments,"SettingName") AND NOT StructKeyHasVal(Arguments,"SettingID") ) {
+		id = getSettingID(Arguments["SettingName"]);
+		if ( Val(id) ) {
+			Arguments["SettingID"] = id;
+		}
+	}
+
+	return Arguments;
+	</cfscript>
 </cffunction>
 
 <cffunction name="validateSettingType" access="private" returntype="struct" output="no">
