@@ -5,8 +5,13 @@
 
 <cffunction name="init" access="public" returntype="any" output="no">
 	<cfargument name="Manager" type="any" required="true">
+	<cfargument name="DataLogger" type="any" required="false">
 
 	<cfset initInternal(ArgumentCollection=Arguments)>
+
+	<cfif StructKeyExists(Variables,"DataLogger")>
+		<cfset Variables.DataLogger.logTables("#variables.prefix#Settings")>
+	</cfif>
 
 	<cfset resetCache()>
 
