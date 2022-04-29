@@ -477,7 +477,8 @@ sAttributes = {
 	compress=true,
 	require_css="",
 	require_js="",
-	useDiv=false
+	useDiv=false,
+	argstoreset=""
 };
 
 //Set Attribute Defaults
@@ -1160,6 +1161,13 @@ ThisOutput = "";
 
 			if ( reset == true ) {
 				cf_mustache.sInstances[id]['sArgs'] = {};
+			} else if ( cf_mustache.sInstances[id]['hasResets'] ) {
+				//Delete any arguments specified to be deleted by the "argstoreset" attribute
+				for ( arg in cf_mustache.sInstances[id]['sArgs'] ) {
+					if ( arg.toLowerCase() in cf_mustache.sInstances[id]['sResettingArgs'] ) {
+						delete cf_mustache.sInstances[id]['sArgs'][arg];
+					}
+				}
 			}
 
 			for ( arg in cf_mustache.sInstances[id]['sDefaults'] ) {
@@ -1344,7 +1352,9 @@ ThisOutput = "";
 	<cfsavecontent variable="ThisOutput"><cfoutput>
 	<script>
 	cf_mustache.sInstances['#Attributes.id#'] = {
-		'sDefaults':cf_mustache.queryStringToJSON('#AsQueryString(Variables.sArguments)#')
+		'sDefaults':cf_mustache.queryStringToJSON('#AsQueryString(Variables.sArguments)#'),
+		'hasResets':<cfif Len(Trim(Attributes.argstoreset))>true<cfelse>false</cfif>,
+		'sResettingArgs':'#LCase(Attributes.argstoreset)#'.split(',').reduce((accumulator, value) => {return {...accumulator, [value]: ''};}, {})/*Convert arguments to lowercase JavaScript object*/
 	};
 	cf_mustache.sInstances['#Attributes.id#']['sArgs'] = cf_mustache.sInstances['#Attributes.id#']['sDefaults'];
 	</script>
