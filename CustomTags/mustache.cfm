@@ -1086,6 +1086,17 @@ ThisOutput = "";
 			obj.innerHTML = '<div class="cf_mustache-error" style="border:1px solid red;padding:5px;height:100%;width:100%;"><p style="color:red;">' + message + '</p></div>';
 			console.error(error);
 		};
+		cf_mustache.load = function(id) {
+			var evt = new CustomEvent(
+				'cf_mustache.load',
+				{
+					detail: {
+						'id': id,
+						'data': cf_mustache.sInstances[id]
+					}
+				}
+			);
+		};
 		cf_mustache.processResponse = function(str) {
 			//Handle ColdFusion errors
 			if ( str.indexOf('cfdump') > 0 ) {
@@ -1391,6 +1402,10 @@ ThisOutput = "";
 		<cfsavecontent variable="ThisOutput"><cfoutput>#oMustache.render(template=TemplateHTML,context=sData)#</cfoutput></cfsavecontent>
 	</cfif>
 	<cfset ArrayAppend(aOutputs,ThisOutput)>
+	<cfif Attributes.script>
+		<cfsavecontent variable="ThisOutput"><cfoutput><script>cf_mustache.load('#Attributes.id#');</script></cfoutput></cfsavecontent>
+		<cfset ArrayAppend(aOutputs,ThisOutput)>
+	</cfif>
 </cfif>
 
 <cfscript>
