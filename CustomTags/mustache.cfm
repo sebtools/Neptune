@@ -470,6 +470,8 @@ sAttributes = {
 	template_uri="",
 	returnvariable="",
 	script=false,
+	autodata=true,
+	autorender=true,
 	counter="num",
 	args={},
 	defaultargs={},
@@ -490,6 +492,16 @@ for ( att in sAttributes ) {
 //"id" attribute default to the value of the "name" attribute
 if ( NOT Len(Attributes.id) ) {
 	Attributes.id = Attributes.name;
+}
+
+//If data isn't being automatically retrieved, then no way to automatically renderit
+if ( Attributes.autodata EQ false ) {
+	Attributes.autorender = false;
+}
+
+//Make sure that the instance either autorenders or is scriptable
+if ( Attributes.script IS false AND Attributes.autorender IS false ) {
+	throw("cf_mustache must have a true value for either the 'script' or 'autorender' attributes." )
 }
 
 //Make sure that the id for the template is unique.
@@ -692,6 +704,35 @@ ThisOutput = "";
 		<cfsavecontent variable="ThisOutput">
 		<script>
 		cf_mustache = {};
+		cf_mustache.event = function(name,id,data) {
+			var event_name = 'cf_mustache.' + name;
+			var evt = new CustomEvent(
+				event_name,
+				{
+					detail: {
+						'id': id,
+						'data': data
+					}
+				}
+			);
+			window.dispatchEvent(evt);
+		};
+		cf_mustache.onError = function(id,error,message) {
+			var obj = document.getElementById(id);
+			if ( !message ) {
+				message = "Something went wrong. You may want to refresh the page in your browser and try again.";
+			}
+			obj.innerHTML = '<div class="cf_mustache-error" style="border:1px solid red;padding:5px;height:100%;width:100%;"><p style="color:red;">' + message + '</p></div>';
+
+			cf_mustache.event('render',obj.getAttribute('id'),{"error":message});
+			console.error(error);
+		};
+		cf_mustache.onFetch = function(id) {
+			document.getElementById(id).style.opacity = 0.3;
+		};
+		cf_mustache.onRender = function(id) {
+			document.getElementById(id).style.opacity = 1;
+		};
 		//Make sure we can respond to window.onload without external dependencies or harming other JavaScript code.
 		cf_mustache.addWindowLoadEvent = function(functionName) {
 			if ( window.attachEvent ) {
@@ -908,11 +949,17 @@ ThisOutput = "";
 		cf_mustache.queryStringFromJSON = function(data) {
 			var result = '';
 			for ( var key in data ) {
-				if ( typeof data[key] == 'string' ) {
-					if ( result.length ) {
-						result += '&';
+				if ( key.length ) {
+					if ( typeof data[key] == 'number' ) {
+						data[key] = data[key].toString();
 					}
-					result += key + '=' + data[key];
+					console.log('data key ' + key + ' is of type ' + typeof data[key]);
+					if ( typeof data[key] == 'string' ) {
+						if ( result.length ) {
+							result += '&';
+						}
+						result += key + '=' + data[key];
+					}
 				}
 			}
 			return result;
@@ -1078,26 +1125,12 @@ ThisOutput = "";
 
 		};
 		cf_mustache.handleError = function(id,error,message) {
-			var obj = document.getElementById(id);
-			if ( !message ) {
-				message = "Something went wrong. You may want to refresh the page in your browser and try again.";
-			}
-			obj.style.opacity = 1;
-			obj.innerHTML = '<div class="cf_mustache-error" style="border:1px solid red;padding:5px;height:100%;width:100%;"><p style="color:red;">' + message + '</p></div>';
-			console.error(error);
+			cf_mustache.event('error',id,arguments);
 		};
 		cf_mustache.load = function(id) {
-			var evt = new CustomEvent(
-				'cf_mustache.load',
-				{
-					detail: {
-						'id': id,
-						'data': cf_mustache.sInstances[id]
-					}
-				}
-			);
+			cf_mustache.event('load',id,cf_mustache.sInstances[id]);
 		};
-		cf_mustache.processResponse = function(str) {
+		cf_mustache.processResponse = function(id,str) {
 			//Handle ColdFusion errors
 			if ( str.indexOf('cfdump') > 0 ) {
 				var re_begin = 'Message(.*?)<\/td>(.*?)<td>';
@@ -1109,13 +1142,13 @@ ThisOutput = "";
 				str_msg = str_msg.replace(RegExp(re_end + '$'),'');
 				str_msg = str_msg.trim();
 
-				console.log('cf_mustache ERROR: ' + str_msg);
-				str = '{"Message":"' + str_msg + '"}';
+				throw(str_msg);
 			}
 			return str;
 		};
 		cf_mustache.post = function(id,uri,args,returncall) {
 			var request = new XMLHttpRequest();
+			var response = "";
 			if ( typeof args != 'string' ) {
 				args = cf_mustache.queryStringFromJSON(args);
 			}
@@ -1127,7 +1160,13 @@ ThisOutput = "";
 				if (this.readyState === 4) {
 					if (this.status >= 200 && this.status < 400) {
 						// Success!
-						returncall(cf_mustache.processResponse(this.responseText));
+						try {
+							response = cf_mustache.processResponse(id,this.responseText);
+						} catch (e) {
+							cf_mustache.event('error',id,{"error":e});
+						}
+						
+						returncall(response);
 					} else {
 						// Error :(
 						if ( this.status == 401 ) {
@@ -1158,7 +1197,7 @@ ThisOutput = "";
 			var sArgs = {};
 			var request = new XMLHttpRequest();
 
-			obj.style.opacity = 0.3;
+			cf_mustache.event('fetch',obj.getAttribute('id'),'');
 
 			//We need the args as a struct so we can add data to them.
 			if ( typeof args == 'string' ) {
@@ -1269,11 +1308,9 @@ ThisOutput = "";
 				var obj = id;
 			}
 
-			obj.style.opacity = 0.3;
+			cf_mustache.event('fetch',obj.getAttribute('id'),'');
 
 			cf_mustache.renderDataA(obj,data);
-
-			obj.style.opacity = 1;
 
 		};
 		cf_mustache.renderDataA = function(obj,data) {
@@ -1305,8 +1342,8 @@ ThisOutput = "";
 					}
 				);
 			} else {
-				//Otherwise log the failure.
-				console.log('No template found for ' + obj.getAttribute('id') + '.');
+				//Otherwise throw an exception.
+				cf_mustache.event('error',obj.getAttribute('id'),{"message":'No template found for ' + obj.getAttribute('id')});
 			}
 		};
 		cf_mustache.processTemplateHTML = function(id_template,html) {
@@ -1315,21 +1352,13 @@ ThisOutput = "";
 		cf_mustache.renderDataB = function(obj,id_template,data) {
 			delete data.GeneratedContent;
 			var template = cf_mustache.preprocess(obj.getAttribute('id'),cf_mustache.sTemplates[id_template]['html'],data);
-			var evt = new CustomEvent(
-				'cf_mustache.render',
-				{
-					detail: {
-						'id': obj.getAttribute('id'),
-						'data': data
-					}
-				}
-			);
+			
 			document.getElementById( obj.getAttribute('id') + '-data' ).innerHTML = JSON.stringify(data);
 			obj.innerHTML = Mustache.render(template, cf_mustache.ucase_keys(data));
 			cf_mustache.loadMustacheTriggers(obj);//Make sure that triggers in the element still work.
 
 			// dispatch the events
-			window.dispatchEvent(evt);
+			cf_mustache.event('render',obj.getAttribute('id'),data);
 		};
 		cf_mustache.sURLParams = cf_mustache.getURLParams();
 		cf_mustache.sTemplates = {};//A place to store URIs for each template
@@ -1337,6 +1366,15 @@ ThisOutput = "";
 		cf_mustache.sCounters = {};
 		//Load up the triggers
 		cf_mustache.addWindowLoadEvent(cf_mustache.loadMustacheTriggersDocument);
+		window.addEventListener('cf_mustache.error',(e) => {
+			cf_mustache.onError(e.detail.id,e.detail.data.error,e.detail.data.message)
+		});
+		window.addEventListener('cf_mustache.fetch',(e) => {
+			cf_mustache.onFetch(e.detail.id)
+		});
+		window.addEventListener('cf_mustache.render',(e) => {
+			cf_mustache.onRender(e.detail.id)
+		});
 		</script>
 		</cfsavecontent>
 		<cfset addToHead(aOutputs,compress(ThisOutput,"js"))>
@@ -1385,27 +1423,37 @@ ThisOutput = "";
 	TemplateHTML = sBaseAttributes["GeneratedContent"];
 	TemplateID = sBaseAttributes["id_template"];
 	request["cf_mustache"]["templates"][Attributes.name]["Counter"]++;
-	sData = getData();
-	//Added Counter to the data
-	sData[request["cf_mustache"]["templates"][Attributes.name]["Attributes"]["Counter"]] = request["cf_mustache"]["templates"][Attributes.name]["Counter"];
-	TemplateHTML = preprocess(TemplateHTML,sData);
+	if ( Attributes.autodata ) {
+		sData = getData();
+		//Added Counter to the data
+		sData[request["cf_mustache"]["templates"][Attributes.name]["Attributes"]["Counter"]] = request["cf_mustache"]["templates"][Attributes.name]["Counter"];
+		TemplateHTML = preprocess(TemplateHTML,sData);
+	} else {
+		sData = {};
+	}
+	if ( Attributes.script ) {
+		sCopyData = StructCopy(sData);
+		StructDelete(sCopyData,"GeneratedContent");
+		addToHead(aOutputs,'<script id="#Attributes.id#-data" class="cc-mustache-data" type="text/data">#SerializeJSON(sCopyData)#</script>');
+	}
+	html = "";
+	if ( Attributes.autorender ) {
+		html = oMustache.render(template=TemplateHTML,context=sData);
+	}
+	if ( Attributes.useDiv ) {
+		html_atts = "";
+		if ( Attributes.script IS true ) {
+			html_atts = ' data-template="#TemplateID#"';
+		}
+		ThisOutput = '<div id="#Attributes.id#" class="cc-mustache cc-mustache-#TemplateID#"#html_atts#>#html#</div>';
+	} else {
+		ThisOutput = html;
+	}
+	ArrayAppend(aOutputs,ThisOutput);
+	if ( Attributes.script ) {
+		ArrayAppend(aOutputs,"<script>cf_mustache.load('#Attributes.id#');</script>");
+	}
 	</cfscript>
-	<cfif Attributes.script>
-		<cfset sCopyData = StructCopy(sData)>
-		<cfset StructDelete(sCopyData,"GeneratedContent")>
-		<cfsavecontent variable="ThisOutput"><cfoutput><script id="#Attributes.id#-data" class="cc-mustache-data" type="text/data">#SerializeJSON(sCopyData)#</script></cfoutput></cfsavecontent>
-		<cfset addToHead(aOutputs,ThisOutput)>
-	</cfif>
-	<cfif Attributes.useDiv>
-		<cfsavecontent variable="ThisOutput"><cfoutput><div id="#Attributes.id#" class="cc-mustache cc-mustache-#TemplateID#"<cfif Attributes.script IS true> data-template="#TemplateID#"</cfif>>#oMustache.render(template=TemplateHTML,context=sData)#</div></cfoutput></cfsavecontent>
-	<cfelse>
-		<cfsavecontent variable="ThisOutput"><cfoutput>#oMustache.render(template=TemplateHTML,context=sData)#</cfoutput></cfsavecontent>
-	</cfif>
-	<cfset ArrayAppend(aOutputs,ThisOutput)>
-	<cfif Attributes.script>
-		<cfsavecontent variable="ThisOutput"><cfoutput><script>cf_mustache.load('#Attributes.id#');</script></cfoutput></cfsavecontent>
-		<cfset ArrayAppend(aOutputs,ThisOutput)>
-	</cfif>
 </cfif>
 
 <cfscript>
