@@ -977,7 +977,7 @@ $(document).ready(function() {
 		$(sebTableId + '-table').tableDnD({
 			onDragStyle: "dragging",
 			onDrop: function(table, row) {
-				var aPKs = JSON.parse(decodeURIComponent($('input[name="sebTableRowData"]').val()));
+				var aPKs = JSON.parse(decodeURIComponent($('input[id="sebTable#sfx#-rowdata"]').val()));
 				var aNewPKOrder = [];
 				$.each(table.rows,function() {
 					if (!$(this).hasClass('nodrop')) {
@@ -998,7 +998,7 @@ $(document).ready(function() {
 <div id="sebTable#sfx#" class="seb sebTable"<cfif Len(attributes.width)> style="width:#attributes.width#<cfif isNumeric(attributes.width)>px</cfif>;"</cfif>><cfif Len(ErrMessage)>
 <p class="sebMessage sebError">#ErrMessage#</p></cfif><cfif Len(Message)>
 <p class="sebMessage">#Message#</p></cfif><cfif attributes.isForm>
-<form action="#CGI.SCRIPT_NAME#?#XmlFormat(attributes.QUERY_STRING)#" method="post" name="frmSebTable#sfx#" id="frmSebTable#sfx#"><input type="hidden" name="sebTable" value="#sfx#"/></cfif><input type="hidden" name="sebTableRowData" value="#URLEncodedFormat(SerializeJSON(aShowRows))#"/>
+<form action="#CGI.SCRIPT_NAME#?#XmlFormat(attributes.QUERY_STRING)#" method="post" name="frmSebTable#sfx#" id="frmSebTable#sfx#"><input type="hidden" name="sebTable" value="#sfx#"/></cfif><input type="hidden" id="sebTable#sfx#-rowdata" name="sebTableRowData" value="#URLEncodedFormat(SerializeJSON(aShowRows))#"/>
 	<cfif attributes.showHeader><p class="sebTableCount"><cfif EndRow>(#url["sebstartrow#sfx#"]# - #EndRow#) of </cfif>#qTableData.RecordCount# record<cfif numRecords neq 1>s</cfif></p></cfif>
 	<cfif attributes.showHeader><p class="sebHeader"><cfif Len(attributes.label)><strong>#attributes.label# #attributes.labelSuffix#</strong></cfif><cfif attributes.isAddable> [<a href="#attributes.editpage#">Add New #attributes.label#</a>]</cfif></p></cfif>
 	<cfif Len(RolodexField) AND useRolodex>
