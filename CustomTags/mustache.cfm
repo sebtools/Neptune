@@ -953,7 +953,7 @@ ThisOutput = "";
 					if ( typeof data[key] == 'number' ) {
 						data[key] = data[key].toString();
 					}
-					console.log('data key ' + key + ' is of type ' + typeof data[key]);
+					//console.log('data key ' + key + ' is of type ' + typeof data[key]);
 					if ( typeof data[key] == 'string' ) {
 						if ( result.length ) {
 							result += '&';
@@ -1005,7 +1005,14 @@ ThisOutput = "";
 		};
 		//Load Mustache trigger events to the document
 		cf_mustache.loadMustacheTriggersDocument = function() {
-			cf_mustache.loadMustacheTriggers(document);
+			var elem = 0;
+			//console.table(cf_mustache.sInstances);
+			for ( var id in cf_mustache.sInstances ) {
+				elem = document.getElementById(id);
+				if ( elem ) {
+					cf_mustache.loadMustacheTriggers(elem);
+				}
+			}
 		};
 		//Load mustache trigger events to any given object
 		cf_mustache.loadMustacheTriggers = function(object) {
@@ -1165,7 +1172,7 @@ ThisOutput = "";
 						} catch (e) {
 							cf_mustache.event('error',id,{"error":e});
 						}
-						
+
 						returncall(response);
 					} else {
 						// Error :(
@@ -1352,7 +1359,7 @@ ThisOutput = "";
 		cf_mustache.renderDataB = function(obj,id_template,data) {
 			delete data.GeneratedContent;
 			var template = cf_mustache.preprocess(obj.getAttribute('id'),cf_mustache.sTemplates[id_template]['html'],data);
-			
+
 			document.getElementById( obj.getAttribute('id') + '-data' ).innerHTML = JSON.stringify(data);
 			obj.innerHTML = Mustache.render(template, cf_mustache.ucase_keys(data));
 			cf_mustache.loadMustacheTriggers(obj);//Make sure that triggers in the element still work.
