@@ -190,7 +190,7 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 	setDefaultAtt("format","");
 	setDefaultAtt("emailtype","text");
 	setDefaultAtt("replyto","");
-	setDefaultAtt("CatchErrTypes","");
+	setDefaultAtt("CatchErrTypes","validation");
 	setDefaultAtt("debug",false);
 	setDefaultAtt("UploadFilePath","");
 	setDefaultAtt("UploadBrowserPath","");
@@ -1829,15 +1829,27 @@ if ( isDefined("ThisTag.subforms") ) {
 		<cfcatch type="Any">
 			<cfset Caller[attributes.returnvar]["GetError"] = CFCATCH>
 			<cfif Len(attributes.CatchErrTypes) AND ListFindNoCase(attributes.CatchErrTypes,cfcatch.type)>
-				<cfset Caller[attributes.returnvar].CaughtError = CFCATCH>
-				<cfif StructKeyExists(CFCATCH,"Detail") AND Len(Trim(CFCATCH.Detail))>
-					<cfset ArrayAppend(TagInfo.arrErrors, "#CFCATCH.Message#: #CFCATCH.Detail#")>
-				<cfelse>
-					<cfset ArrayAppend(TagInfo.arrErrors, "#CFCATCH.Message#")>
-				</cfif>
-				<cfif StructKeyExists(CFCATCH,"ExtendedInfo") AND Len(Trim(CFCATCH.ExtendedInfo))>
-					<cfset TagInfo.liErrfields = ListAppend(TagInfo.liErrfields,CFCATCH.ExtendedInfo)>
-				</cfif>
+				<cfscript>
+				Caller[attributes.returnvar].CaughtError = CFCATCH;
+				Variables.isErrorArray = false;
+				//If error comes back as a JSON array, merge that into the error array. Otherwise, add the message to the error array.
+				if ( isJSON(CFCATCH.Message) ) {
+					Variables.aErrorMessages = DeserializeJSON(CFCATCH.Message);
+					Variables.isErrorArray = isArray(Variables.aErrorMessages);
+				}
+				if ( Variables.isErrorArray ) {
+					ArrayAppend(TagInfo.arrErrors,Variables.aErrorMessages,true);
+				} else {
+					if ( StructKeyExists(CFCATCH,"Detail") AND Len(Trim(CFCATCH.Detail)) ) {
+						ArrayAppend(TagInfo.arrErrors, "#CFCATCH.Message#: #CFCATCH.Detail#");
+					} else {
+						ArrayAppend(TagInfo.arrErrors, "#CFCATCH.Message#");
+					}
+				}
+				if ( StructKeyExists(CFCATCH,"ExtendedInfo") AND Len(Trim(CFCATCH.ExtendedInfo)) ) {
+					TagInfo.liErrfields = ListAppend(TagInfo.liErrfields,CFCATCH.ExtendedInfo);
+				}
+				</cfscript>
 			<cfelse>
 				<cfrethrow>
 			</cfif>
