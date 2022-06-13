@@ -8,12 +8,12 @@ cr = "
 ";
 //Coop hook
 if ( StructKeyExists(caller,'root') ) {
-	root = caller.root;
+	Variables.root = caller.root;
 } else {
-	root = caller;
+	Variables.root = caller;
 }
-if ( StructKeyExists(root,"coop") AND isObject(root.coop) AND StructKeyExists(root.coop,"mergeattributes") ) {
-	attributes = root.coop.mergeattributes(attributes,root);
+if ( StructKeyExists(Variables.root,"coop") AND isObject(Variables.root.coop) AND StructKeyExists(Variables.root.coop,"mergeattributes") ) {
+	attributes = Variables.root.coop.mergeattributes(attributes,Variables.root);
 }
 function doShow(qTableData,value,rownum) {
 	var result = true;
