@@ -191,9 +191,11 @@
 	SELECT	*
 	FROM	qRecords
 	WHERE	1 = 0
-	<cfloop list="#qRecords.ColumnList#" index="CurrentColumn">
+	<cfif Len(qRecords.ColumnList)>
+		<cfloop list="#qRecords.ColumnList#" index="CurrentColumn">
 		OR	(#CurrentColumn# <> '' AND #CurrentColumn# IS NOT NULL)
-	</cfloop>
+		</cfloop>
+	</cfif>
 	</cfquery>
 
 	<cfloop query="qRecords">
