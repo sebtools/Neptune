@@ -413,6 +413,17 @@ http://www.bryantwebconsulting.com/docs/sebtags/sebfield-general-attributes.cfm?
 		attributes.fieldname = "A#attributes.fieldname#";
 	}
 
+	//Set defaults from struct passed to form
+	if (
+		StructKeyExists(ParentAtts,"Defaults")
+		AND
+		isStruct(ParentAtts["Defaults"])
+		AND
+		StructKeyExists(ParentAtts["Defaults"],attributes.fieldname)
+	) {
+		attributes.defaultValue = ParentAtts["Defaults"][attributes.fieldname];
+	}
+
 	if ( Len(attributes.urlvar) AND StructKeyExists(URL,attributes.urlvar) AND NOT Len(attributes.defaultValue) ) {
 		attributes.defaultValue = URL[attributes.urlvar];
 	}
